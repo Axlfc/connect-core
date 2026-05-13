@@ -1,8 +1,8 @@
 # AUDIT 05: REVERSE PROXY Y NGINX
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.zh-cn.md)
 
 
 **Fecha:** 2024-07-25

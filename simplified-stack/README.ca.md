@@ -1,8 +1,8 @@
 # Simplified Isolated AI Stack with Drupal, Obsidian & Forgejo
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/simplified-stack/README.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/simplified-stack/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/simplified-stack/README.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/simplified-stack/README.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/simplified-stack/README.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/simplified-stack/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/simplified-stack/README.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/simplified-stack/README.zh-cn.md)
 
 
 This project provides a secondary simplified Docker Compose setup for an isolated AI workflow. It uses **Drupal** as the main orchestration system, **Obsidian** for knowledge management, and **Forgejo** for self-hosted Git services.

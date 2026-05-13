@@ -1,8 +1,8 @@
 # AUDIT 17: COMPLIANCE Y AUDITORÍA
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/17_COMPLIANCE_AND_AUDIT.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/17_COMPLIANCE_AND_AUDIT.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/17_COMPLIANCE_AND_AUDIT.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/17_COMPLIANCE_AND_AUDIT.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/17_COMPLIANCE_AND_AUDIT.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/17_COMPLIANCE_AND_AUDIT.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/17_COMPLIANCE_AND_AUDIT.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/17_COMPLIANCE_AND_AUDIT.zh-cn.md)
 
 
 **Fecha:** 2024-07-25

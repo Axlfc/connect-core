@@ -1,14 +1,14 @@
 # cognito-stack 🚀
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/README.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/README.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/README.zh-cn.md)
 
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-3.8+-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![n8n](https://img.shields.io/badge/n8n-1.121.0-red)](https://n8n.io/)
-[![Status](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/Axlfc/cognito-stack)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/Axlfc/connect-core)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)](https://nodejs.org/)
 
@@ -133,8 +133,8 @@ This project is licensed under the **GNU Affero General Public License v3 (AGPL-
 
 ## 📞 Contact & Resources
 
-- **GitHub:** [Axlfc/cognito-stack](https://github.com/Axlfc/cognito-stack)
-- **Issues:** [GitHub Issues](https://github.com/Axlfc/cognito-stack/issues)
+- **GitHub:** [Axlfc/connect-core](https://github.com/Axlfc/connect-core)
+- **Issues:** [GitHub Issues](https://github.com/Axlfc/connect-core/issues)
 - **Contribution Guide:** [CONTRIBUTING.en.md](CONTRIBUTING.en.md)
 - **Technical Documentation:** [.github/copilot-instructions.en.md](.github/copilot-instructions.en.md)
 

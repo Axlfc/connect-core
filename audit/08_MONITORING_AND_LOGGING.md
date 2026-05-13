@@ -1,8 +1,8 @@
 # AUDIT 08: MONITOREO, LOGGING Y OBSERVABILIDAD
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/08_MONITORING_AND_LOGGING.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
 
 
 **Fecha:** 2024-07-25

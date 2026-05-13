@@ -1,8 +1,8 @@
 # Architectural Review: Simplified-Stack vs. Root Project
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/SIMPLIFIED_STACK_REVIEW.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/SIMPLIFIED_STACK_REVIEW.en.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/SIMPLIFIED_STACK_REVIEW.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/SIMPLIFIED_STACK_REVIEW.zh-cn.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/SIMPLIFIED_STACK_REVIEW.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/SIMPLIFIED_STACK_REVIEW.en.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/SIMPLIFIED_STACK_REVIEW.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/SIMPLIFIED_STACK_REVIEW.zh-cn.md)
 
 
 This document provides a critical analysis of the `simplified-stack` compared to the mature `root project` (source of truth). It identifies structural differences and identifies areas for cross-pollination while respecting their distinct design goals.

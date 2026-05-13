@@ -1,8 +1,8 @@
 # Informe de Auditoría Técnica - Proyecto Cognito-Stack
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/README.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/README.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/audit/README.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.zh-cn.md)
 
 
 **Fecha:** 2024-07-25
@@ -10,7 +10,7 @@
 
 ## Introducción
 
-Este directorio contiene los resultados de una auditoría técnica exhaustiva del proyecto `Axlfc/cognito-stack`. El propósito de esta auditoría fue realizar un análisis profundo de la arquitectura, seguridad, mantenibilidad y preparación para producción del sistema.
+Este directorio contiene los resultados de una auditoría técnica exhaustiva del proyecto `Axlfc/connect-core`. El propósito de esta auditoría fue realizar un análisis profundo de la arquitectura, seguridad, mantenibilidad y preparación para producción del sistema.
 
 El informe está dividido en varios documentos Markdown, cada uno cubriendo un área específica del análisis.
 

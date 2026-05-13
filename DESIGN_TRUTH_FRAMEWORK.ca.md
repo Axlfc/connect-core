@@ -1,8 +1,8 @@
 # 📊 Design Truth Contract Testing Framework
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/DESIGN_TRUTH_FRAMEWORK.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/DESIGN_TRUTH_FRAMEWORK.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/DESIGN_TRUTH_FRAMEWORK.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/DESIGN_TRUTH_FRAMEWORK.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.zh-cn.md)
 
 
 ## Complete Notebook Suite Blueprint for cognito-stack

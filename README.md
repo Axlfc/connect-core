@@ -1,14 +1,14 @@
 # cognito-stack 🚀
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.en.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/cognito-stack/blob/master/README.zh-cn.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/README.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/README.en.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/README.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/README.zh-cn.md)
 
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-3.8+-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![n8n](https://img.shields.io/badge/n8n-1.121.0-red)](https://n8n.io/)
-[![Status](https://img.shields.io/badge/Status-Activo-brightgreen)](https://github.com/Axlfc/cognito-stack)
+[![Status](https://img.shields.io/badge/Status-Activo-brightgreen)](https://github.com/Axlfc/connect-core)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)](https://nodejs.org/)
 
@@ -934,7 +934,7 @@ docker compose --profile arm64 up -d
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/Axlfc/cognito-stack.git
+git clone https://github.com/Axlfc/connect-core.git
 cd cognito-stack
 ```
 
@@ -2170,7 +2170,7 @@ Para más detalles, ver [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### Reporte de bugs
 
-Usa [GitHub Issues](https://github.com/Axlfc/cognito-stack/issues) con:
+Usa [GitHub Issues](https://github.com/Axlfc/connect-core/issues) con:
 - Descripción clara del problema
 - Pasos para reproducir
 - Versión de Docker & OS
@@ -2191,8 +2191,8 @@ Este proyecto está licenciado bajo la **GNU Affero General Public License v3 (A
 
 ## 📞 Contacto & Recursos
 
-- **GitHub:** [Axlfc/cognito-stack](https://github.com/Axlfc/cognito-stack)
-- **Issues:** [GitHub Issues](https://github.com/Axlfc/cognito-stack/issues)
+- **GitHub:** [Axlfc/connect-core](https://github.com/Axlfc/connect-core)
+- **Issues:** [GitHub Issues](https://github.com/Axlfc/connect-core/issues)
 - **Guía de contribución:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Documentación técnica:** [.github/copilot-instructions.md](.github/copilot-instructions.md)
 
