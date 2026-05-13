@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Gateway Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .config {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .config-item {
+            margin-bottom: 15px;
+        }
+        
+        .config-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .record-btn {
+            background: #667eea;
+            color: white;
+        }
+        
+        .record-btn:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .record-btn.recording {
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .test-btn {
+            background: #10b981;
+            color: white;
+        }
+        
+        .test-btn:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .status {
+            background: #f0f9ff;
+            border: 2px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1e40af;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.show {
+            display: block;
+        }
+        
+        .status.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+        
+        .status.success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+        
+        .transcript {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 100px;
+        }
+        
+        .transcript-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .transcript-text {
+            color: #666;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .audio-player {
+            margin-top: 20px;
+        }
+        
+        audio {
+            width: 100%;
+            border-radius: 10px;
+        }
+        
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Gateway Interface</h1>
+        <p class="subtitle">Connect to your voice services</p>
+        
+        <div class="config">
+            <div class="config-item">
+                <label>Gateway URL</label>
+                <input type="text" id="gateway-url" value="http://localhost:9002" placeholder="http://localhost:9002">
+            </div>
+            
+            <div class="config-item">
+                <label>LLM Model</label>
+                <select id="model">
+                    <option value="llama3.2">Llama 3.2</option>
+                    <option value="gemma3">Gemma 3</option>
+                    <option value="qwen2.5-coder">Qwen 2.5 Coder</option>
+                    <option value="deepseek-r1:7b">DeepSeek R1</option>
+                    <option value="ministral-3:14b">Ministral 3</option>
+                </select>
+            </div>
+            
+            <div class="config-item">
+                <label>Voice</label>
+                <select id="voice">
+                    <option value="af_bella">Bella (Female)</option>
+                    <option value="af_sarah">Sarah (Female)</option>
+                    <option value="am_adam">Adam (Male)</option>
+                    <option value="am_michael">Michael (Male)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="button-group">
+            <button class="record-btn" id="record-btn">
+                <span id="record-icon">🎙️</span>
+                <span id="record-text">Hold to Speak</span>
+            </button>
+            
+            <button class="test-btn" id="test-btn">
+                <span>🔧</span>
+                <span>Test TTS</span>
+            </button>
+        </div>
+        
+        <div class="transcript">
+            <div class="transcript-title">Transcript</div>
+            <div class="transcript-text" id="transcript">Your speech will appear here...</div>
+        </div>
+        
+        <div class="audio-player" id="audio-container" style="display: none;">
+            <audio id="audio-player" controls></audio>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        const recordBtn = document.getElementById('record-btn');
+        const testBtn = document.getElementById('test-btn');
+        const status = document.getElementById('status');
+        const transcript = document.getElementById('transcript');
+        const audioPlayer = document.getElementById('audio-player');
+        const audioContainer = document.getElementById('audio-container');
+        const recordIcon = document.getElementById('record-icon');
+        const recordText = document.getElementById('record-text');
+        
+        function showStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = `status show ${type}`;
+        }
+        
+        function hideStatus() {
+            status.className = 'status';
+        }
+        
+        // Request microphone access on load
+        async function initMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    await sendAudioToGateway(audioBlob);
+                };
+                
+                showStatus('Microphone ready! Hold button to speak.', 'success');
+                setTimeout(hideStatus, 3000);
+            } catch (err) {
+                showStatus('Microphone access denied: ' + err.message, 'error');
+            }
+        }
+        
+        // Start/stop recording with mouse or touch
+        recordBtn.addEventListener('mousedown', startRecording);
+        recordBtn.addEventListener('mouseup', stopRecording);
+        recordBtn.addEventListener('mouseleave', () => {
+            if (isRecording) stopRecording();
+        });
+        
+        recordBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+        
+        recordBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+        
+        function startRecording() {
+            if (!mediaRecorder || isRecording) return;
+            
+            isRecording = true;
+            audioChunks = [];
+            mediaRecorder.start();
+            
+            recordBtn.classList.add('recording');
+            recordIcon.textContent = '⏺️';
+            recordText.textContent = 'Recording...';
+            showStatus('Recording... Release to send', 'info');
+        }
+        
+        function stopRecording() {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            mediaRecorder.stop();
+            
+            recordBtn.classList.remove('recording');
+            recordIcon.textContent = '🎙️';
+            recordText.textContent = 'Hold to Speak';
+            showStatus('Processing...', 'info');
+        }
+        
+        async function sendAudioToGateway(audioBlob) {
+            const gatewayUrl = document.getElementById('gateway-url').value;
+            const model = document.getElementById('model').value;
+            const voice = document.getElementById('voice').value;
+            
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'recording.webm');
+            formData.append('model', model);
+            formData.append('voice', voice);
+            
+            try {
+                const response = await fetch(`${gatewayUrl}/v1/conversation`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Display transcript
+                transcript.textContent = `You: "${data.user_text}"\n\nAI: "${data.ai_text}"`;
+                
+                // Play audio response
+                const audioData = atob(data.audio_base64);
+                const audioArray = new Uint8Array(audioData.length);
+                for (let i = 0; i < audioData.length; i++) {
+                    audioArray[i] = audioData.charCodeAt(i);
+                }
+                const audioBlob = new Blob([audioArray], { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                audioPlayer.src = audioUrl;
+                audioContainer.style.display = 'block';
+                audioPlayer.play();
+                
+                showStatus('Response received!', 'success');
+                setTimeout(hideStatus, 3000);
+                
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+                transcript.textContent = 'Error processing request. Check console for details.';
+                console.error('Gateway error:', err);
+            }
+        }
+        
+        // Test TTS
+        testBtn.addEventListener('click', async () => {
+            const gatewayUrl = document.getElementById('gateway-url').value;
+            const voice = document.getElementById('voice').value;
+            
+            testBtn.disabled = true;
+            showStatus('Testing text-to-speech...', 'info');
+            
+            try {
+                const response = await fetch(`${gatewayUrl}/v1/audio/speech`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: 'Hello! This is a test of the voice gateway. The system is working correctly.',
+                        voice: voice,
+                        format: 'mp3'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                audioPlayer.src = audioUrl;
+                audioContainer.style.display = 'block';
+                audioPlayer.play();
+                
+                showStatus('TTS test successful!', 'success');
+                setTimeout(hideStatus, 3000);
+                
+            } catch (err) {
+                showStatus('TTS test failed: ' + err.message, 'error');
+            } finally {
+                testBtn.disabled = false;
+            }
+        });
+        
+        // Initialize on load
+        initMicrophone();
+    </script>
+</body>
+</html>

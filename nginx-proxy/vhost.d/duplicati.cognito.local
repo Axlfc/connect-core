@@ -1,0 +1,5 @@
+# Authelia authentication
+auth_request /authelia;
+auth_request_set $user $upstream_http_remote_user;
+
+proxy_set_header Remote-User $user;

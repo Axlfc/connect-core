@@ -1,0 +1,56 @@
+# Whisper STT con soporte Blackwell (RTX 50 series) - NON-ROOT
+FROM nvcr.io/nvidia/pytorch:24.12-py3
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    ffmpeg curl wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir \
+    openai-whisper==20231117 fastapi==0.111.0 uvicorn[standard]==0.30.1 \
+    python-multipart==0.0.9 pydantic==2.7.4 pydantic-settings==2.3.4
+
+# Crear usuario no-root
+RUN useradd -ms /bin/bash -u 1001 whisper
+WORKDIR /home/whisper
+RUN chown -R whisper:whisper /home/whisper
+
+# Crear y dar permisos al directorio de caché del modelo
+ENV WHISPER_CACHE_DIR=/home/whisper/.cache/whisper
+RUN mkdir -p ${WHISPER_CACHE_DIR} && \
+    chown -R whisper:whisper ${WHISPER_CACHE_DIR}
+
+# Cambiar al usuario no-root
+USER whisper
+
+# Pre-descargar el modelo como usuario no-root
+RUN python3 << 'DOWNLOAD_MODEL'
+import whisper
+import os
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+model_name = os.getenv("ASR_MODEL", "large-v3")
+cache_dir = os.getenv("WHISPER_CACHE_DIR")
+logger.info(f"Pre-downloading Whisper model: {model_name} to {cache_dir}")
+try:
+    whisper.load_model(model_name, download_root=cache_dir)
+    logger.info(f"✓ Model {model_name} downloaded successfully")
+except Exception as e:
+    logger.error(f"✗ Failed to download model: {e}")
+DOWNLOAD_MODEL
+
+# Copiar el servidor FastAPI (simplificado para no escribir como root)
+COPY --chown=whisper:whisper voice-gateway/whisper_server.py /home/whisper/server.py
+
+WORKDIR /home/whisper
+EXPOSE 9000
+
+HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:9000/health || exit 1
+
+CMD ["python", "/home/whisper/server.py"]

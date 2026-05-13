@@ -1,0 +1,24 @@
+[DEFAULT]
+# Ban hosts for one hour:
+bantime = 1h
+
+# Override /etc/fail2ban/jail.d/00-firewalld.conf:
+banaction = iptables-multiport
+
+[n8n]
+enabled = true
+port = http,https
+logpath = /var/log/nginx/access.log
+maxretry = 5
+
+[forgejo]
+enabled = true
+port = http,https
+logpath = /var/log/nginx/access.log
+maxretry = 5
+
+[matrix-synapse]
+enabled = true
+port = http,https
+logpath = /var/log/nginx/access.log
+maxretry = 5

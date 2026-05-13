@@ -1,0 +1,10 @@
+---
+users:
+  admin:
+    disabled: false
+    displayname: "Admin User"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$your-hashed-password-here"
+    email: admin@example.com
+    groups:
+      - admins
+      - dev

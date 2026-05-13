@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup cognito-stack volumes
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/cognito-stack
+ExecStart=%h/cognito-stack/scripts/backup.sh
+User=%U

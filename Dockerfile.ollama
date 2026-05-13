@@ -1,0 +1,23 @@
+# Dockerfile for running Ollama as a non-root user with GPU access
+FROM ollama/ollama:latest
+
+# Create a non-root user if it doesn't exist and add to video and render groups
+# In WSL2, the render group (often GID 109) is sometimes needed for /dev/dxg access
+RUN id -u ollama >/dev/null 2>&1 || (useradd -ms /bin/bash ollama) && \
+    usermod -a -G video ollama && \
+    (groupadd -g 109 render || true) && \
+    usermod -a -G render ollama || true
+
+# Create a home directory for the models and set permissions
+RUN mkdir -p /home/ollama/.ollama && \
+    chown -R ollama:ollama /home/ollama/.ollama
+
+# Switch to the non-root user
+USER ollama
+
+# Set the home directory
+ENV HOME /home/ollama
+WORKDIR /home/ollama
+
+# Expose the default port
+EXPOSE 11434

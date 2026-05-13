@@ -1,0 +1,6 @@
+FROM ronmi/forgejo-mcp:latest
+USER root
+COPY scripts/forgejo-mcp-wrapper.sh /usr/local/bin/wrapper.sh
+RUN chmod +x /usr/local/bin/wrapper.sh
+USER 1000
+ENTRYPOINT ["/usr/local/bin/wrapper.sh"]

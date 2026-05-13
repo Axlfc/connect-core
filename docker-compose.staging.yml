@@ -1,0 +1,1346 @@
+version: "3.8"
+
+##############################
+# Shared volumes & networks
+##############################
+volumes:
+  staging-libretranslate-models:
+  staging-languagetool-config:
+  staging-n8n_storage:
+  staging-postgres_storage:
+  staging-ollama_storage:
+  staging-qdrant_storage:
+  staging-comfyui_local:
+  staging-comfyui_config:
+  staging-redis_data:
+  staging-matrix_data:
+  staging-matrix_postgres:
+  staging-certs:
+  staging-confd:
+  staging-vhostd:
+  staging-html:
+  staging-whisper_models:
+  staging-kokoro_models:
+  staging-forgejo_data:
+  staging-forgejo_db_data:
+  staging-duplicati_config:
+
+networks:
+  staging-demo:
+    driver: bridge
+    internal: false
+
+##############################
+# Reusable definitions
+##############################
+
+# n8n base service
+x-n8n: &service-n8n
+  build:
+    context: .
+    dockerfile: Dockerfile.n8n
+  image: n8nio/n8n:1.121.0
+  networks: ['staging-demo']
+  restart: unless-stopped
+  env_file:
+    - .env.staging
+  environment:
+    # Database configuration
+    - DB_TYPE=postgresdb
+    - DB_POSTGRESDB_HOST=staging-postgres
+    - DB_POSTGRESDB_PORT=5432
+    - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+    - DB_POSTGRESDB_USER=${POSTGRES_USER}
+    - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+    - DB_POSTGRESDB_SCHEMA=${N8N_DB_SCHEMA:-public}
+
+    # Security settings
+    - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+    - N8N_AUTH_JWT_SECRET=${N8N_AUTH_JWT_SECRET}
+
+    # Feature flags
+    - N8N_PERSONALIZATION_ENABLED=false
+    - N8N_DIAGNOSTICS_ENABLED=false
+    - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+    - N8N_DISABLE_UI=false
+    - N8N_SECURE_COOKIE=false
+
+    # Proxy configuration
+    - N8N_PROXY_HOPS=1
+
+    # Network and webhook configuration
+    - WEBHOOK_URL=${WEBHOOK_URL}
+    - N8N_HOST=0.0.0.0
+    - N8N_PORT=5678
+    - N8N_PROTOCOL=http
+
+    - N8N_RUNNERS_ENABLED=true
+    - N8N_RUNNERS_MODE=external
+    - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    - N8N_RUNNERS_N8N_URI=http://0.0.0.0:5679
+
+    # Python/JavaScript permissions
+    - NODE_FUNCTION_ALLOW_BUILTIN=*
+    - NODE_FUNCTION_ALLOW_EXTERNAL=*
+
+    # External services
+    - OLLAMA_API_URL=http://staging-ollama:11434
+    - QDRANT_URL=http://staging-qdrant:6333
+    - MCP_BRAVE_API_KEY=${MCP_BRAVE_API_KEY}
+
+    # Execution settings
+    - EXECUTIONS_TIMEOUT=3600
+    - EXECUTIONS_TIMEOUT_MAX=3600
+    - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+    - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+    - EXECUTIONS_DATA_SAVE_ON_PROGRESS=false
+    - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=false
+
+  ports:
+    - "5678:5678"
+    - "5680:5680"
+
+  volumes:
+    - staging-n8n_storage:/home/node/.n8n
+    - ./n8n/demo-data:/demo-data:ro
+    - ./shared:/data/shared
+    - ./data/knowledge_base:/data/knowledge_base
+    - ./shared:/opt/ComfyUI/input
+    - ./shared:/opt/ComfyUI/output
+
+  user: "1000:1000"
+  read_only: false
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - SETUID
+    - SETGID
+    - NET_BIND_SERVICE
+
+# Ollama base service (network-aliased)
+x-ollama: &service-ollama
+  build:
+    context: .
+    dockerfile: Dockerfile.ollama
+  image: local/ollama:custom
+  restart: unless-stopped
+  networks:
+    staging-demo:
+      aliases:
+        - staging-ollama
+  environment:
+    - OLLAMA_HOST=staging-ollama:11434
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  ports:
+    - "11434:11434"
+  volumes:
+    - staging-ollama_storage:/home/ollama/.ollama
+  healthcheck:
+    test: ["CMD-SHELL", "ollama list || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 20s
+
+# Ollama model-puller
+x-init-ollama: &init-ollama
+  <<: *service-ollama
+  container_name: staging-ollama-pull
+  restart: "no"
+  ports: []
+  entrypoint: /bin/sh
+  command:
+    - "-c"
+    - "sleep 5; ollama pull llama3.2; ollama pull nomic-embed-text; ollama pull gemma3; ollama pull qwen2.5-coder; ollama pull qwen3:8b; ollama pull deepseek-r1:7b; ollama pull ministral-3:14b; ollama pull capybarahermes-2.5-mistral:7b-q8_0; ollama pull gpt-oss:20b"
+
+
+##############################
+# Actual services
+##############################
+services:
+
+  staging-postgres:
+    image: postgres:16-alpine
+    hostname: staging-postgres
+    container_name: staging-postgres
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    env_file:
+      - .env.staging
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_MULTIPLE_DATABASES=${POSTGRES_DB},${POSTIZ_DB_NAME:-postiz_db}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_INITDB_ARGS=${POSTGRES_INITDB_ARGS:---auth-host=scram-sha-256 --auth-local=scram-sha-256}
+    volumes:
+      - staging-postgres_storage:/var/lib/postgresql/data
+      - ./scripts/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    user: "${POSTGRES_USER_ID:-999}:${POSTGRES_GROUP_ID:-999}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-qdrant:
+    build:
+      context: .
+      dockerfile: Dockerfile.qdrant
+    image: local/qdrant:custom
+    hostname: staging-qdrant
+    container_name: staging-qdrant
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - 6333:6333
+    volumes:
+      - staging-qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/localhost/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-n8n-import:
+    <<: *service-n8n
+    container_name: staging-n8n-import
+    restart: "no"
+    ports: []
+
+    volumes:
+      - staging-n8n_storage:/home/node/.n8n
+      - ./n8n/demo-data:/demo-data:ro
+      - ./shared:/data/shared
+      - ./data/knowledge_base:/data/knowledge_base
+      - ./shared:/opt/ComfyUI/input
+      - ./shared:/opt/ComfyUI/output
+
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=staging-postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      - N8N_AUTH_JWT_SECRET=${N8N_AUTH_JWT_SECRET}
+      - N8N_RUNNERS_ENABLED=false
+
+    entrypoint: /bin/sh
+    command:
+      - "-c"
+      - |
+        set -e
+        echo "Starting n8n import process..."
+
+        # Wait for database to be ready
+        echo "Waiting for database connection..."
+        until n8n user-management:reset --email=admin@example.com --password=temp123 2>/dev/null || [ $$? -eq 0 ]; do
+          echo "Database not ready, waiting 5 seconds..."
+          sleep 5
+        done
+
+        echo "Database connection established"
+
+        # Check if demo data directories exist
+        if [ ! -d "/demo-data" ]; then
+          echo "No /demo-data directory found, skipping import"
+          exit 0
+        fi
+
+        # Import credentials if they exist
+        if [ -d "/demo-data/credentials" ] && [ "$(ls -A /demo-data/credentials 2>/dev/null)" ]; then
+          echo "Importing credentials..."
+          timeout 300 n8n import:credentials --separate --input=/demo-data/credentials || {
+            echo "Warning: Failed to import credentials or timeout reached"
+          }
+        else
+          echo "No credentials found to import"
+        fi
+
+        # Import workflows if they exist
+        if [ -d "/demo-data/workflows" ] && [ "$(ls -A /demo-data/workflows 2>/dev/null)" ]; then
+          echo "Importing workflows..."
+          timeout 300 n8n import:workflow --separate --input=/demo-data/workflows || {
+            echo "Warning: Failed to import workflows or timeout reached"
+          }
+        else
+          echo "No workflows found to import"
+        fi
+
+        echo "Import process completed successfully"
+
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "echo", "Import service completed"]
+      interval: 30s
+      timeout: 10s
+      retries: 1
+      start_period: 60s
+
+  staging-n8n:
+    image: n8nio/n8n:1.46.0
+    container_name: staging-n8n
+    networks: ['staging-demo']
+    restart: unless-stopped
+    user: node
+    env_file:
+      - .env.staging
+    environment:
+      # Database configuration
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=staging-postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Security settings
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+
+      # Feature flags
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_SECURE_COOKIE=false
+
+      # Network configuration
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+      - N8N_RUNNERS_MAX_CONCURRENCY=5
+      - N8N_RUNNERS_TASK_TIMEOUT=60
+
+      - N8N_RUNNERS_N8N_URI=http://staging-n8n:5679
+
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+
+      # External services
+      - OLLAMA_API_URL=http://staging-ollama:11434
+      - QDRANT_URL=http://staging-qdrant:6333
+      - VOICE_GATEWAY_URL=http://staging-voice-gateway:9000
+
+      # Execution settings
+      - EXECUTIONS_TIMEOUT=300
+      - EXECUTIONS_TIMEOUT_MAX=3600
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+
+      # Logging
+      - N8N_LOG_LEVEL=info
+
+    ports:
+      - "5678:5678"
+      - "5679:5679"  # Task broker port
+
+    volumes:
+      - staging-n8n_storage:/home/node/.n8n
+      - ./shared:/data/shared
+
+    depends_on:
+      staging-postgres:
+        condition: service_healthy
+      staging-qdrant:
+        condition: service_started
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-n8n-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runners
+    image: local/n8n-runners:custom
+    container_name: staging-n8n-runner
+    networks: ['staging-demo']
+    restart: unless-stopped
+
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://staging-n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+
+      # Configuración de rendimiento
+      - N8N_RUNNERS_MAX_CONCURRENCY=5
+      - N8N_RUNNERS_TASK_TIMEOUT=600
+
+      # Logs para ver errores de Python si ocurren
+      - N8N_RUNNERS_LAUNCHER_LOG_LEVEL=debug
+
+    volumes:
+      - ./n8n-task-runners.json:/etc/n8n-task-runners.json:ro
+
+    depends_on:
+      - staging-n8n
+
+    command: []
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5682/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: false
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-zrok-client:
+    image: openziti/zrok:v0.4.23
+    container_name: staging-zrok-n8n-tunnel
+    networks: ['staging-demo']
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - ZROK_API_ENDPOINT=${ZROK_API_ENDPOINT}
+      - ZROK_AUTH_TOKEN=${ZROK_AUTH_TOKEN}
+    volumes:
+      - ./.zrok:/home/zrok/.zrok
+    entrypoint: /bin/sh
+    command:
+      - "-c"
+      - |
+        set -e
+        echo "Checking zrok environment..."
+        echo "Home directory: ${HOME}"
+        echo "Zrok config location: ${HOME}/.zrok"
+
+        if [ ! -f "${HOME}/.zrok/environment.json" ]; then
+          echo "Environment file not found, enabling zrok..."
+          if [ -z "${ZROK_AUTH_TOKEN}" ]; then
+            echo "ERROR: ZROK_AUTH_TOKEN not set"
+            exit 1
+          fi
+          zrok enable "${ZROK_AUTH_TOKEN}"
+          echo "Zrok enabled successfully"
+        else
+          echo "Zrok already enabled (environment.json exists)"
+        fi
+
+        if ! zrok status; then
+          echo "ERROR: zrok enable verification failed"
+          exit 1
+        fi
+
+        echo "Starting zrok share on http://staging-n8n:5678..."
+        exec zrok share "${ZROK_SHARE_MODE:-public}" http://staging-n8n:5678 --headless
+    depends_on:
+      staging-n8n:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # Ollama CPU
+  staging-ollama-cpu:
+    <<: *service-ollama
+    profiles: ["cpu"]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+
+  # Ollama NVIDIA GPU
+  staging-ollama-gpu:
+    <<: *service-ollama
+    profiles: ["gpu-nvidia"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Ollama AMD GPU (ROCm)
+  staging-ollama-gpu-amd:
+    <<: *service-ollama
+    profiles: ["gpu-amd"]
+    image: ollama/ollama:rocm-latest
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 8G
+
+  # Ollama pullers per perfil
+  staging-ollama-pull-cpu:
+    <<: *init-ollama
+    profiles: ["cpu"]
+    depends_on:
+      - staging-ollama-cpu
+
+  staging-ollama-pull-gpu:
+    <<: *init-ollama
+    profiles: ["gpu-nvidia"]
+    depends_on:
+      staging-ollama-gpu:
+        condition: service_healthy
+
+  staging-ollama-pull-gpu-amd:
+    <<: *init-ollama
+    profiles: ["gpu-amd"]
+    depends_on:
+      - staging-ollama-gpu-amd
+
+  staging-ollama-proxy:
+    build:
+      context: ./ollama-proxy
+    container_name: staging-ollama-proxy
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    depends_on:
+      staging-ollama-cpu:
+        condition: service_started
+        required: false
+      staging-ollama-gpu:
+        condition: service_started
+        required: false
+      staging-ollama-gpu-amd:
+        condition: service_started
+        required: false
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ComfyUI with GPU (use --profile gpu-nvidia)
+  staging-comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile.comfyui
+      args:
+        BASE_IMAGE: ghcr.io/ai-dock/comfyui:latest
+    image: local/comfyui:gpu
+    container_name: staging-comfyui
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["gpu-nvidia"]
+    ports:
+      - "8188:8188"
+    environment:
+      - AUTO_UPDATE=false
+      - WORKSPACE_SYNC=false
+      - WEB_ENABLE_AUTH=false
+      - SUPERVISOR_NO_AUTOSTART=serviceportal
+      - COMMANDLINE_ARGS=--listen 0.0.0.0 --port 8188
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,video
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - type: bind
+        source: ./workspace
+        target: /workspace/storage
+      - type: bind
+        source: ./config/comfyui_plugins
+        target: /workspace/ComfyUI/custom_nodes
+      - type: bind
+        source: ./models
+        target: /opt/ComfyUI/models
+      - type: bind
+        source: ./shared
+        target: /opt/ComfyUI/input
+      - type: bind
+        source: ./shared
+        target: /opt/ComfyUI/output
+
+  # ========================================
+  # REDIS - Cache & Session Store
+  # ========================================
+  staging-redis:
+    image: redis:${REDIS_VERSION:-7.2}-alpine
+    hostname: staging-redis
+    container_name: staging-redis
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+      --tcp-backlog ${REDIS_TCP_BACKLOG:-511}
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - staging-redis_data:/data
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    user: "${REDIS_USER_ID:-999}:${REDIS_GROUP_ID:-999}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  staging-nginx-proxy:
+    image: jwilder/nginx-proxy:0.6.0
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes :
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - staging-certs:/etc/nginx/certs:ro
+      - staging-confd:/etc/nginx/conf.d
+      - staging-vhostd:/etc/nginx/vhost.d
+      - staging-html:/usr/share/nginx/html
+    labels :
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+
+  staging-letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
+    restart: always
+    volumes:
+      - staging-confd:/etc/nginx/conf.d
+      - staging-vhostd:/etc/nginx/vhost.d
+      - staging-html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  # ========================================
+  # MATRIX POSTGRES - Separate DB for Matrix
+  # ========================================
+  staging-matrix-postgres:
+    image: postgres:16-alpine
+    hostname: staging-matrix-postgres
+    container_name: staging-matrix-postgres
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "5433:5432"  # Puerto externo diferente para no conflicto
+    environment:
+      - POSTGRES_USER=matrix_user
+      - POSTGRES_PASSWORD=${MATRIX_POSTGRES_PASSWORD}
+      - POSTGRES_DB=matrix_synapse
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - staging-matrix_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_user -d matrix_synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    user: "999:999"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # ========================================
+  # MATRIX SYNAPSE - Homeserver
+  # ========================================
+  staging-matrix-synapse:
+    build:
+      context: .
+      dockerfile: Dockerfile.matrix
+    image: local/matrix-synapse:custom
+    hostname: staging-matrix
+    container_name: staging-matrix-synapse
+    networks:
+      staging-demo:
+        aliases:
+          - matrix.local
+          - matrix
+    restart: unless-stopped
+    ports:
+      - "8008:8008"   # Puerto principal HTTP
+      - "8448:8448"   # Puerto de federación (opcional si no usas federación)
+    environment:
+      # ⚠️ IMPORTANTE: Usa matrix.local NO localhost
+      - SYNAPSE_SERVER_NAME=matrix.local
+      - SYNAPSE_REPORT_STATS=no
+
+      # Database
+      - POSTGRES_HOST=staging-matrix-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=matrix_synapse
+      - POSTGRES_USER=matrix_user
+      - POSTGRES_PASSWORD=${MATRIX_POSTGRES_PASSWORD}
+
+      # Redis (opcional pero recomendado)
+      - REDIS_HOST=staging-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DBID=1
+
+      # Habilitar registro temporal para crear usuario admin
+      - ENABLE_REGISTRATION=true
+      - ENABLE_REGISTRATION_WITHOUT_VERIFICATION=true
+
+      # Deshabilitar proxy reverso por ahora
+      - VIRTUAL_HOST=
+      - VIRTUAL_PORT=
+      - LETSENCRYPT_HOST=
+
+    volumes:
+      - staging-matrix_data:/data
+
+    depends_on:
+      staging-matrix-postgres:
+        condition: service_healthy
+      staging-redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # ========================================
+  # VOICE SERVICES - BLACKWELL SUPPORT
+  # ========================================
+
+  # Whisper STT (Blackwell GPU) - NVIDIA PyTorch 25.01
+  staging-whisper-stt:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper-blackwell-nonroot
+    image: local/whisper-blackwell:nonroot
+    hostname: staging-whisper-stt
+    container_name: staging-whisper-stt
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "voice"]
+    ports:
+      - "9001:9000"
+    volumes:
+      - staging-whisper_models:/home/whisper/.cache/whisper
+      - ./shared:/audio
+    environment:
+      - ASR_MODEL=large-v3
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # Whisper STT (CPU) - Mantener para fallback
+  staging-whisper-stt-cpu:
+    image: onerahmet/openai-whisper-asr-webservice:1.10.0
+    hostname: staging-whisper-stt
+    container_name: staging-whisper-stt-cpu
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["voice-cpu", "cpu"]
+    ports:
+      - "9001:9000"
+    volumes:
+      - staging-whisper_models:/root/.cache/whisper
+      - ./shared:/audio
+    environment:
+      - ASR_MODEL=base.en
+      - ASR_ENGINE=openai_whisper
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  # Kokoro TTS (Official GPU image - works with all NVIDIA GPUs)
+  # Kokoro TTS (Blackwell GPU - Usa API oficial)
+  staging-kokoro-tts:
+    image: local/kokoro-blackwell:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.kokoro-blackwell
+    hostname: staging-kokoro-tts
+    container_name: staging-kokoro-tts
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "voice"]
+    ports:
+      - "8880:8880"
+    volumes:
+      - staging-kokoro_models:/app/api/src/models
+      - ./shared:/audio
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - API_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 8G
+    shm_size: '2gb'  # Importante para PyTorch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 180s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+  # Kokoro TTS (CPU fallback - Official image)
+  staging-kokoro-tts-cpu:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:1.2.0
+    hostname: staging-kokoro-tts
+    container_name: staging-kokoro-tts-cpu
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["voice-cpu", "cpu"]
+    ports:
+      - "8880:8880"
+    volumes:
+      - staging-kokoro_models:/app/models
+      - ./shared:/audio
+    environment:
+      - API_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/8880' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  # Voice Gateway
+  staging-voice-gateway:
+    build:
+      context: ./voice-gateway
+      dockerfile: Dockerfile
+    hostname: staging-voice-gateway
+    container_name: staging-voice-gateway
+    networks: ['staging-demo']
+    restart: unless-stopped
+    profiles: ["voice", "voice-cpu"]
+    ports:
+      - "9002:9000"
+    env_file: .env.staging
+    environment:
+      - WHISPER_URL=http://staging-whisper-stt:9000
+      - KOKORO_URL=http://staging-kokoro-tts:8880
+      - OLLAMA_URL=http://staging-ollama:11434
+      - REDIS_URL=redis://staging-redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      staging-whisper-stt:
+        condition: service_healthy
+        required: false
+      staging-whisper-stt-cpu:
+        condition: service_healthy
+        required: false
+      staging-kokoro-tts:
+        condition: service_healthy
+        required: false
+      staging-kokoro-tts-cpu:
+        condition: service_healthy
+        required: false
+      staging-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # ========================================
+  # FORGEJO SERVICES
+  # ========================================
+  staging-forgejo-db:
+    image: postgres:16-alpine
+    hostname: staging-forgejo-db
+    container_name: staging-forgejo-db
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=${FORGEJO_DB_USER}
+      - POSTGRES_PASSWORD=${FORGEJO_DB_PASSWORD}
+      - POSTGRES_DB=${FORGEJO_DB_NAME}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - staging-forgejo_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${FORGEJO_DB_USER} -d ${FORGEJO_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    user: "${POSTGRES_USER_ID:-999}:${POSTGRES_GROUP_ID:-999}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-forgejo:
+    image: codeberg.org/forgejo/forgejo:7
+    hostname: staging-forgejo
+    container_name: staging-forgejo
+    networks: ['staging-demo']
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+      - "2222:22"
+    volumes:
+      - staging-forgejo_data:/data
+    depends_on:
+      staging-forgejo-db:
+        condition: service_healthy
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=postgres
+      - FORGEJO__database__HOST=staging-forgejo-db:5432
+      - FORGEJO__database__NAME=${FORGEJO_DB_NAME}
+      - FORGEJO__database__USER=${FORGEJO_DB_USER}
+      - FORGEJO__database__PASSWD=${FORGEJO_DB_PASSWORD}
+      - FORGEJO__server__DOMAIN=localhost
+      - FORGEJO__server__ROOT_URL=http://localhost:3002
+      - FORGEJO__server__SSH_DOMAIN=localhost
+      - FORGEJO__server__SSH_PORT=2222
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__service__ENABLE_GIT_SSH=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  staging-forgejo-mcp:
+    image: ronmi/forgejo-mcp:0.1.0
+    container_name: staging-forgejo-mcp
+    networks: ['staging-demo']
+    restart: unless-stopped
+    environment:
+      - FORGEJOMCP_SERVER=http://staging-forgejo:3000
+      - FORGEJOMCP_TOKEN=${FORGEJO_MCP_TOKEN}
+    depends_on:
+      staging-forgejo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ========================================
+  # TRANSLATION & GRAMMAR SERVICES
+  # ========================================
+
+  # Service: LibreTranslate
+  # Description: A self-hosted machine translation API.
+  # Internal URL: http://libretranslate:5000
+  # Documentation: https://github.com/LibreTranslate/LibreTranslate
+  staging-libretranslate:
+    build:
+      context: .
+      dockerfile: Dockerfile.libretranslate
+    image: local/libretranslate:custom
+    container_name: staging-libretranslate
+    hostname: staging-libretranslate
+    restart: unless-stopped
+    networks: ['staging-demo']
+    # ports:
+    #   - "5000:5000"
+    environment:
+      - LT_LOAD_ONLY=en,es,fr,de,pt,ca
+    volumes:
+      - staging-libretranslate-models:/app/models
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  # Service: LanguageTool
+  # Description: A grammar, style, and spell checker.
+  # Internal URL: http://languagetool:8010
+  # Documentation: https://github.com/languagetool-org/languagetool
+  staging-languagetool:
+    build:
+      context: .
+      dockerfile: Dockerfile.languagetool
+    image: local/languagetool:custom
+    container_name: staging-languagetool
+    hostname: staging-languagetool
+    restart: unless-stopped
+    networks: ['staging-demo']
+    # ports:
+    #   - "8010:8010"
+    environment:
+      - langtool_languageModel=/ngrams
+      - langtool_pipelinePrewarming=true
+      # - Java_Xms=512m
+      # - Java_Xmx=2g
+    volumes:
+      # IMPORTANT: The n-gram data for LanguageTool is not included.
+      # You must download the data manually and place it in the 'languagetool-config' volume.
+      # Download link: https://languagetool.org/download/ngram-data/
+      - staging-languagetool-config:/ngrams
+    healthcheck:
+      test: ["CMD-SHELL", "wget --post-data 'language=en-US&text=test' -qO- http://localhost:8010/v2/check > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+
+  # ========================================
+  # AGENT SERVICES
+  # ========================================
+  staging-vcs:
+    image: alpine:3.20
+    container_name: staging-vcs
+    networks: ['staging-demo']
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  staging-merge-agent:
+    image: alpine:3.20
+    container_name: staging-merge-agent
+    networks: ['staging-demo']
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+    depends_on:
+      - staging-vcs
+      - staging-runner
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  staging-runner:
+    image: alpine:3.20
+    container_name: staging-runner
+    networks: ['staging-demo']
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  staging-archaeology:
+    image: alpine:3.20
+    container_name: staging-archaeology
+    networks: ['staging-demo']
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+    depends_on:
+      - staging-vcs
+      - staging-runner
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  staging-storage:
+    image: alpine:3.20
+    container_name: staging-storage
+    networks: ['staging-demo']
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]
+    volumes:
+      - ./artifacts:/data/artifacts
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  # ========================================
+  # MONITORING SERVICES
+  # ========================================
+
+  # Service: Dozzle (Staging)
+  # Description: A lightweight, web-based log viewer for Docker containers.
+  # Internal URL: http://staging-dozzle:8080
+  # Documentation: https://dozzle.dev/
+  staging-dozzle:
+    image: amir20/dozzle:v4.5.0
+    container_name: staging-dozzle
+    hostname: staging-dozzle
+    restart: unless-stopped
+    networks: ['staging-demo']
+    ports:
+      - "8088:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # Service: cAdvisor (Staging)
+  # Description: Analyzes resource usage and performance of running containers.
+  # Internal URL: http://staging-cadvisor:8080
+  # Documentation: https://github.com/google/cadvisor
+  staging-cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: staging-cadvisor
+    hostname: staging-cadvisor
+    restart: unless-stopped
+    networks: ['staging-demo']
+    ports:
+     - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ========================================
+  # BACKUP SERVICE
+  # ========================================
+  staging-duplicati:
+    image: lscr.io/linuxserver/duplicati:2.0.8.1_beta_20240507
+    container_name: staging-duplicati
+    hostname: staging-duplicati
+    restart: unless-stopped
+    networks: ['staging-demo']
+    # ports: []  # solo si acceso externo necesario (mejor protegido con Authelia)
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+    volumes:
+      - ./backups/duplicati-config:/config
+      - ./backups/sources:/source:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+##############################
+# Startup instructions
+##############################
+# CPU only:       docker compose -f docker-compose.staging.yml --profile voice-cpu up -d
+# NVIDIA GPU:     docker compose -f docker-compose.staging.yml --profile gpu-nvidia --profile voice up -d
+# AMD GPU:        docker compose -f docker-compose.staging.yml --profile gpu-amd up -d

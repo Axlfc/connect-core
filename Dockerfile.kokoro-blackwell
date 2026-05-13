@@ -1,0 +1,46 @@
+# Kokoro TTS con soporte Blackwell (RTX 50 series)
+FROM nvcr.io/nvidia/pytorch:24.12-py3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    ffmpeg \
+    espeak-ng \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clonar el repositorio oficial de Kokoro-FastAPI
+WORKDIR /app
+RUN git clone https://github.com/remsky/Kokoro-FastAPI.git . && \
+    git checkout 3af45719940c915b53ad2a63f9cdb6f22680d276
+
+
+# Crear virtual environment e instalar dependencias
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Instalar dependencias del proyecto
+RUN pip install --no-cache-dir -e .
+
+# Descargar el modelo
+RUN python docker/scripts/download_model.py --output api/src/models/v1_0
+
+# Exponer puerto
+EXPOSE 8880
+
+# Variables de entorno
+ENV API_LOG_LEVEL=INFO
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=15s --start-period=180s --retries=5 \
+    CMD curl -f http://localhost:8880/health || exit 1
+
+# Iniciar el servidor
+WORKDIR /app
+CMD ["python", "-m", "uvicorn", "api.src.main:app", "--host", "0.0.0.0", "--port", "8880", "--workers", "1"]

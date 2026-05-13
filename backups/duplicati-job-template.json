@@ -1,0 +1,19 @@
+{
+  "Name": "cognito-stack-auto-backup",
+  "Enabled": true,
+  "Schedule": "@daily",
+  "SourcePaths": [
+    "./shared",
+    "./data",
+    "./models"
+  ],
+  "Target": "<DESTINATION_URI>",
+  "Options": {
+    "encryption-module": "aes",
+    "passphrase": "<ENCRYPTION_PASSPHRASE>",
+    "compression": true,
+    "blocksize": 1000000
+  },
+  "Filters": [],
+  "RetentionPolicy": "<RETENTION_POLICY>"
+}

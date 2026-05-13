@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# ~/.local/bin/cog
+
+PROMPT="$1"
+MODEL="${2:-cognito}"
+
+if [ -z "$PROMPT" ]; then echo "Uso: cog 'tu mensaje'"; exit 1; fi
+
+# Banner idéntico al original
+echo -e "\n  \e[36m╔══════════════════════════════════════╗"
+echo -e "  ║        COGNITO STACK  //  AI         ║"
+printf  "  ║  model: %-27s║\n" "$MODEL"
+echo -e "  ╚══════════════════════════════════════╝\e[0m\n"
+
+# Petición con streaming
+stdbuf -oL curl -sN -X POST "http://localhost:8000/v1/chat/completions" \
+     -H "Content-Type: application/json" \
+     -d "{\"model\": \"$MODEL\", \"messages\": [{\"role\": \"user\", \"content\": \"$PROMPT\"}], \"stream\": true}" | \
+python3 -u -c '
+import sys, json, threading, time
+
+# Lógica de color por incertidumbre[cite: 4]
+def get_color(score):
+    if score < 0.5:
+        t = score / 0.5
+        r, g, b = int(100 + t * 155), 200, int(255 - t * 195)
+    else:
+        t = (score - 0.5) / 0.5
+        r, g, b = 255, int(200 - t * 140), int(60 - t * 20)
+    return f"\033[38;2;{r};{g};{b}m"
+
+# Spinner original[cite: 4]
+frames = ["  ◆····", "  ·◆···", "  ··◆··", "  ···◆·", "  ····◆"]
+stop_spinner = False
+
+def spin():
+    i = 0
+    while not stop_spinner:
+        sys.stdout.write(f"\r{frames[i % len(frames)]}  \033[K")
+        sys.stdout.flush()
+        time.sleep(0.06)
+        i += 1
+
+threading.Thread(target=spin, daemon=True).start()
+
+first = True
+for line in sys.stdin:
+    if not line.strip() or "data: [DONE]" in line: continue
+    try:
+        data = json.loads(line.replace("data: ", ""))
+        delta = data["choices"][0]["delta"]
+        token = delta.get("content", "")
+        if token:
+            if first:
+                stop_spinner = True
+                sys.stdout.write("\r\033[K  ")
+                first = False
+            
+            u = delta.get("uncertainty")
+            color = get_color(float(u)) if u is not None else "\033[37m"
+            print(f"{color}{token}\033[0m", end="", flush=True)
+    except: continue
+print("\n\n  \033[90m─────────────────────────────────────────\033[0m\n")
+'

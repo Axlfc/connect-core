@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS chat_rooms (
+    id SERIAL PRIMARY KEY,
+    matrix_room_id VARCHAR(255) UNIQUE NOT NULL,
+    forgejo_org VARCHAR(255) NOT NULL,
+    forgejo_repo VARCHAR(255) NOT NULL,
+    qdrant_collection VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

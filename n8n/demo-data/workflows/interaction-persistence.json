@@ -1,0 +1,137 @@
+{
+  "name": "Interaction Persistence",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "path": "interaction-persistence",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "webhookId": "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+    },
+    {
+      "parameters": {
+        "url": "=http://forgejo:3000/api/v1/repos/{{$json.body.matrix_room_id}}/session-history/contents/{{$now.format('YYYY-MM-DDTHH-mm-ss')}}_{{$json.body.author}}.md",
+        "authentication": "headerAuth",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{btoa($json.body.message)}}"
+            }
+          ]
+        }
+      },
+      "name": "Create Forgejo File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Forgejo API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text",
+        "prompt": "={{$json.body.message}}"
+      },
+      "name": "Ollama Embed",
+      "type": "n8n-nodes-base.ollama",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "collectionName": "=room_{{$json.body.matrix_room_id}}",
+        "operation": "upsert",
+        "embedding": "={{$json.embedding}}",
+        "documents": [
+          {
+            "pageContent": "={{$json.body.message}}",
+            "metadata": "={{ { session_id: 'sess_' + $now.format('YYYYMMDD_HHmm'), user_id: $json.body.author, role: $json.body.role, text: $json.body.message, timestamp: $now.toISO(), forgejo_path: $now.format('YYYY-MM-DDTHH-mm-ss') + '_' + $json.body.author + '.md', matrix_event_id: $json.body.matrix_event_id } }}"
+          }
+        ]
+      },
+      "name": "Qdrant Upsert",
+      "type": "n8n-nodes-base.qdrant",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Forgejo File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Forgejo File": {
+      "main": [
+        [
+          {
+            "node": "Ollama Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Embed": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

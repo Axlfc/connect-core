@@ -1,0 +1,649 @@
+{
+  "models": [
+    {
+      "type": "audio_encoders",
+      "filename": "put_audio_encoder_models_here",
+      "path": "audio_encoders/put_audio_encoder_models_here"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "ace_step_v1_3.5b.safetensors",
+      "path": "checkpoints/ace_step_v1_3.5b.safetensors"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "DreamShaper_8_pruned.safetensors",
+      "path": "checkpoints/DreamShaper_8_pruned.safetensors"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "flux1-dev-fp8.safetensors",
+      "path": "checkpoints/flux1-dev-fp8.safetensors"
+    },
+    {
+      "type": "checkpoints",
+      "filename": ".gitkeep",
+      "path": "checkpoints/.gitkeep"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "hunyuan_3d_v2.1.safetensors",
+      "path": "checkpoints/hunyuan_3d_v2.1.safetensors"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "put_checkpoints_here",
+      "path": "checkpoints/put_checkpoints_here"
+    },
+    {
+      "type": "checkpoints",
+      "filename": "stable-audio-open-1.0.safetensors",
+      "path": "checkpoints/stable-audio-open-1.0.safetensors"
+    },
+    {
+      "type": "clip",
+      "filename": "clip_l .safetensors",
+      "path": "clip/clip_l .safetensors"
+    },
+    {
+      "type": "clip",
+      "filename": "put_clip_or_text_encoder_models_here",
+      "path": "clip/put_clip_or_text_encoder_models_here"
+    },
+    {
+      "type": "clip",
+      "filename": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "path": "clip/t5xxl_fp8_e4m3fn_scaled.safetensors"
+    },
+    {
+      "type": "clip_vision",
+      "filename": "clip_vision_h.safetensors",
+      "path": "clip_vision/clip_vision_h.safetensors"
+    },
+    {
+      "type": "clip_vision",
+      "filename": "CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors",
+      "path": "clip_vision/CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors"
+    },
+    {
+      "type": "clip_vision",
+      "filename": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+      "path": "clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+    },
+    {
+      "type": "clip_vision",
+      "filename": "clip-vit-large-patch14-336.bin",
+      "path": "clip_vision/clip-vit-large-patch14-336.bin"
+    },
+    {
+      "type": "clip_vision",
+      "filename": "put_clip_vision_models_here",
+      "path": "clip_vision/put_clip_vision_models_here"
+    },
+    {
+      "type": "configs",
+      "filename": "anything_v3.yaml",
+      "path": "configs/anything_v3.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v1-inference_clip_skip_2_fp16.yaml",
+      "path": "configs/v1-inference_clip_skip_2_fp16.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v1-inference_clip_skip_2.yaml",
+      "path": "configs/v1-inference_clip_skip_2.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v1-inference_fp16.yaml",
+      "path": "configs/v1-inference_fp16.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v1-inference.yaml",
+      "path": "configs/v1-inference.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v1-inpainting-inference.yaml",
+      "path": "configs/v1-inpainting-inference.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v2-inference_fp32.yaml",
+      "path": "configs/v2-inference_fp32.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v2-inference-v_fp32.yaml",
+      "path": "configs/v2-inference-v_fp32.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v2-inference-v.yaml",
+      "path": "configs/v2-inference-v.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v2-inference.yaml",
+      "path": "configs/v2-inference.yaml"
+    },
+    {
+      "type": "configs",
+      "filename": "v2-inpainting-inference.yaml",
+      "path": "configs/v2-inpainting-inference.yaml"
+    },
+    {
+      "type": "controlnet",
+      "filename": "diffusion_pytorch_model.safetensors",
+      "path": "controlnet/FLUX.1/InstantX-FLUX1-Dev-Union/diffusion_pytorch_model.safetensors"
+    },
+    {
+      "type": "controlnet",
+      "filename": ".gitkeep",
+      "path": "controlnet/.gitkeep"
+    },
+    {
+      "type": "controlnet",
+      "filename": "put_controlnets_and_t2i_here",
+      "path": "controlnet/put_controlnets_and_t2i_here"
+    },
+    {
+      "type": "diffusers",
+      "filename": ".gitkeep",
+      "path": "diffusers/.gitkeep"
+    },
+    {
+      "type": "diffusers",
+      "filename": "put_diffusers_models_here",
+      "path": "diffusers/put_diffusers_models_here"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "flux1-dev-kontext_fp8_scaled.safetensors",
+      "path": "diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "flux1-dev.safetensors",
+      "path": "diffusion_models/flux1-dev.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "flux1-kontext-dev-Q6_K.gguf",
+      "path": "diffusion_models/flux1-kontext-dev-Q6_K.gguf"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "flux2_dev_fp8mixed.safetensors",
+      "path": "diffusion_models/flux2_dev_fp8mixed.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "hunyuan3d-dit-v2-mv.safetensors",
+      "path": "diffusion_models/hunyuan3d-dit-v2-mv.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "iclight_sd15_fbc.safetensors",
+      "path": "diffusion_models/IC-Light/iclight_sd15_fbc.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "put_diffusion_model_files_here",
+      "path": "diffusion_models/put_diffusion_model_files_here"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "path": "diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors"
+    },
+    {
+      "type": "diffusion_models",
+      "filename": "Wan21-WanMove_fp8_scaled_e4m3fn_KJ.safetensors",
+      "path": "diffusion_models/Wan21-WanMove_fp8_scaled_e4m3fn_KJ.safetensors"
+    },
+    {
+      "type": "dz_facedetailer",
+      "filename": "face_yolov8n.pt",
+      "path": "dz_facedetailer/yolo/face_yolov8n.pt"
+    },
+    {
+      "type": "embeddings",
+      "filename": ".gitkeep",
+      "path": "embeddings/.gitkeep"
+    },
+    {
+      "type": "embeddings",
+      "filename": "put_embeddings_or_textual_inversion_concepts_here",
+      "path": "embeddings/put_embeddings_or_textual_inversion_concepts_here"
+    },
+    {
+      "type": "gligen",
+      "filename": ".gitkeep",
+      "path": "gligen/.gitkeep"
+    },
+    {
+      "type": "gligen",
+      "filename": "put_gligen_models_here",
+      "path": "gligen/put_gligen_models_here"
+    },
+    {
+      "type": "hypernetworks",
+      "filename": ".gitkeep",
+      "path": "hypernetworks/.gitkeep"
+    },
+    {
+      "type": "hypernetworks",
+      "filename": "put_hypernetworks_here",
+      "path": "hypernetworks/put_hypernetworks_here"
+    },
+    {
+      "type": "inpaint",
+      "filename": "MAT_Places512_G_fp16.safetensors",
+      "path": "inpaint/MAT_Places512_G_fp16.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid-plusv2_sd15.bin",
+      "path": "ipadapter/ip-adapter-faceid-plusv2_sd15.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid-plusv2_sdxl.bin",
+      "path": "ipadapter/ip-adapter-faceid-plusv2_sdxl.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid-portrait_sdxl.bin",
+      "path": "ipadapter/ip-adapter-faceid-portrait_sdxl.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid-portrait_sdxl_unnorm.bin",
+      "path": "ipadapter/ip-adapter-faceid-portrait_sdxl_unnorm.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid-portrait-v11_sd15.bin",
+      "path": "ipadapter/ip-adapter-faceid-portrait-v11_sd15.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid_sd15.bin",
+      "path": "ipadapter/ip-adapter-faceid_sd15.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-faceid_sdxl.bin",
+      "path": "ipadapter/ip-adapter-faceid_sdxl.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-full-face_sd15.safetensors",
+      "path": "ipadapter/ip-adapter-full-face_sd15.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-plus-face_sd15.safetensors",
+      "path": "ipadapter/ip-adapter-plus-face_sd15.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-plus-face_sdxl_vit-h.safetensors",
+      "path": "ipadapter/ip-adapter-plus-face_sdxl_vit-h.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-plus_sd15.safetensors",
+      "path": "ipadapter/ip-adapter-plus_sd15.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter-plus_sdxl_vit-h.safetensors",
+      "path": "ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter_sd15_light_v11.bin",
+      "path": "ipadapter/ip-adapter_sd15_light_v11.bin"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter_sd15.safetensors",
+      "path": "ipadapter/ip-adapter_sd15.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter_sd15_vit-G.safetensors",
+      "path": "ipadapter/ip-adapter_sd15_vit-G.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter_sdxl.safetensors",
+      "path": "ipadapter/ip-adapter_sdxl.safetensors"
+    },
+    {
+      "type": "ipadapter",
+      "filename": "ip-adapter_sdxl_vit-h.safetensors",
+      "path": "ipadapter/ip-adapter_sdxl_vit-h.safetensors"
+    },
+    {
+      "type": "ipadapter-flux",
+      "filename": "ip-adapter.bin",
+      "path": "ipadapter-flux/ip-adapter.bin"
+    },
+    {
+      "type": "latent_upscale_models",
+      "filename": "put_latent_upscale_models_here",
+      "path": "latent_upscale_models/put_latent_upscale_models_here"
+    },
+    {
+      "type": "loras",
+      "filename": "=4.37.2",
+      "path": "loras/=4.37.2"
+    },
+    {
+      "type": "loras",
+      "filename": "flux2_berthe_morisot.safetensors",
+      "path": "loras/flux2_berthe_morisot.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "flux_realism_lora.safetensors",
+      "path": "loras/flux_realism_lora.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": ".gitkeep",
+      "path": "loras/.gitkeep"
+    },
+    {
+      "type": "loras",
+      "filename": "ip-adapter-faceid-plusv2_sd15_lora.safetensors",
+      "path": "loras/ip-adapter-faceid-plusv2_sd15_lora.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "ip-adapter-faceid-plusv2_sdxl_lora.safetensors",
+      "path": "loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "ip-adapter-faceid_sd15_lora.safetensors",
+      "path": "loras/ip-adapter-faceid_sd15_lora.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "ip-adapter-faceid_sdxl_lora.safetensors",
+      "path": "loras/ip-adapter-faceid_sdxl_lora.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "JD3s__Kontext.safetensors",
+      "path": "loras/JD3s__Kontext.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "Jib_Flux_Nipple_Fix_v2.safetensors",
+      "path": "loras/Jib_Flux_Nipple_Fix_v2.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
+      "path": "loras/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "put_loras_here",
+      "path": "loras/put_loras_here"
+    },
+    {
+      "type": "loras",
+      "filename": "Qwen-Edit-2509-Multiple-angles.safetensors",
+      "path": "loras/Qwen-Edit-2509-Multiple-angles.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+      "path": "loras/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors"
+    },
+    {
+      "type": "loras",
+      "filename": "tan-lines-01.safetensors",
+      "path": "loras/tan-lines-01.safetensors"
+    },
+    {
+      "type": "model_patches",
+      "filename": "put_model_patches_here",
+      "path": "model_patches/put_model_patches_here"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_25.pth",
+      "path": "openpose/body_25.pth"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_coco.pth",
+      "path": "openpose/body_coco.pth"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_25.pth.lock",
+      "path": "openpose/.cache/huggingface/download/body_25.pth.lock"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_25.pth.metadata",
+      "path": "openpose/.cache/huggingface/download/body_25.pth.metadata"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_coco.pth.lock",
+      "path": "openpose/.cache/huggingface/download/body_coco.pth.lock"
+    },
+    {
+      "type": "openpose",
+      "filename": "body_coco.pth.metadata",
+      "path": "openpose/.cache/huggingface/download/body_coco.pth.metadata"
+    },
+    {
+      "type": "openpose",
+      "filename": ".gitignore",
+      "path": "openpose/.cache/huggingface/.gitignore"
+    },
+    {
+      "type": "photomaker",
+      "filename": "put_photomaker_models_here",
+      "path": "photomaker/put_photomaker_models_here"
+    },
+    {
+      "type": "sams",
+      "filename": "sam_vit_b_01ec64.pth",
+      "path": "sams/sam_vit_b_01ec64.pth"
+    },
+    {
+      "type": "style_models",
+      "filename": ".gitkeep",
+      "path": "style_models/.gitkeep"
+    },
+    {
+      "type": "style_models",
+      "filename": "put_t2i_style_model_here",
+      "path": "style_models/put_t2i_style_model_here"
+    },
+    {
+      "type": "styles",
+      "filename": "styles.csv",
+      "path": "styles/styles.csv"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "clip_l.safetensors",
+      "path": "text_encoders/clip_l.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "mistral_3_small_flux2_bf16.safetensors",
+      "path": "text_encoders/mistral_3_small_flux2_bf16.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "put_text_encoder_files_here",
+      "path": "text_encoders/put_text_encoder_files_here"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "path": "text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "t5-base.safetensors",
+      "path": "text_encoders/t5-base.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "t5xxl_fp16.safetensors",
+      "path": "text_encoders/t5xxl_fp16.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "path": "text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "path": "text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    },
+    {
+      "type": "text_encoders",
+      "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors.1",
+      "path": "text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors.1"
+    },
+    {
+      "type": "ultralytics",
+      "filename": "face_yolov8m.pt",
+      "path": "ultralytics/bbox/face_yolov8m.pt"
+    },
+    {
+      "type": "ultralytics",
+      "filename": "hand_yolov8s.pt",
+      "path": "ultralytics/bbox/hand_yolov8s.pt"
+    },
+    {
+      "type": "ultralytics",
+      "filename": "person_yolov8m-seg.pt",
+      "path": "ultralytics/segm/person_yolov8m-seg.pt"
+    },
+    {
+      "type": "unet",
+      "filename": ".gitkeep",
+      "path": "unet/.gitkeep"
+    },
+    {
+      "type": "unet",
+      "filename": "put_unet_files_here",
+      "path": "unet/put_unet_files_here"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "4x-AnimeSharp.pth",
+      "path": "upscale_models/4x-AnimeSharp.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "4x_foolhardy_Remacri.pth",
+      "path": "upscale_models/4x_foolhardy_Remacri.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "4x_NMKD-Siax_200k.pth",
+      "path": "upscale_models/4x_NMKD-Siax_200k.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "4x_NMKD-Superscale-SP_178000_G.pth",
+      "path": "upscale_models/4x_NMKD-Superscale-SP_178000_G.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "4x-UltraSharp.pth",
+      "path": "upscale_models/4x-UltraSharp.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "ESRGAN_4x.pth",
+      "path": "upscale_models/ESRGAN_4x.pth"
+    },
+    {
+      "type": "upscale_models",
+      "filename": ".gitkeep",
+      "path": "upscale_models/.gitkeep"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "OmniSR_X2_DIV2K.safetensors",
+      "path": "upscale_models/OmniSR_X2_DIV2K.safetensors"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "OmniSR_X3_DIV2K.safetensors",
+      "path": "upscale_models/OmniSR_X3_DIV2K.safetensors"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "OmniSR_X4_DIV2K.safetensors",
+      "path": "upscale_models/OmniSR_X4_DIV2K.safetensors"
+    },
+    {
+      "type": "upscale_models",
+      "filename": "put_esrgan_and_other_upscale_models_here",
+      "path": "upscale_models/put_esrgan_and_other_upscale_models_here"
+    },
+    {
+      "type": "vae",
+      "filename": "ae.safetensors",
+      "path": "vae/ae.safetensors"
+    },
+    {
+      "type": "vae",
+      "filename": "flux2-vae.safetensors",
+      "path": "vae/flux2-vae.safetensors"
+    },
+    {
+      "type": "vae",
+      "filename": ".gitkeep",
+      "path": "vae/.gitkeep"
+    },
+    {
+      "type": "vae",
+      "filename": "put_vae_here",
+      "path": "vae/put_vae_here"
+    },
+    {
+      "type": "vae",
+      "filename": "qwen_image_vae.safetensors",
+      "path": "vae/qwen_image_vae.safetensors"
+    },
+    {
+      "type": "vae",
+      "filename": "wan_2.1_vae.safetensors",
+      "path": "vae/wan_2.1_vae.safetensors"
+    },
+    {
+      "type": "vae_approx",
+      "filename": ".gitkeep",
+      "path": "vae_approx/.gitkeep"
+    },
+    {
+      "type": "vae_approx",
+      "filename": "put_taesd_encoder_pth_and_taesd_decoder_pth_here",
+      "path": "vae_approx/put_taesd_encoder_pth_and_taesd_decoder_pth_here"
+    }
+  ]
+}

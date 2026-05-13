@@ -1,0 +1,2212 @@
+##############################
+# Shared volumes & networks
+##############################
+volumes:
+  libretranslate-models:
+  languagetool-config:
+  n8n_storage:
+  postgres_storage:
+  ollama_storage:
+  qdrant_storage:
+  comfyui_local:
+  comfyui_config:
+  redis_data:
+  matrix_data:
+  matrix_postgres:
+  certs:
+  confd:
+  vhostd:
+  html:
+  whisper_models:
+  kokoro_models:
+  forgejo_data:
+  forgejo_db_data:
+  forgejo_logs:
+  duplicati_config:
+  uptime_kuma_data:
+  prometheus_data:
+  grafana_data:
+  cadvisor_data:
+  alertmanager_data:
+  loki_data:
+  promtail_config:
+
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  backend:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+  ai:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+  monitoring:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+##############################
+# Docker Secrets
+##############################
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  postgres_user:
+    file: ./secrets/postgres_user.txt
+  n8n_encryption_key:
+    file: ./secrets/n8n_encryption_key.txt
+  n8n_jwt_secret:
+    file: ./secrets/n8n_jwt_secret.txt
+  n8n_auth_jwt_secret:
+    file: ./secrets/n8n_auth_jwt_secret.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  matrix_db_password:
+    file: ./secrets/matrix_db_password.txt
+  authelia_jwt_secret:
+    file: ./secrets/authelia_jwt_secret.txt
+  authelia_session_secret:
+    file: ./secrets/authelia_session_secret.txt
+  forgejo_db_password:
+    file: ./secrets/forgejo_db_password.txt
+  n8n_runners_auth_token:
+    file: ./secrets/n8n_runners_auth_token.txt
+  qdrant_api_key:
+    file: ./secrets/qdrant_api_key.txt
+  comfyui_web_password:
+    file: ./secrets/comfyui_web_password.txt
+  browserless_token:
+    file: ./secrets/browserless_token.txt
+  matrix_postgres_password:
+    file: ./secrets/matrix_postgres_password.txt
+  forgejo_mcp_token:
+    file: ./secrets/forgejo_mcp_token.txt
+  duplicati_aws_access_key_id:
+    file: ./secrets/duplicati_aws_access_key_id.txt
+  duplicati_aws_secret_access_key:
+    file: ./secrets/duplicati_aws_secret_access_key.txt
+  duplicati_passphrase:
+    file: ./secrets/duplicati_passphrase.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt
+  authelia_admin_password:
+    file: ./secrets/authelia_admin_password.txt
+  smtp_password:
+    file: ./secrets/smtp_password.txt
+
+##############################
+# Reusable definitions
+##############################
+
+# n8n base service
+# n8n base service
+x-n8n: &service-n8n
+  image: n8nio/n8n:2.2.6
+  networks:
+    - backend
+    - ai
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    # Database configuration
+    - DB_TYPE=postgresdb
+    - DB_POSTGRESDB_HOST=postgres
+    - DB_POSTGRESDB_PORT=5432
+    - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+    - DB_POSTGRESDB_USER=${POSTGRES_USER}
+    - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+    - DB_POSTGRESDB_SCHEMA=${N8N_DB_SCHEMA:-public}
+    
+    # Security settings
+    - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+    - N8N_AUTH_JWT_SECRET=${N8N_AUTH_JWT_SECRET}
+    
+    # Feature flags
+    - N8N_PERSONALIZATION_ENABLED=false
+    - N8N_DIAGNOSTICS_ENABLED=false
+    - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+    - N8N_DISABLE_UI=false
+    - N8N_SECURE_COOKIE=false
+    
+    # Proxy configuration
+    - N8N_PROXY_HOPS=1
+    
+    # Network and webhook configuration
+    - WEBHOOK_URL=${WEBHOOK_URL}
+    - N8N_HOST=0.0.0.0
+    - N8N_PORT=5678
+    - N8N_PROTOCOL=http
+    
+    # ⬅️ CORRECT RUNNERS CONFIGURATION
+    - N8N_RUNNERS_ENABLED=true
+    - N8N_RUNNERS_MODE=external
+    - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    - N8N_RUNNERS_N8N_URI=${N8N_RUNNERS_N8N_URI}
+    
+    # Python/JavaScript permissions
+    - NODE_FUNCTION_ALLOW_BUILTIN=*
+    - NODE_FUNCTION_ALLOW_EXTERNAL=*
+    
+    # External services
+    - OLLAMA_API_URL=http://ollama:11434
+    - QDRANT_URL=http://qdrant:6333
+    - MCP_BRAVE_API_KEY=${MCP_BRAVE_API_KEY}
+    
+    # Execution settings
+    - EXECUTIONS_TIMEOUT=3600
+    - EXECUTIONS_TIMEOUT_MAX=3600
+    - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+    - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+    - EXECUTIONS_DATA_SAVE_ON_PROGRESS=false
+    - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=false
+  
+  ports:
+    - "5678:5678"
+    - "5679:5679"
+  
+  volumes:
+    - n8n_storage:/home/node/.n8n
+    - ./n8n/demo-data:/demo-data:ro
+    - ./shared:/data/shared
+    - ./data/knowledge_base:/data/knowledge_base
+    - ./shared:/opt/ComfyUI/input
+    - ./shared:/opt/ComfyUI/output
+  
+  user: "${PUID:-1000}:${PGID:-1000}"
+  read_only: false
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - SETUID
+    - SETGID
+    - NET_BIND_SERVICE
+
+
+# Ollama base service (network-aliased)
+x-ollama-env: &ollama-env
+  OLLAMA_HOST: "0.0.0.0:11434"
+  OLLAMA_MODEL_1: "${OLLAMA_MODEL_1:-llama3:8b}"
+  OLLAMA_MODEL_2: "${OLLAMA_MODEL_2:-nomic-embed-text}"
+  OLLAMA_MODEL_3: "${OLLAMA_MODEL_3:-gemma2}"
+  OLLAMA_MODEL_4: "${OLLAMA_MODEL_4:-qwen2.5-coder}"
+  OLLAMA_MODEL_5: "${OLLAMA_MODEL_5:-deepseek-r1:7b}"
+  OLLAMA_MODEL_6: "${OLLAMA_MODEL_6:-ministral-3:14b}"
+  OLLAMA_MODEL_7: "${OLLAMA_MODEL_7:-llava:13b}"
+  OLLAMA_MODEL_8: "${OLLAMA_MODEL_8:-mistral:7b}"
+
+x-ollama: &service-ollama
+  build:
+    context: .
+    dockerfile: Dockerfile.ollama
+  image: local/ollama:custom
+  hostname: ollama
+  restart: unless-stopped
+  networks:
+    - frontend
+    - backend
+    - ai
+  environment:
+    <<: *ollama-env
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  ports:
+    - "11434:11434"
+  volumes:
+    - ollama_storage:/home/ollama/.ollama
+  healthcheck:
+    test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+    interval: 30s
+    timeout: 30s
+    retries: 5
+    start_period: 120s
+
+##############################
+# Core Infrastructure Services
+##############################
+services:
+
+  # ========================================
+  # POSTGRESQL - Main Database
+  # ========================================
+  postgres:
+    image: postgres:16-alpine
+    hostname: postgres
+    container_name: postgres
+    networks: 
+      - backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    secrets:
+      - postgres_password
+      - postgres_user
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_MULTIPLE_DATABASES=${POSTGRES_DB}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256 --encoding=UTF8 --locale=C
+    command: 
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -h localhost -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # REDIS - Cache & Session Store
+  # ========================================
+  redis:
+    image: redis:7.2-alpine
+    hostname: redis
+    container_name: redis
+    networks: 
+      - backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    secrets:
+      - redis_password
+    user: "999:999"
+    command: ["/usr/local/bin/redis-entrypoint.sh"]
+    volumes:
+      - redis_data:/data
+      - ./scripts/redis-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    healthcheck:
+      test: ["CMD-SHELL", "export REDISCLI_AUTH=$$(cat /run/secrets/redis_password); redis-cli ping || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+
+  # ========================================
+  # QDRANT - Vector Database
+  # ========================================
+  qdrant:
+    build:
+      context: .
+      dockerfile: Dockerfile.qdrant
+    image: qdrant/qdrant:v1.9.2-unprivileged
+    hostname: qdrant
+    container_name: qdrant
+    networks:
+      - ai
+      - backend
+    restart: unless-stopped
+    ports:
+      - 6333:6333
+    secrets:
+      - qdrant_api_key
+    environment:
+      - QDRANT_API_KEY_FILE=/run/secrets/qdrant_api_key
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/localhost/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  n8n-import:
+    <<: *service-n8n
+    container_name: n8n-import
+    restart: "no"
+    ports: []
+    
+    volumes:
+      - n8n_storage:/home/node/.n8n
+      - ./n8n/demo-data:/demo-data:ro
+      - ./shared:/data/shared
+      - ./data/knowledge_base:/data/knowledge_base
+      - ./shared:/opt/ComfyUI/input
+      - ./shared:/opt/ComfyUI/output
+    
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      - N8N_AUTH_JWT_SECRET=${N8N_AUTH_JWT_SECRET}
+      - N8N_RUNNERS_ENABLED=false
+      - N8N_TEMP_PASSWORD=${N8N_TEMP_PASSWORD:-change_me_in_env}
+    
+    entrypoint: /bin/sh
+    command:
+      - "-c"
+      - |
+        set -e
+        echo "Starting n8n import process..."
+        
+        echo "Waiting for database connection..."
+        until n8n user-management:reset --email=admin@example.com --password=${N8N_TEMP_PASSWORD}; do
+          echo "Database not ready, waiting 5 seconds..."
+          sleep 5
+        done
+        
+        echo "Database connection established"
+        
+        if [ ! -d "/demo-data" ]; then
+          echo "No /demo-data directory found, skipping import"
+          exit 0
+        fi
+        
+        if [ -d "/demo-data/credentials" ] && [ "$(ls -A /demo-data/credentials 2>/dev/null)" ]; then
+          echo "Importing credentials..."
+          timeout 300 n8n import:credentials --separate --input=/demo-data/credentials || {
+            echo "Warning: Failed to import credentials or timeout reached"
+          }
+        else
+          echo "No credentials found to import"
+        fi
+        
+        if [ -d "/demo-data/workflows" ] && [ "$(ls -A /demo-data/workflows 2>/dev/null)" ]; then
+          echo "Importing workflows..."
+          timeout 300 n8n import:workflow --separate --input=/demo-data/workflows || {
+            echo "Warning: Failed to import workflows or timeout reached"
+          }
+        else
+          echo "No workflows found to import"
+        fi
+        
+        echo "Import process completed successfully"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "echo", "Import service completed"]
+      interval: 30s
+      timeout: 10s
+      retries: 1
+      start_period: 60s
+
+  n8n:
+    image: n8nio/n8n:2.2.6
+    container_name: n8n
+    networks:
+      - frontend
+      - backend
+      - ai
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    env_file:
+      - .env
+    environment:
+      # Database configuration
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+    
+      # Security settings
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+    
+      # Feature flags
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_SECURE_COOKIE=false
+    
+      # Network configuration
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+    
+      # ✅ TASK RUNNERS CONFIGURATION - CRITICAL SETTINGS
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+      - N8N_RUNNERS_MAX_CONCURRENCY=5
+      - N8N_RUNNERS_TASK_TIMEOUT=600  # ✅ INCREASED from 60 to 600 seconds
+    
+      # ✅ BROKER CONFIGURATION - Must listen on all interfaces
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_BROKER_PORT=5679
+    
+      # External services
+      - OLLAMA_API_URL=http://ollama:11434
+      - QDRANT_URL=http://qdrant:6333
+      - VOICE_GATEWAY_URL=http://voice-gateway:9000
+    
+      # ✅ EXECUTION SETTINGS - Increased timeouts
+      - EXECUTIONS_TIMEOUT=600  # Increased from 300
+      - EXECUTIONS_TIMEOUT_MAX=3600
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+    
+      # Logging
+      - N8N_LOG_LEVEL=info
+
+      # Variables for nginx-proxy
+      - VIRTUAL_HOST=n8n.cognito.local
+      - VIRTUAL_PORT=5678
+  
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+  
+    ports:
+      - "5678:5678"
+      - "5679:5679"  # ✅ Task broker port - MUST be exposed
+  
+    volumes:
+      - n8n_storage:/home/node/.n8n
+      - ./shared:/data/shared
+  
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+  
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ========================================
+  # N8N TASK RUNNER - Configuración corregida
+  # ========================================
+  n8n-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runners
+    image: n8nio/runners:custom
+    container_name: n8n-runner
+    networks:
+      - backend
+      - ai
+    restart: unless-stopped
+  
+    environment:
+      # ✅ BROKER URI - Must point to n8n service name
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+    
+      # ✅ Authentication
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    
+      # ✅ INCREASED TIMEOUT - Critical fix for timeout errors
+      - N8N_RUNNERS_MAX_CONCURRENCY=5
+      - N8N_RUNNERS_TASK_TIMEOUT=600  # Increased from 60 to 600 seconds
+    
+      # ✅ Health check configuration
+      - N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED=true
+      - N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST=0.0.0.0
+      - N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT=5680
+    
+      # Logging
+      - N8N_RUNNERS_LAUNCHER_LOG_LEVEL=debug
+    
+      # ✅ Python environment
+      - PYTHONUNBUFFERED=1
+      - PATH=/home/runner/custom-venv/bin:/usr/local/bin:/usr/bin:/bin
+  
+    volumes:
+      - ./n8n-task-runners.json:/etc/n8n-task-runners.json:ro
+  
+    depends_on:
+      n8n:
+        condition: service_healthy
+  
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5680/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+  
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: false
+  
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ========================================
+  # OLLAMA SERVICES
+  # ========================================
+  
+  ollama-cpu:
+    <<: *service-ollama
+    container_name: ollama-cpu
+    profiles: ["cpu"]
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  ollama-gpu:
+    <<: *service-ollama
+    container_name: ollama-gpu
+    profiles: ["gpu-nvidia"]
+    environment:
+      <<: *ollama-env
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: "q8_0"
+      OLLAMA_NUM_GPU: "999"
+      # OLLAMA_GPU_OVERHEAD: "512MiB"
+      OLLAMA_KEEP_ALIVE: "2m"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_DEBUG: "INFO"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  ollama-gpu-amd:
+    <<: *service-ollama
+    container_name: ollama-gpu-amd
+    profiles: ["gpu-amd"]
+    image: ollama/ollama:rocm-latest
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 16G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ARM64 / Apple Silicon optimized variant
+  # Multi-arch native (M1/M2/M3/M4 Macs, ARM64 Linux servers)
+  ollama-arm64:
+    <<: *service-ollama
+    container_name: ollama-arm64
+    profiles: ["arm64"]
+    image: ollama/ollama:latest
+    # ARM64 native - no special GPU configuration needed
+    # Ollama will auto-detect Apple Neural Engine on macOS
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  ollama-proxy:
+    build:
+      context: ./ollama-proxy
+    container_name: ollama-proxy
+    networks: 
+      - frontend
+      - ai
+    restart: unless-stopped
+    environment:
+      - VIRTUAL_HOST=${OLLAMA_DOMAIN:-ollama.cognito.local}
+      - VIRTUAL_PORT=3001
+      - OLLAMA_TARGET=http://ollama-gpu:11434
+    
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+    
+    ports:
+      - "127.0.0.1:3003:3001"
+    depends_on:
+      ollama-cpu:
+        condition: service_started
+        required: false
+      ollama-gpu:
+        condition: service_started
+        required: false
+      ollama-gpu-amd:
+        condition: service_started
+        required: false
+      ollama-arm64:
+        condition: service_started
+        required: false
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # COMFYUI - Image Generation
+  # ========================================
+  comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile.comfyui
+      args:
+        BASE_IMAGE: ghcr.io/ai-dock/comfyui:latest
+    image: local/comfyui:gpu
+    container_name: comfyui
+    networks: 
+      - frontend
+      - ai
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "cpu"]
+    ports:
+      - "8188:8188"
+    environment:
+      - AUTO_UPDATE=false
+      - WORKSPACE_SYNC=false
+      - WEB_ENABLE_AUTH=false
+      - SUPERVISOR_NO_AUTOSTART=serviceportal
+      - COMMANDLINE_ARGS=--listen 0.0.0.0 --port 8188 --lowvram
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,video
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - VIRTUAL_HOST=${COMFYUI_DOMAIN:-comfyui.cognito.local}
+      - VIRTUAL_PORT=8188
+      - COMFYUI_WEB_PASSWORD_FILE=/run/secrets/comfyui_web_password
+    
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+    secrets:
+      - comfyui_web_password
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '8.0'
+          memory: 16G
+    volumes:
+      - type: bind
+        source: ./workspace
+        target: /workspace/storage
+      - type: bind
+        source: ./config/comfyui_plugins
+        target: /workspace/ComfyUI/custom_nodes
+        read_only: true
+      - type: bind
+        source: ./models
+        target: /opt/ComfyUI/models
+      - type: bind
+        source: ./shared
+        target: /opt/ComfyUI/input
+      - type: bind
+        source: ./shared
+        target: /opt/ComfyUI/output
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # MATRIX SERVICES
+  # ========================================
+  
+  matrix-postgres:
+    image: postgres:16-alpine
+    hostname: matrix-postgres
+    container_name: matrix-postgres
+    networks: 
+      - backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5433:5432"
+    secrets:
+      - matrix_db_password
+    environment:
+      - POSTGRES_USER=matrix_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/matrix_db_password
+      - POSTGRES_DB=matrix_synapse
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C --auth-host=scram-sha-256
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    command: 
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+    volumes:
+      - ./data/matrix-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_user -d matrix_synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  matrix-synapse:
+    build:
+      context: .
+      dockerfile: Dockerfile.matrix
+    image: local/matrix-synapse:custom
+    hostname: matrix
+    container_name: matrix-synapse
+    networks: 
+      - frontend
+      - backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8008:8008"
+      - "127.0.0.1:8448:8448"
+    secrets:
+      - matrix_db_password
+      - redis_password
+    environment:
+      - SYNAPSE_SERVER_NAME=${MATRIX_DOMAIN:-matrix.cognito.local}
+      - SYNAPSE_REPORT_STATS=no
+      - POSTGRES_HOST=matrix-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=matrix_synapse
+      - POSTGRES_USER=matrix_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/matrix_db_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - REDIS_DBID=1
+      - POSTGRES_PASSWORD_DEFAULT=${POSTGRES_PASSWORD_DEFAULT:-change_me_in_env}
+      - REDIS_PASSWORD_DEFAULT=${REDIS_PASSWORD_DEFAULT:-change_me_in_env}
+      - ENABLE_REGISTRATION=false
+      - ENABLE_REGISTRATION_WITHOUT_VERIFICATION=false
+      - VIRTUAL_HOST=${MATRIX_DOMAIN:-matrix.cognito.local}
+      - VIRTUAL_PORT=8008
+    
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+    
+    command: ["/usr/local/bin/matrix-entrypoint.sh"]
+    volumes:
+      - matrix_data:/data
+      - ./config/matrix/homeserver.yaml:/data/homeserver.yaml
+      - ./scripts/matrix-entrypoint.sh:/usr/local/bin/matrix-entrypoint.sh
+      - ./logs/matrix-synapse:/data/logs
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # VOICE SERVICES
+  # ========================================
+  # WHISPER STT - Speech-to-Text with GPU (Blackwell/Ada/Ampere)
+  # ========================================
+  # Uses OpenAI Whisper with NVIDIA GPU acceleration
+  # Model is pre-downloaded in the Dockerfile to avoid DNS issues at runtime
+  # See: docs/WHISPER_TROUBLESHOOTING.md
+  # ========================================
+
+  whisper-stt:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper-blackwell-nonroot
+      # Optional: pass model at build time
+      # args:
+      #   ASR_MODEL: base.en
+    image: local/whisper-blackwell:nonroot
+    hostname: whisper-stt
+    container_name: whisper-stt
+    networks: 
+      - frontend
+      - ai
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "voice"]
+    ports:
+      - "0.0.0.0:9001:9000"  # Listen on all interfaces (required for WSL2)
+    volumes:
+      # Model cache (persisted across container restarts)
+      - whisper_models:/home/whisper/.cache/whisper
+      # Shared directory for audio files
+      - ./shared:/audio
+      # Logs directory
+      - ./logs/whisper-stt:/var/log/whisper-stt
+    # Run FastAPI server
+    command: python /home/whisper/server.py
+    environment:
+      # Model selection: tiny.en, base.en, small.en, medium.en, large
+      # MUST be pre-downloaded in the Dockerfile
+      - ASR_MODEL=${ASR_MODEL}
+      # NVIDIA GPU configuration
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          # Request 1 GPU for this service
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    # Healthcheck: curl the /health endpoint
+    # start_period: 120s allows time for model loading
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # Structured logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  whisper-stt-cpu:
+    image: onerahmet/openai-whisper-asr-webservice:1.10.0
+    hostname: whisper-stt
+    container_name: whisper-stt-cpu
+    networks: 
+      - ai
+    restart: unless-stopped
+    profiles: ["voice-cpu", "cpu"]
+    ports:
+      - "0.0.0.0:9002:9000"  # CPU version on different port (9002) to avoid conflict with GPU (9001)
+    volumes:
+      - whisper_models:/root/.cache/whisper
+      - ./shared:/audio
+      - ./logs/whisper-stt-cpu:/var/log/whisper-stt-cpu
+    command: /bin/sh -c "exec whisper-asr-webservice --host 0.0.0.0 --port 9000 --model base.en >> /var/log/whisper-stt-cpu/output.log 2>&1"
+    environment:
+      - ASR_MODEL=base.en
+      - ASR_ENGINE=openai_whisper
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  kokoro-tts:
+    build:
+      context: .
+      dockerfile: Dockerfile.kokoro-blackwell
+    image: local/kokoro-blackwell:latest
+    hostname: kokoro-tts
+    container_name: kokoro-tts
+    networks: 
+      - ai
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "voice"]
+    ports:
+      - "0.0.0.0:8880:8880"  # Listen on all interfaces (required for WSL2)
+    volumes:
+      - kokoro_models:/app/api/src/models
+      - ./shared:/audio
+      - ./logs/kokoro-tts:/var/log/kokoro-tts
+    # FIXED: Better command with logging
+    command: /bin/sh -c "cd /app && uvicorn api.src.main:app --host 0.0.0.0 --port 8880 2>&1 | tee /var/log/kokoro-tts/output.log"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - API_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    shm_size: '2gb'
+    # FIXED: Much more lenient healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 15  # Increased significantly
+      start_period: 600s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  kokoro-tts-cpu:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:1.2.0
+    hostname: kokoro-tts
+    container_name: kokoro-tts-cpu
+    networks: 
+      - ai
+    restart: unless-stopped
+    profiles: ["voice-cpu", "cpu"]
+    ports:
+      - "127.0.0.1:8880:8880"
+    volumes:
+      - kokoro_models:/app/models
+      - ./shared:/audio
+      - ./logs/kokoro-tts-cpu:/var/log/kokoro-tts-cpu
+    command: /bin/sh -c "exec uvicorn main:app --host 0.0.0.0 --port 8880 >> /var/log/kokoro-tts-cpu/output.log 2>&1"
+    environment:
+      - API_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/8880' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # DEMUCS - Audio Source Separation
+  # Internal URL: http://demucs:8000
+  # Docs: https://github.com/facebookresearch/demucs
+  # ========================================
+  demucs:
+    build:
+      context: .
+      dockerfile: demucs-service/Dockerfile
+    image: local/demucs:custom
+    hostname: demucs-gpu
+    container_name: demucs
+    networks:
+      - ai
+    restart: unless-stopped
+    profiles: ["gpu-nvidia", "voice"]
+    ports:
+      - "9003:8000"
+    environment:
+      - DEMUCS_DEVICE=cuda
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  demucs-cpu:
+    build:
+      context: .
+      dockerfile: demucs-service/Dockerfile
+    image: local/demucs:custom
+    hostname: demucs-cpu
+    container_name: demucs-cpu
+    networks:
+      - ai
+    restart: unless-stopped
+    profiles: ["voice-cpu", "cpu"]
+    ports:
+      - "9003:8000"
+    environment:
+      - DEMUCS_DEVICE=cpu
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+
+  # ========================================
+  # FORGEJO SERVICES - Git Hosting
+  # ========================================
+  
+  forgejo-db:
+    image: postgres:16-alpine
+    hostname: forgejo-db
+    container_name: forgejo-db
+    networks:
+      - backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5434:5432"
+    secrets:
+      - forgejo_db_password
+    environment:
+      - POSTGRES_USER=${FORGEJO_DB_USER:-forgejo_user}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/forgejo_db_password
+      - POSTGRES_DB=${FORGEJO_DB_NAME:-forgejo_db}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C --auth-host=scram-sha-256
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/forgejo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FORGEJO_DB_USER:-forgejo_user} -d ${FORGEJO_DB_NAME:-forgejo_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:7
+    hostname: forgejo
+    container_name: forgejo
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    ports:
+      - "3002:3000"  # Cambiado para escuchar en todas las interfaces
+      - "2222:22"
+    volumes:
+      - forgejo_data:/data
+      - ./logs/forgejo:/data/log
+    depends_on:
+      forgejo-db:
+        condition: service_healthy
+    secrets:
+      - forgejo_db_password
+    environment:
+      # Usuario del contenedor
+      - USER_UID=${PUID:-1000}
+      - USER_GID=${PGID:-1000}
+      
+      # Base de datos
+      - FORGEJO__database__DB_TYPE=postgres
+      - FORGEJO__database__HOST=forgejo-db:5432
+      - FORGEJO__database__NAME=${FORGEJO_DB_NAME:-forgejo_db}
+      - FORGEJO__database__USER=${FORGEJO_DB_USER:-forgejo_user}
+      - FORGEJO__database__PASSWD_FILE=/run/secrets/forgejo_db_password
+      
+      # Servidor
+      - FORGEJO__server__DOMAIN=forgejo.cognito.local
+      - FORGEJO__server__ROOT_URL=http://forgejo.cognito.local/
+      - FORGEJO__server__SSH_DOMAIN=forgejo.cognito.local
+      - FORGEJO__server__SSH_PORT=2222
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__server__PROTOCOL=http
+      - FORGEJO__server__DISABLE_SSH=false
+      - FORGEJO__server__START_SSH_SERVER=true
+      - FORGEJO__server__START_SSH_SERVER=true
+      - FORGEJO__server__SSH_LISTEN_HOST=0.0.0.0
+      - FORGEJO__server__SSH_LISTEN_PORT=2222
+      
+      # Servicio
+      - FORGEJO__service__DISABLE_REGISTRATION=false
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=false
+      - FORGEJO__service__ENABLE_NOTIFY_MAIL=false
+      
+      # Seguridad
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__security__SECRET_KEY=${FORGEJO_SECRET_KEY:-${FORGEJO_SECURITY_SECRET_KEY}}
+      - FORGEJO__security__INTERNAL_TOKEN=${FORGEJO_INTERNAL_TOKEN:-${FORGEJO_SECURITY_INTERNAL_TOKEN}}
+      
+      # Log
+      - FORGEJO__log__MODE=console,file
+      - FORGEJO__log__LEVEL=Info
+      - FORGEJO__log__ROOT_PATH=/data/log
+      
+      # Nginx-proxy
+      - VIRTUAL_HOST=forgejo.cognito.local,git.cognito.local
+      - VIRTUAL_PORT=3000
+    
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+    
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+      - FOWNER
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  forgejo-mcp:
+    image: ronmi/forgejo-mcp:latest
+    container_name: forgejo-mcp
+    # Remove: user: "1000:1000"
+    networks:
+      - backend
+    restart: "no"
+    environment:
+      - FORGEJOMCP_SERVER=http://forgejo:3000
+      - FORGEJOMCP_TOKEN=${FORGEJO_MCP_TOKEN:-dummy-token}
+    command: ["stdio"]
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    # Comment out these security restrictions temporarily to diagnose:
+    # security_opt:
+    #   - no-new-privileges:true
+    # cap_drop:
+    #   - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ========================================
+  # TRANSLATION & GRAMMAR SERVICES
+  # ========================================
+
+  libretranslate:
+    build:
+      context: .
+      dockerfile: Dockerfile.libretranslate
+    image: local/libretranslate:custom
+    container_name: libretranslate
+    hostname: libretranslate
+    restart: unless-stopped
+    networks: 
+      - ai
+      - frontend
+    environment:
+      - LT_LOAD_ONLY=en,es,fr,de,pt,ca
+      - LT_THREADS=4
+      - VIRTUAL_HOST=${LIBRETRANSLATE_DOMAIN:-libretranslate.cognito.local}
+      - VIRTUAL_PORT=5000
+    volumes:
+      - libretranslate-models:/app/models
+      - ./logs/libretranslate:/var/log/libretranslate
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  languagetool:
+    build:
+      context: .
+      dockerfile: Dockerfile.languagetool
+    image: local/languagetool:custom
+    container_name: languagetool
+    hostname: languagetool
+    restart: unless-stopped
+    networks: 
+      - ai
+      - frontend
+    environment:
+      - langtool_languageModel=/ngrams
+      - langtool_pipelinePrewarming=true
+      - Java_Xms=512m
+      - Java_Xmx=2g
+      - VIRTUAL_HOST=${LANGUAGETOOL_DOMAIN:-languagetool.cognito.local}
+      - VIRTUAL_PORT=8010
+    volumes:
+      - languagetool-config:/ngrams
+      - ./logs/languagetool:/var/log/languagetool
+    healthcheck:
+      test: ["CMD-SHELL", "wget --post-data 'language=en-US&text=test' -qO- http://localhost:8010/v2/check > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # BACKUP SERVICE
+  # ========================================
+  
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    container_name: duplicati
+    hostname: duplicati
+    restart: unless-stopped
+    networks: 
+      - frontend
+      - backend
+    secrets:
+      - duplicati_aws_access_key_id
+      - duplicati_aws_secret_access_key
+      - duplicati_passphrase
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=Europe/Madrid
+      - VIRTUAL_HOST=${DUPLICATI_DOMAIN:-duplicati.cognito.local}
+      - VIRTUAL_PORT=8200
+      - AWS_ACCESS_KEY_ID_FILE=/run/secrets/duplicati_aws_access_key_id
+      - AWS_SECRET_ACCESS_KEY_FILE=/run/secrets/duplicati_aws_secret_access_key
+      - PASSPHRASE_FILE=/run/secrets/duplicati_passphrase
+    volumes:
+      - duplicati_config:/config
+      - ./backups/sources:/source:ro
+      - ./backups/destination:/backups
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # REVERSE PROXY & SSL
+  # ========================================
+
+  # ========================================
+  # UPTIME KUMA (self-hosted monitor)
+  # Accessible via VIRTUAL_HOST=${UPTIME_DOMAIN:-status.cognito.local}
+  # Protected by Authelia via nginx-proxy vhost.d/status.cognito.local
+  # ========================================
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    hostname: uptime-kuma
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - VIRTUAL_HOST=${UPTIME_DOMAIN:-status.cognito.local}
+      - VIRTUAL_PORT=3001
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:3001 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:1.6-alpine
+    container_name: nginx-proxy
+    hostname: nginx-proxy
+    restart: always
+    networks:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs:rw
+      - confd:/etc/nginx/conf.d
+      - ./nginx-proxy/vhost.d:/etc/nginx/vhost.d:ro
+      - html:/usr/share/nginx/html
+      - ./logs/nginx:/var/log/nginx
+      - ./nginx-proxy/authelia-location.conf:/etc/nginx/custom_conf/authelia-location.conf:ro
+    environment:
+      - DEFAULT_HOST=${DEFAULT_HOST:-n8n.cognito.local}
+      # - HTTPS_METHOD=redirect
+      - ENABLE_IPV6=true
+      - TRUST_DOWNSTREAM_PROXY=false
+      - CLIENT_MAX_BODY_SIZE=100M
+    labels:
+      - com.github.nginx-proxy.nginx
+    # TEMPORARILY COMMENTED FOR DEBUGGING
+  # security_opt:
+  #   - no-new-privileges:true
+  #   - apparmor=docker-default
+  # cap_drop:
+  #   - ALL
+  # cap_add:
+  #   - NET_BIND_SERVICE
+  #   - CHOWN
+  #   - SETUID
+  #   - SETGID
+  #   - DAC_OVERRIDE
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  acme-companion:
+    image: nginxproxy/acme-companion:2.4
+    container_name: acme-companion
+    hostname: acme-companion
+    restart: always
+    networks:
+      - frontend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs:rw
+      - confd:/etc/nginx/conf.d:rw
+      - vhostd:/etc/nginx/vhost.d:rw
+      - html:/usr/share/nginx/html:rw
+      - ./acme-companion:/etc/acme.sh:rw
+    environment:
+      - DEFAULT_EMAIL=${LETSENCRYPT_EMAIL}
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+      - ACME_CA_URI=${ACME_CA_URI:-https://acme-v02.api.letsencrypt.org/directory}
+    depends_on:
+      - nginx-proxy
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '256M'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # SECURITY SERVICES
+  # ========================================
+  
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    hostname: authelia
+    networks: 
+      - frontend
+      - backend
+    restart: unless-stopped
+    volumes:
+      - ./authelia:/config
+    secrets:
+      - authelia_jwt_secret
+      - authelia_session_secret
+      - redis_password
+      - smtp_password  # ← Make sure this secret exists
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      # Identity Validation (JWT for reset password)
+      - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
+
+      # Session secrets
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/authelia_session_secret
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/run/secrets/authelia_session_secret
+
+      # Redis session backend
+      - AUTHELIA_SESSION_REDIS_HOST=redis
+      - AUTHELIA_SESSION_REDIS_PORT=6379
+      - AUTHELIA_SESSION_REDIS_PASSWORD_FILE=/run/secrets/redis_password
+
+      # SMTP Notifier Configuration
+#      - AUTHELIA_NOTIFIER_SMTP_ADDRESS=smtp://${SMTP_HOST:-smtp.tinet.cat}:${SMTP_PORT:-465}
+#      - AUTHELIA_NOTIFIER_SMTP_USERNAME=${SMTP_USERNAME}
+#      - AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE=/run/secrets/smtp_password
+#      - AUTHELIA_NOTIFIER_SMTP_SENDER=${SMTP_SENDER:-Authelia <noreply@example.com>}
+#      - AUTHELIA_NOTIFIER_SMTP_IDENTIFIER=${AUTHELIA_DOMAIN:-auth.cognito.local}
+
+      # Timezone
+      - TZ=Europe/Madrid
+
+      # nginx-proxy integration
+      - VIRTUAL_HOST=auth.cognito.local
+      - VIRTUAL_PORT=9091
+    
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
+    
+    expose:
+      - 9091
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  fail2ban:
+    image: crazymax/fail2ban:1.1.0
+    container_name: fail2ban
+    hostname: fail2ban
+    restart: always
+    networks:
+      - frontend
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./fail2ban/data:/data
+      - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+      - ./fail2ban/filter.d:/etc/fail2ban/filter.d:ro
+      - ./logs/nginx:/var/log/nginx:ro
+      - ./logs:/var/log/app:ro
+    environment:
+      - TZ=Europe/Madrid
+      - F2B_LOG_LEVEL=INFO
+      - F2B_DB_PURGE_AGE=30d
+      - F2B_MAX_RETRY=5
+      - F2B_DEST_EMAIL=${FAIL2BAN_DEST_EMAIL}
+      - F2B_SENDER=${FAIL2BAN_SENDER}
+      - SSMTP_HOST=${SMTP_HOST}
+      - SSMTP_PORT=${SMTP_PORT:-465}
+      - SSMTP_USER=${SMTP_USERNAME}
+      - SSMTP_PASSWORD=${SMTP_PASSWORD}
+      - SSMTP_TLS=YES
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ========================================
+  # ZROK TUNNEL (Optional)
+  # ========================================
+  
+  zrok-tunnel:
+    image: openziti/zrok:latest
+    container_name: zrok-tunnel
+    networks: 
+      - frontend
+    restart: unless-stopped
+    profiles: ["zrok"]
+    environment:
+      - ZROK_API_ENDPOINT=${ZROK_API_ENDPOINT:-https://api.zrok.io}
+      - ZROK_AUTH_TOKEN=${ZROK_AUTH_TOKEN}
+      - ZROK_TARGET_URL=${ZROK_TARGET_URL:-http://nginx-proxy:80}
+      # Leave empty to create a new public share each time
+      # Or set to a reserved share token to use a persistent URL
+      - ZROK_RESERVED_SHARE=${ZROK_RESERVED_SHARE:-}
+    volumes:
+      - ./.zrok:/home/zrok/.zrok
+      - ./scripts/zrok-entrypoint.sh:/usr/local/bin/zrok-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/zrok-entrypoint.sh"]
+    depends_on:
+      nginx-proxy:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ----------------------------------------
+  # PROMETHEUS + GRAFANA (optional)         
+  # Enable with: docker compose --profile monitoring up -d
+  # ----------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - backend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    hostname: alertmanager
+    networks:
+      - frontend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    environment:
+      - "VIRTUAL_HOST=${ALERTMANAGER_DOMAIN:-alerts.cognito.local}"
+      - "VIRTUAL_PORT=9093"
+    expose:
+      - "9093"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  grafana:
+    image: grafana/grafana:9.5
+    container_name: grafana
+    hostname: grafana
+    networks:
+      - frontend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    secrets:
+      - grafana_admin_password
+    environment:
+      - "GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}"
+      - "GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_admin_password"
+      - "GF_USERS_ALLOW_SIGN_UP=false"
+      - "GF_AUTH_ANONYMOUS_ENABLED=false"
+      - "VIRTUAL_HOST=${GRAFANA_DOMAIN:-monitoring.cognito.local}"
+      - "VIRTUAL_PORT=3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    expose:
+      - "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    hostname: loki
+    networks:
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+      - ./prometheus/loki-config.yml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    hostname: promtail
+    networks:
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./prometheus/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox-exporter
+    networks:
+      - backend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    expose:
+      - "9115"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    networks:
+      - backend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+    expose:
+      - "9100"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  cadvisor:
+    # cAdvisor reads host Docker /proc and needs host access. This is powerful and may leak sensitive info.
+    # By default we do NOT publish the port to the host; use port mapping only for debugging.
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    networks:
+      - backend
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    expose:
+      - "8080"
+    # To enable host access for debugging, uncomment the port mapping below (not recommended for production):
+    # ports:
+    #   - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # NVIDIA DCGM exporter (only for NVIDIA GPU profile)
+  nvidia-dcgm-exporter:
+    image: nvidia/dcgm-exporter:latest
+    container_name: nvidia-dcgm-exporter
+    command: ["-f", "/metrics/metrics.csv"]
+    networks:
+      - backend
+      - monitoring
+    restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    ports:
+      - "9400:9400"
+    volumes:
+      - ./dcgm-config/metrics.csv:/metrics/metrics.csv:ro
+      - ./fake-sys/bus/pci/devices:/sys/bus/pci/devices:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9400/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Ollama metrics proxy - instruments Ollama /api endpoints and exposes Prometheus metrics
+  ollama-metrics-proxy:
+    build: ./ollama-metrics-proxy
+    container_name: ollama-metrics-proxy
+    hostname: ollama-metrics-proxy
+    networks:
+      - ai
+      - monitoring
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - PROXY_PORT=9200
+    expose:
+      - "9200"
+    healthcheck:
+      test: ["CMD","wget","--spider","-q","http://localhost:9200/metrics || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+##############################
+# PRODUCTION DEPLOYMENT NOTES
+##############################
+# 1. INITIAL SETUP:
+#    mkdir -p secrets logs/{postgres,redis,n8n,matrix-synapse,forgejo,nginx}
+#    chmod 700 secrets
+#
+# 2. GENERATE SECRETS:
+#    ./scripts/generate-secrets.sh
+#
+# 3. START SERVICES:
+#    CPU:          docker compose --profile cpu --profile voice-cpu up -d
+#    NVIDIA GPU:   docker compose --profile gpu-nvidia --profile voice up -d
+#    AMD GPU:      docker compose --profile gpu-amd up -d
+#    ARM64/Apple:  docker compose --profile arm64 up -d
+#    With agents:  Add --profile agents
+#    With zrok:    Add --profile zrok
+#
+# 4. POST-DEPLOYMENT:
+#    - Configure Authelia users in ./authelia/users_database.yml
+#    - Set up Duplicati backup jobs via web UI
+#    - Configure Uptime Kuma monitors
+#    - Review fail2ban jails in ./fail2ban/jail.local
+#
+# 5. SECURITY CHECKLIST:
+#    ☐ All secrets files have 600 permissions
+#    ☐ .env file is in .gitignore
+#    ☐ Firewall configured (only 80/443 public)
+#    ☐ Fail2ban is active and monitoring
+#    ☐ SSL certificates are valid
+#    ☐ Authelia configured with strong passwords
+#    ☐ Database backups scheduled
+#    ☐ Log rotation configured
+#    ☐ Resource limits tested under load
+#
+# 6. MAINTENANCE:
+#    - Weekly: Review Uptime Kuma alerts
+#    - Monthly: Check Duplicati backup integrity
+#    - Quarterly: Review fail2ban ban lists
+#    - Review logs retention (90 days)

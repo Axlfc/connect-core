@@ -1,0 +1,8 @@
+# Dockerfile for running LanguageTool as a non-root user
+FROM erikvl87/languagetool:6.4
+
+# La imagen base ya está configurada para correr como usuario no-root
+# No es necesario crear un usuario adicional
+
+# Expose the default port
+EXPOSE 8010

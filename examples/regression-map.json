@@ -1,0 +1,18 @@
+{
+  "regressions": [
+    {
+      "test_name": "test_user_login",
+      "culprit_commit": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "pass_commit": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+      "pass_timestamp": "2024-01-01T12:00:00Z",
+      "fail_timestamp": "2024-01-01T13:00:00Z"
+    },
+    {
+      "test_name": "test_create_post",
+      "culprit_commit": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+      "pass_commit": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "pass_timestamp": "2024-01-02T10:00:00Z",
+      "fail_timestamp": "2024-01-02T11:00:00Z"
+    }
+  ]
+}

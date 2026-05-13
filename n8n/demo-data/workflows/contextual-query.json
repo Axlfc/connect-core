@@ -1,0 +1,186 @@
+{
+  "name": "Contextual Query",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "path": "contextual-query",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "webhookId": "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
+    },
+    {
+      "parameters": {
+        "functionCode": "const session_ids = $json.body.session_ids;\nlet items = [];\nfor (const session_id of session_ids) {\n  items.push({json: {session_id: session_id, query: $json.body.query}});\n}\nreturn items;"
+      },
+      "name": "Prepare Loop",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "collectionName": "=room_{{$json.session_id}}",
+        "operation": "search",
+        "embedding": "={{$json.query}}",
+        "limit": 5
+      },
+      "name": "Qdrant Search Loop",
+      "type": "n8n-nodes-base.qdrant",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const all_docs = $items.map(item => item.json.documents.map(doc => doc.pageContent).join('\\n')).join('\\n\\n');\nreturn {json: {context: all_docs}};"
+      },
+      "name": "Aggregate Context",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3:8b",
+        "prompt": "=Context:\\n{{$json.context}}\\n\\nQuery: {{$node['Webhook'].json.body.query}}"
+      },
+      "name": "Ollama Chat",
+      "type": "n8n-nodes-base.ollama",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://n8n:5678/webhook/interaction-persistence",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "matrix_room_id",
+              "value": "={{$node['Webhook'].json.body.active_room_id}}"
+            },
+            {
+              "name": "author",
+              "value": "assistant"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.response}}"
+            },
+            {
+              "name": "role",
+              "value": "assistant"
+            },
+            {
+              "name": "matrix_event_id",
+              "value": "={{$node['Webhook'].json.body.matrix_event_id}}"
+            }
+          ]
+        }
+      },
+      "name": "Persist Response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Loop": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Search Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Search Loop": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Context": {
+      "main": [
+        [
+          {
+            "node": "Ollama Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat": {
+      "main": [
+        [
+          {
+            "node": "Persist Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

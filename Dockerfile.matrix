@@ -1,0 +1,413 @@
+FROM matrixdotorg/synapse:v1.104.0
+
+# Metadata
+LABEL maintainer="Your Name"
+LABEL description="Matrix Synapse with auto-configuration"
+LABEL version="1.0"
+
+# Switch to root for setup
+USER root
+
+# Install additional tools (Synapse uses Debian-based image)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    bash \
+    curl \
+    jq \
+    openssl \
+    postgresql-client \
+    gosu \
+    gettext-base \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create necessary directories
+RUN mkdir -p /data /scripts /config-templates && \
+    chown -R 991:991 /data /scripts /config-templates
+
+# Copy configuration template
+COPY --chown=991:991 <<'EOF' /config-templates/homeserver.yaml.template
+# Matrix Synapse Configuration
+# Generated automatically by Docker entrypoint
+
+server_name: "${SYNAPSE_SERVER_NAME}"
+pid_file: /data/homeserver.pid
+web_client_location: https://app.element.io/
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client, federation]
+        compress: false
+
+  # Metrics endpoint (optional)
+  - port: 9000
+    type: metrics
+    bind_addresses: ['0.0.0.0']
+
+# Database configuration
+database:
+  name: psycopg2
+  args:
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+    database: "${POSTGRES_DB}"
+    host: "${POSTGRES_HOST}"
+    port: ${POSTGRES_PORT:-5432}
+    cp_min: 5
+    cp_max: 10
+
+# Redis configuration for better performance
+redis:
+  enabled: true
+  host: "${REDIS_HOST:-redis}"
+  port: ${REDIS_PORT:-6379}
+  password: "${REDIS_PASSWORD}"
+  dbid: ${REDIS_DBID:-0}
+
+# Logging
+log_config: "/data/${SYNAPSE_SERVER_NAME}.log.config"
+
+# Media store
+media_store_path: /data/media_store
+max_upload_size: 50M
+max_image_pixels: 32M
+
+# Registration
+enable_registration: ${ENABLE_REGISTRATION:-false}
+enable_registration_without_verification: ${ENABLE_REGISTRATION_WITHOUT_VERIFICATION:-false}
+registration_shared_secret: "${SYNAPSE_REGISTRATION_SHARED_SECRET}"
+
+# Security
+macaroon_secret_key: "${SYNAPSE_MACAROON_SECRET_KEY}"
+form_secret: "${SYNAPSE_FORM_SECRET}"
+
+# Signing keys
+signing_key_path: "/data/${SYNAPSE_SERVER_NAME}.signing.key"
+
+# Federation
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+# Allow public room directory
+allow_public_rooms_over_federation: true
+allow_public_rooms_without_auth: false
+
+# Presence
+presence:
+  enabled: true
+
+# User directory
+user_directory:
+  enabled: true
+  search_all_users: true
+
+# Rate limiting
+rc_message:
+  per_second: 10
+  burst_count: 50
+
+rc_registration:
+  per_second: 0.17
+  burst_count: 3
+
+rc_login:
+  address:
+    per_second: 0.17
+    burst_count: 3
+  account:
+    per_second: 0.17
+    burst_count: 3
+  failed_attempts:
+    per_second: 0.17
+    burst_count: 3
+
+# URL previews
+url_preview_enabled: true
+url_preview_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '169.254.0.0/16'
+  - '::1/128'
+  - 'fe80::/64'
+  - 'fc00::/7'
+
+url_preview_url_blacklist:
+  - username: '*'
+  - netloc: 'google.com'
+  - netloc: '*.google.com'
+
+# Push notifications
+push:
+  enabled: true
+
+# Metrics and monitoring
+enable_metrics: true
+report_stats: ${SYNAPSE_REPORT_STATS:-no}
+
+# Workers configuration (for scaling)
+worker_replication_secret: "${WORKER_REPLICATION_SECRET}"
+
+# TURN server configuration (for VoIP)
+turn_uris: []
+turn_shared_secret: "${TURN_SHARED_SECRET}"
+turn_user_lifetime: 86400000
+
+# Rooms
+encryption_enabled_by_default_for_room_type: off
+retention:
+  enabled: false
+
+# Admin contact
+admin_contact: "mailto:admin@${SYNAPSE_SERVER_NAME}"
+
+# Experimental features
+experimental_features:
+  msc3026_enabled: true
+  msc3266_enabled: true
+  msc3440_enabled: true
+
+# Password configuration
+password_config:
+  enabled: true
+  policy:
+    enabled: true
+    minimum_length: 8
+    require_digit: true
+    require_symbol: true
+    require_lowercase: true
+    require_uppercase: true
+EOF
+
+# Copy log configuration template
+COPY --chown=991:991 <<'EOF' /config-templates/log.config.template
+version: 1
+
+formatters:
+  precise:
+    format: '%(asctime)s - %(name)s - %(lineno)d - %(levelname)s - %(message)s'
+
+handlers:
+  file:
+    class: logging.handlers.RotatingFileHandler
+    formatter: precise
+    filename: /data/homeserver.log
+    maxBytes: 104857600
+    backupCount: 5
+    encoding: utf8
+  console:
+    class: logging.StreamHandler
+    formatter: precise
+
+loggers:
+  synapse.storage.SQL:
+    level: INFO
+
+root:
+  level: INFO
+  handlers: [file, console]
+
+disable_existing_loggers: false
+EOF
+
+# Copy entrypoint script
+COPY --chown=991:991 <<'EOF' /scripts/entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "=================================================="
+echo "Matrix Synapse Auto-Configuration Script"
+echo "=================================================="
+
+# Function to generate secure secrets
+generate_secret() {
+    openssl rand -hex 32
+}
+
+# Function to wait for database
+wait_for_db() {
+    echo "Waiting for PostgreSQL to be ready..."
+    until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c '\q' 2>/dev/null; do
+        echo "PostgreSQL is unavailable - sleeping"
+        sleep 2
+    done
+    echo "PostgreSQL is up and running!"
+}
+
+# Function to wait for Redis
+wait_for_redis() {
+    echo "Waiting for Redis to be ready..."
+    until redis-cli -h "${REDIS_HOST:-redis}" -p "${REDIS_PORT:-6379}" -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG; do
+        echo "Redis is unavailable - sleeping"
+        sleep 2
+    done
+    echo "Redis is up and running!"
+}
+
+# Set default environment variables
+export SYNAPSE_SERVER_NAME="${SYNAPSE_SERVER_NAME:-matrix.localhost}"
+export POSTGRES_HOST="${POSTGRES_HOST:-matrix-postgres}"
+export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+export POSTGRES_USER="${POSTGRES_USER:-matrix_user}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-${POSTGRES_PASSWORD_DEFAULT}}"
+export POSTGRES_DB="${POSTGRES_DB:-matrix_db}"
+export REDIS_HOST="${REDIS_HOST:-redis}"
+export REDIS_PORT="${REDIS_PORT:-6379}"
+export REDIS_PASSWORD="${REDIS_PASSWORD:-${REDIS_PASSWORD_DEFAULT}}"
+export REDIS_DBID="${REDIS_DBID:-0}"
+export SYNAPSE_REPORT_STATS="${SYNAPSE_REPORT_STATS:-no}"
+export ENABLE_REGISTRATION="${ENABLE_REGISTRATION:-false}"
+export ENABLE_REGISTRATION_WITHOUT_VERIFICATION="${ENABLE_REGISTRATION_WITHOUT_VERIFICATION:-false}"
+
+# Generate secrets if not provided
+if [ -z "${SYNAPSE_REGISTRATION_SHARED_SECRET}" ]; then
+    echo "Generating SYNAPSE_REGISTRATION_SHARED_SECRET..."
+    export SYNAPSE_REGISTRATION_SHARED_SECRET=$(generate_secret)
+fi
+
+if [ -z "${SYNAPSE_MACAROON_SECRET_KEY}" ]; then
+    echo "Generating SYNAPSE_MACAROON_SECRET_KEY..."
+    export SYNAPSE_MACAROON_SECRET_KEY=$(generate_secret)
+fi
+
+if [ -z "${SYNAPSE_FORM_SECRET}" ]; then
+    echo "Generating SYNAPSE_FORM_SECRET..."
+    export SYNAPSE_FORM_SECRET=$(generate_secret)
+fi
+
+if [ -z "${WORKER_REPLICATION_SECRET}" ]; then
+    echo "Generating WORKER_REPLICATION_SECRET..."
+    export WORKER_REPLICATION_SECRET=$(generate_secret)
+fi
+
+if [ -z "${TURN_SHARED_SECRET}" ]; then
+    echo "Generating TURN_SHARED_SECRET..."
+    export TURN_SHARED_SECRET=$(generate_secret)
+fi
+
+# Wait for dependencies
+wait_for_db
+wait_for_redis
+
+# Check if homeserver.yaml exists
+if [ ! -f "/data/homeserver.yaml" ]; then
+    echo "No homeserver.yaml found. Generating from template..."
+    
+    # Replace environment variables in template
+    envsubst < /config-templates/homeserver.yaml.template > /data/homeserver.yaml
+    
+    # Generate signing key if it doesn't exist
+    if [ ! -f "/data/${SYNAPSE_SERVER_NAME}.signing.key" ]; then
+        echo "Generating signing key..."
+        python3 -m synapse.app.homeserver \
+            --server-name="${SYNAPSE_SERVER_NAME}" \
+            --config-path=/data/homeserver.yaml \
+            --generate-keys
+    fi
+    
+    echo "Configuration generated successfully!"
+else
+    echo "Existing homeserver.yaml found. Using existing configuration."
+fi
+
+# Generate log config if it doesn't exist
+if [ ! -f "/data/${SYNAPSE_SERVER_NAME}.log.config" ]; then
+    echo "Generating log configuration..."
+    cp /config-templates/log.config.template "/data/${SYNAPSE_SERVER_NAME}.log.config"
+fi
+
+# Save generated secrets to a file instead of logging them
+if [ ! -f "/data/.secrets_saved" ]; then
+    echo "Saving generated secrets to /data/generated_secrets.txt..."
+    {
+        echo "SYNAPSE_REGISTRATION_SHARED_SECRET=${SYNAPSE_REGISTRATION_SHARED_SECRET}"
+        echo "SYNAPSE_MACAROON_SECRET_KEY=${SYNAPSE_MACAROON_SECRET_KEY}"
+        echo "SYNAPSE_FORM_SECRET=${SYNAPSE_FORM_SECRET}"
+        echo "WORKER_REPLICATION_SECRET=${WORKER_REPLICATION_SECRET}"
+        echo "TURN_SHARED_SECRET=${TURN_SHARED_SECRET}"
+    } > /data/generated_secrets.txt
+    echo "Secrets saved. Please check the file for initial setup values."
+    touch /data/.secrets_saved
+fi
+
+# Ensure correct permissions
+chown -R 991:991 /data
+
+# Run database migrations
+echo "Running database migrations..."
+gosu 991:991 python3 -m synapse.app.homeserver \
+    --server-name="${SYNAPSE_SERVER_NAME}" \
+    --config-path=/data/homeserver.yaml \
+    --run-background-updates-and-exit || true
+
+echo "Starting Matrix Synapse..."
+echo "Server Name: ${SYNAPSE_SERVER_NAME}"
+echo "Listen Address: 0.0.0.0:8008"
+echo "=================================================="
+
+# Switch to synapse user and start the server
+exec gosu 991:991 python3 -m synapse.app.homeserver \
+    --server-name="${SYNAPSE_SERVER_NAME}" \
+    --config-path=/data/homeserver.yaml
+EOF
+
+# Make scripts executable
+RUN chmod +x /scripts/entrypoint.sh
+
+# Create helper script for user registration
+COPY --chown=991:991 <<'EOF' /scripts/register_user.sh
+#!/bin/bash
+# Helper script to register new users
+
+echo "Matrix Synapse User Registration"
+echo "================================="
+
+read -p "Username: " username
+read -sp "Password: " password
+echo ""
+read -p "Make admin? (yes/no): " admin
+
+if [ "$admin" = "yes" ]; then
+    admin_flag="--admin"
+else
+    admin_flag="--no-admin"
+fi
+
+register_new_matrix_user \
+    -c /data/homeserver.yaml \
+    -u "$username" \
+    -p "$password" \
+    $admin_flag \
+    http://localhost:8008
+
+echo "User registered successfully!"
+EOF
+
+RUN chmod +x /scripts/register_user.sh
+
+# Health check script
+COPY --chown=991:991 <<'EOF' /scripts/healthcheck.sh
+#!/bin/bash
+curl -f http://localhost:8008/health || exit 1
+EOF
+
+RUN chmod +x /scripts/healthcheck.sh
+
+# Switch back to synapse user
+USER 991
+
+# Expose ports
+EXPOSE 8008 8448 9000
+
+# Set volumes
+VOLUME ["/data"]
+
+# Set entrypoint
+ENTRYPOINT ["/scripts/entrypoint.sh"]

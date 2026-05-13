@@ -1,0 +1,76 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(ollama_request_duration_seconds_bucket[5m])) by (le, model))","legendFormat": "p95 {{model}}","refId": "A"},
+        {"expr": "histogram_quantile(0.5, sum(rate(ollama_request_duration_seconds_bucket[5m])) by (le, model))","legendFormat": "p50 {{model}}","refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum(rate(ollama_request_duration_seconds_bucket[5m])) by (le, model))","legendFormat": "p99 {{model}}","refId": "C"}
+      ],
+      "title": "Latency per model (p50/p95/p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [
+        {"expr": "sum(rate(ollama_request_total[5m])) by (model)","legendFormat":"{{model}}","refId":"A"}
+      ],
+      "title": "Requests per second (QPS) by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [
+        {"expr": "sum(rate(ollama_request_errors_total[5m])) by (model)","legendFormat":"Errors {{model}}","refId":"A"},
+        {"expr": "sum(rate(ollama_request_errors_total[5m])) by (model) / sum(rate(ollama_request_total[5m])) by (model)","legendFormat":"Error rate {{model}}","refId":"B"}
+      ],
+      "title": "Errors and Error Rate by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "targets": [
+        {"expr": "sum(rate(ollama_tokens_in_total[5m])) by (model)","legendFormat":"Tokens In {{model}}","refId":"A"},
+        {"expr": "sum(rate(ollama_tokens_out_total[5m])) by (model)","legendFormat":"Tokens Out {{model}}","refId":"B"}
+      ],
+      "title": "Token usage (in/out) by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 14},
+      "id": 5,
+      "targets": [
+        {"expr": "sum(rate(ollama_request_total[5m])) by (endpoint)","legendFormat":"{{endpoint}}","refId":"A"}
+      ],
+      "title": "Traffic by endpoint",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": ["ollama","llm","monitoring"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ollama - Overview",
+  "uid": "ollama-overview"
+}

@@ -1,0 +1,177 @@
+{
+  "name": "Room Registration",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "path": "room-registration",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "webhookId": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+    },
+    {
+      "parameters": {
+        "url": "http://forgejo:3000/api/v1/orgs",
+        "authentication": "headerAuth",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "={{$json.body.matrix_room_id}}"
+            }
+          ]
+        }
+      },
+      "name": "Create Forgejo Org",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Forgejo API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://forgejo:3000/api/v1/orgs/{{$json.body.matrix_room_id}}/repos",
+        "authentication": "headerAuth",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "session-history"
+            }
+          ]
+        }
+      },
+      "name": "Create Forgejo Repo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Forgejo API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collectionName": "=room_{{$json.body.matrix_room_id}}",
+        "operation": "create",
+        "options": {}
+      },
+      "name": "Create Qdrant Collection",
+      "type": "n8n-nodes-base.qdrant",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO chat_rooms (matrix_room_id, forgejo_org, forgejo_repo, qdrant_collection) VALUES ('{{$json.body.matrix_room_id}}', '{{$json.body.matrix_room_id}}', 'session-history', 'room_{{$json.body.matrix_room_id}}')"
+      },
+      "name": "Insert into DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Forgejo Org",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Forgejo Org": {
+      "main": [
+        [
+          {
+            "node": "Create Forgejo Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Forgejo Repo": {
+      "main": [
+        [
+          {
+            "node": "Create Qdrant Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Qdrant Collection": {
+      "main": [
+        [
+          {
+            "node": "Insert into DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+# Dockerfile for running LibreTranslate as a non-root user
+# Using Python base image to build from source if needed
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install LibreTranslate from PyPI
+RUN pip install --no-cache-dir libretranslate
+
+# Create a non-root user
+RUN useradd -ms /bin/bash libretranslate
+
+# Create app directory and set permissions
+RUN mkdir -p /app && chown -R libretranslate:libretranslate /app
+
+# Switch to the non-root user
+USER libretranslate
+
+# Set the home directory
+ENV HOME /home/libretranslate
+WORKDIR /home/libretranslate
+
+# Expose the default port
+EXPOSE 5000
+
+# Run LibreTranslate
+CMD ["libretranslate", "--host", "0.0.0.0", "--port", "5000"]

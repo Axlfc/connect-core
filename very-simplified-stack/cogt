@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ~/.local/bin/cogt
+# Cognito Stack  TTS edition para Linux (CachyOS/Arch)
+# Requiere: python3, ffmpeg, ffplay
+
+import sys, json, threading, time, re, subprocess, tempfile, os
+import http.client, urllib.request, urllib.error
+
+# ---
+if len(sys.argv) < 2:
+    print("Uso: cogt 'tu mensaje' [modelo] [voz]")
+    sys.exit(1)
+
+PROMPT        = sys.argv[1]
+MODEL         = sys.argv[2] if len(sys.argv) > 2 else "cognito"
+VOICE         = sys.argv[3] if len(sys.argv) > 3 else "ef_dora"
+LLM_HOST      = "127.0.0.1"
+LLM_PORT      = 8000
+LLM_PATH      = "/v1/chat/completions"
+TTS_ENDPOINT  = "http://127.0.0.1:8880/v1/audio/speech"
+MIN_LEN       = 60
+VOICE_FILTERS = (
+    "highpass=f=80,"
+    "equalizer=f=170:width_type=o:width=2:g=2.5,"
+    "equalizer=f=340:width_type=o:width=1.5:g=1.5,"
+    "equalizer=f=3000:width_type=o:width=1.5:g=1.5,"
+    "equalizer=f=10000:width_type=o:width=2:g=2,"
+    "aecho=0.85:0.15:50:0.15,"
+    "chorus=0.7:0.9:55:0.4:0.25:2,"
+    "loudnorm"
+)
+
+# ---
+CYAN  = "\033[36m"
+RESET = "\033[0m"
+print()
+print(f"  {CYAN}╔══════════════════════════════════════╗{RESET}")
+print(f"  {CYAN}║        COGNITO STACK  //  AI         ║{RESET}")
+print(f"  {CYAN}║  model: {MODEL:<28}║{RESET}")
+print(f"  {CYAN}║  voice: {VOICE:<28}║{RESET}")
+print(f"  {CYAN}╚══════════════════════════════════════╝{RESET}")
+print()
+
+# ---
+_FRAMES = [
+    "  cognito.stack  ◆···············  ",
+    "  cognito.stack  ·◆··············  ",
+    "  cognito.stack  ··◆·············  ",
+    "  cognito.stack  ···◆············  ",
+    "  cognito.stack  ····◆···········  ",
+    "  cognito.stack  ·····◆··········  ",
+    "  cognito.stack  ······◆·········  ",
+    "  cognito.stack  ·······◆········  ",
+    "  cognito.stack  ········◆·······  ",
+    "  cognito.stack  ·········◆······  ",
+    "  cognito.stack  ··········◆·····  ",
+    "  cognito.stack  ···········◆····  ",
+    "  cognito.stack  ············◆···  ",
+    "  cognito.stack  ·············◆··  ",
+    "  cognito.stack  ··············◆·  ",
+    "  cognito.stack  ···············◆  ",
+    "  cognito.stack  ··············◆·  ",
+    "  cognito.stack  ·············◆··  ",
+    "  cognito.stack  ············◆···  ",
+    "  cognito.stack  ···········◆····  ",
+    "  cognito.stack  ··········◆·····  ",
+    "  cognito.stack  ·········◆······  ",
+    "  cognito.stack  ········◆·······  ",
+    "  cognito.stack  ·······◆········  ",
+    "  cognito.stack  ······◆·········  ",
+    "  cognito.stack  ·····◆··········  ",
+    "  cognito.stack  ····◆···········  ",
+    "  cognito.stack  ···◆············  ",
+    "  cognito.stack  ··◆·············  ",
+    "  cognito.stack  ·◆··············  ",
+]
+_stop_spinner = threading.Event()
+
+def _spin():
+    i = 0
+    while not _stop_spinner.is_set():
+        sys.stdout.write(f"\r{_FRAMES[i % len(_FRAMES)]}")
+        sys.stdout.flush()
+        time.sleep(0.055)
+        i += 1
+
+_spin_thread = threading.Thread(target=_spin, daemon=True)
+_spin_thread.start()
+
+def stop_spinner():
+    _stop_spinner.set()
+    _spin_thread.join(timeout=0.5)
+    sys.stdout.write("\r\033[K  ")
+    sys.stdout.flush()
+
+# ---
+def get_color(score):
+    try:
+        s = float(score)
+    except:
+        return "\033[37m"
+    if s < 0.5:
+        t = s / 0.5
+        r, g, b = int(100 + t * 155), 200, int(255 - t * 195)
+    else:
+        t = (s - 0.5) / 0.5
+        r, g, b = 255, int(200 - t * 140), int(60 - t * 20)
+    return f"\033[38;2;{r};{g};{b}m"
+
+# ---
+def clean_markdown(text):
+    t = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    t = re.sub(r'\*(.+?)\*',     r'\1', t)
+    t = re.sub(r'#{1,6}\s*',     '',    t)
+    t = re.sub(r'(?m)^\s*[-*]\s+', '',  t)
+    t = re.sub(r'`{1,3}[^`]*`{1,3}', '', t)
+    t = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', t)
+    t = re.sub(r'\n+', ' ', t)
+    return t.strip()
+
+# ---
+_ABBREVS = re.compile(
+    r'\b(ej|etc|sr|dra?|ing|vs|fig|num|art|dr|mr|mrs|ms|prof)\.$',
+    re.IGNORECASE
+)
+
+def should_flush(buf):
+    if len(buf) < MIN_LEN:
+        return False
+    last = buf[-1]
+    if last in ('?', '!'):
+        return True
+    if last == '.':
+        if _ABBREVS.search(buf):              return False
+        if re.search(r'\b\d+\.$', buf):       return False
+        if re.search(r'\b[A-Z]\.$', buf):     return False
+        return True
+    return False
+
+# ---
+_tts_queue   = []
+_tts_lock    = threading.Lock()
+_tts_event   = threading.Event()
+_tts_done    = threading.Event()
+
+def _speak(text):
+    clean = clean_markdown(text)
+    if len(clean) < 2:
+        return
+    tmp_raw = tmp_fx = None
+    try:
+        payload = json.dumps({
+            "input": clean,
+            "voice": VOICE,
+            "response_format": "mp3",
+            "stream": False
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            TTS_ENDPOINT,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read()
+
+        if len(raw) < 512:
+            return
+
+        tmp_raw = tempfile.mktemp(suffix=".mp3")
+        tmp_fx  = tempfile.mktemp(suffix=".mp3")
+
+        with open(tmp_raw, "wb") as f:
+            f.write(raw)
+
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error",
+             "-i", tmp_raw,
+             "-af", VOICE_FILTERS,
+             "-ar", "44100", "-ab", "192k", tmp_fx],
+            check=False
+        )
+
+        play = tmp_fx if (os.path.exists(tmp_fx) and os.path.getsize(tmp_fx) > 1000) else tmp_raw
+        subprocess.run(
+            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", play],
+            check=False
+        )
+    except Exception:
+        pass
+    finally:
+        for f in (tmp_raw, tmp_fx):
+            if f:
+                try: os.remove(f)
+                except: pass
+
+def _tts_worker():
+    while True:
+        _tts_event.wait()
+        _tts_event.clear()
+        while True:
+            with _tts_lock:
+                if not _tts_queue:
+                    break
+                phrase = _tts_queue.pop(0)
+            _speak(phrase)
+        if _tts_done.is_set() and not _tts_queue:
+            break
+
+def enqueue_tts(phrase):
+    with _tts_lock:
+        _tts_queue.append(phrase)
+    _tts_event.set()
+
+_tts_thread = threading.Thread(target=_tts_worker, daemon=True)
+_tts_thread.start()
+
+# ---
+body = json.dumps({
+    "model": MODEL,
+    "messages": [{"role": "user", "content": PROMPT}],
+    "stream": True
+}).encode("utf-8")
+
+try:
+    conn = http.client.HTTPConnection(LLM_HOST, LLM_PORT, timeout=180)
+    conn.request("POST", LLM_PATH, body=body, headers={
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "text/event-stream",
+    })
+    resp = conn.getresponse()
+except Exception as e:
+    stop_spinner()
+    print(f"\n  \033[31m[Error de conexión] {e}\033[0m")
+    sys.exit(1)
+
+# ---
+first_token   = True
+full_response = ""
+phrase_buf    = ""
+
+try:
+    for raw_line in resp:
+        line = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
+        if not line or not line.startswith("data:"):
+            continue
+        json_part = line[5:].strip()
+        if json_part == "[DONE]":
+            break
+        try:
+            chunk = json.loads(json_part)
+            delta = chunk["choices"][0]["delta"]
+            token = delta.get("content", "")
+            if not token:
+                continue
+
+            if first_token:
+                stop_spinner()
+                first_token = False
+
+            u     = delta.get("uncertainty")
+            color = get_color(u) if u is not None else "\033[37m"
+            sys.stdout.write(f"{color}{token}\033[0m")
+            sys.stdout.flush()
+
+            full_response += token
+            phrase_buf    += token
+
+            if should_flush(phrase_buf):
+                enqueue_tts(phrase_buf)
+                phrase_buf = ""
+
+        except Exception:
+            continue
+
+finally:
+    conn.close()
+
+if first_token:
+    stop_spinner()
+
+# Resto del buffer
+if phrase_buf.strip():
+    enqueue_tts(phrase_buf)
+
+# Esperar a que el TTS termine
+_tts_done.set()
+_tts_event.set()
+_tts_thread.join(timeout=120)
+
+print(f"\n\n  \033[90m─────────────────────────────────────────\033[0m\n")

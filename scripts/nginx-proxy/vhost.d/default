@@ -1,0 +1,28 @@
+# Authelia protection for all services by default
+location /authelia {
+    internal;
+    set $upstream_authelia http://authelia:9091/api/verify;
+    proxy_pass $upstream_authelia;
+    
+    proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+    proxy_set_header X-Forwarded-Method $request_method;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Uri $request_uri;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header Content-Length "";
+    proxy_set_header Connection "";
+    
+    proxy_pass_request_body off;
+    proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_pass_request_headers on;
+}
+
+# Error handling
+error_page 401 = @error401;
+
+location @error401 {
+    return 302 https://auth.localhost/?rd=$scheme://$http_host$request_uri;
+}

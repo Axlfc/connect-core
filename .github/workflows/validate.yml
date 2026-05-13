@@ -1,0 +1,226 @@
+name: Validate & Lint
+
+on:
+  push:
+    branches: [ master, develop ]
+    paths:
+      - 'docker-compose.yml'
+      - 'Dockerfile*'
+      - '*.sh'
+      - '.env.example'
+      - '*.json'
+      - '*.md'
+      - '.github/workflows/validate.yml'
+  pull_request:
+    branches: [ master, develop ]
+    paths:
+      - 'docker-compose.yml'
+      - 'Dockerfile*'
+      - '*.sh'
+      - '.env.example'
+      - '*.json'
+      - '*.md'
+      - '.github/workflows/validate.yml'
+
+jobs:
+  # ========================================
+  # YAML Validation
+  # ========================================
+  validate-yaml:
+    name: Validate YAML & JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml jsonschema
+
+      - name: Validate docker-compose.yml
+        run: |
+          python -c "import yaml; yaml.safe_load(open('docker-compose.yml'))" && echo "✓ docker-compose.yml is valid YAML"
+
+      - name: Validate n8n-task-runners.json
+        run: |
+          python -c "import json; json.load(open('n8n-task-runners.json'))" && echo "✓ n8n-task-runners.json is valid JSON"
+
+      - name: Validate .env.example
+        run: |
+          grep -E "^[A-Z_]+=" .env.example | wc -l | xargs echo "✓ Found variables in .env.example:"
+
+  # ========================================
+  # Shell Script Linting
+  # ========================================
+  lint-shell:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Lint start.sh
+        run: shellcheck -x start.sh
+
+      - name: Lint stop.sh
+        run: shellcheck -x stop.sh
+
+      - name: Lint uninitialize_env.sh
+        run: shellcheck -x uninitialize_env.sh
+
+      - name: Lint update-zrok-url.sh
+        run: shellcheck -x update-zrok-url.sh
+
+      - name: Lint n8n-entrypoint.sh
+        run: shellcheck -x n8n-entrypoint.sh
+
+  # ========================================
+  # Dockerfile Linting
+  # ========================================
+  lint-dockerfile:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Hadolint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y hadolint
+
+      - name: Lint Dockerfile.n8n
+        run: hadolint Dockerfile.n8n
+
+      - name: Lint Dockerfile.runners
+        run: hadolint Dockerfile.runners
+
+      - name: Lint Dockerfile.comfyui
+        run: hadolint Dockerfile.comfyui
+
+      - name: Lint Dockerfile.matrix
+        run: hadolint Dockerfile.matrix
+
+  # ========================================
+  # Docker Compose Validation
+  # ========================================
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Validate docker-compose.yml syntax
+        run: |
+          docker compose config --quiet && echo "✓ docker-compose.yml is valid"
+
+      - name: Check service definitions
+        run: |
+          echo "Services defined:"
+          docker compose config --quiet | grep "^  [a-z]" | grep -E "^  [a-z-]+:" | sed 's/:$//' | sort | uniq | wc -l | xargs echo "  Total services:"
+
+  # ========================================
+  # Markdown Linting
+  # ========================================
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install markdownlint
+        run: |
+          npm install -g markdownlint-cli
+
+      - name: Lint README.md
+        run: markdownlint README.md
+
+      - name: Lint CONTRIBUTING.md
+        run: markdownlint CONTRIBUTING.md
+
+      - name: Check links in markdown files
+        run: |
+          for file in *.md .github/*.md; do
+            if [ -f "$file" ]; then
+              echo "Checking links in $file"
+              grep -o '\[.*\](.*)\|http[s]*://[^ ]*)' "$file" | head -20
+            fi
+          done
+
+  # ========================================
+  # Security Checks
+  # ========================================
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Scanning for potential hardcoded secrets..."
+          if grep -r "POSTGRES_PASSWORD\|REDIS_PASSWORD\|N8N_ENCRYPTION_KEY" .env 2>/dev/null; then
+            echo "⚠️  Warning: Found hardcoded secrets in .env (expected for example)"
+          else
+            echo "✓ No .env file found (good for repo)"
+          fi
+
+      - name: Check for exposed API keys in code
+        run: |
+          echo "Scanning for exposed credentials..."
+          ! grep -r "sk_live_\|pk_live_\|ZROK_AUTH_TOKEN.*=" . --include="*.yml" --include="*.yaml" --include="*.sh" 2>/dev/null
+
+      - name: Verify no sensitive files committed
+        run: |
+          echo "Checking for sensitive files..."
+          ! find . -name ".env" -o -name "*.key" -o -name "*.pem" 2>/dev/null
+
+  # ========================================
+  # Configuration Validation
+  # ========================================
+  validate-config:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .env.example completeness
+        run: |
+          echo "Validating .env.example..."
+          required_vars=(
+            "POSTGRES_PASSWORD"
+            "REDIS_PASSWORD"
+            "N8N_ENCRYPTION_KEY"
+            "N8N_RUNNERS_AUTH_TOKEN"
+            "ZROK_AUTH_TOKEN"
+          )
+          
+          for var in "${required_vars[@]}"; do
+            if grep -q "^$var=" .env.example; then
+              echo "✓ Found $var"
+            else
+              echo "⚠️  Missing $var"
+            fi
+          done
+
+      - name: Validate service port bindings
+        run: |
+          echo "Validating port assignments..."
+          ports=(5432 5678 5679 6333 6379 8008 8188 11434)
+          for port in "${ports[@]}"; do
+            if grep -q "$port:" docker-compose.yml; then
+              echo "✓ Port $port configured"
+            else
+              echo "⚠️  Port $port not found"
+            fi
+          done

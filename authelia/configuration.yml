@@ -1,0 +1,85 @@
+---
+theme: dark
+
+server:
+  address: 'tcp://0.0.0.0:9091/'
+
+log:
+  level: info
+  keep_stdout: true
+
+telemetry:
+  metrics:
+    enabled: false
+
+totp:
+  disable: false
+  issuer: cognito.local
+
+webauthn:
+  disable: true
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+
+access_control:
+  default_policy: one_factor
+  
+  rules:
+    # Authelia portal (sin auth para poder hacer login)
+    - domain: auth.cognito.local
+      policy: bypass
+    
+    # APIs internas sin auth (para que n8n pueda usarlas)
+    - domain: 
+        - ollama.cognito.local
+        - libretranslate.cognito.local
+        - languagetool.cognito.local
+      policy: bypass
+    
+    # Servicios con auth propia
+    - domain:
+        - git.cognito.local
+        - matrix.cognito.local
+      policy: bypass
+    
+    # ComfyUI sin auth (para integración con n8n)
+    - domain: comfyui.cognito.local
+      policy: bypass
+    
+    # Servicios protegidos por Authelia
+    - domain:
+        - n8n.cognito.local
+        - status.cognito.local
+        - duplicati.cognito.local
+        - monitoring.cognito.local
+        - alerts.cognito.local
+      policy: one_factor
+
+session:
+  same_site: lax
+  expiration: 1h
+  inactivity: 5m
+  
+  cookies:
+    - domain: cognito.local
+      authelia_url: https://auth.cognito.local
+      default_redirection_url: https://n8n.cognito.local
+      
+  redis:
+    host: redis
+    port: 6379
+
+regulation:
+  max_retries: 3
+  find_time: 2m
+  ban_time: 5m
+
+storage:
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt

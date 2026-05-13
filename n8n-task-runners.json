@@ -1,0 +1,73 @@
+{
+  "task-runners": [
+    {
+      "runner-type": "javascript",
+      "workdir": "/home/runner",
+      "command": "/usr/local/bin/node",
+      "args": [
+        "--disable-proto=delete",
+        "/opt/runners/task-runner-javascript/dist/start.js"
+      ],
+      "health-check-server-port": "5681",
+      "allowed-env": [
+        "PATH",
+        "HOME",
+        "GENERIC_TIMEZONE",
+        "NODE_OPTIONS",
+        "N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT",
+        "N8N_RUNNERS_TASK_TIMEOUT",
+        "N8N_RUNNERS_MAX_CONCURRENCY",
+        "N8N_RUNNERS_TASK_BROKER_URI",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST",
+        "NODE_FUNCTION_ALLOW_BUILTIN",
+        "NODE_FUNCTION_ALLOW_EXTERNAL",
+        "NODE_FUNCTION_DENY_BUILTIN",
+        "N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION",
+        "N8N_SENTRY_DSN",
+        "N8N_VERSION",
+        "ENVIRONMENT",
+        "DEPLOYMENT_NAME"
+      ],
+      "env-overrides": {
+        "NODE_FUNCTION_ALLOW_EXTERNAL": "axios,cheerio,form-data,moment,uuid",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST": "0.0.0.0",
+        "NODE_FUNCTION_DENY_BUILTIN": "child_process,cluster,dgram,dns,fs,http,https,net,os,repl,sys,tls,tty,v8,vm,worker_threads,zlib"
+      }
+    },
+    {
+      "runner-type": "python",
+      "workdir": "/home/runner",
+      "command": "/home/runner/custom-venv/bin/python",
+      "args": ["-m", "src.main"],
+      "health-check-server-port": "5682",
+      "allowed-env": [
+        "PATH",
+        "HOME",
+        "PYTHONPATH",
+        "PYTHONUNBUFFERED",
+        "N8N_RUNNERS_LAUNCHER_LOG_LEVEL",
+        "N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT",
+        "N8N_RUNNERS_TASK_TIMEOUT",
+        "N8N_RUNNERS_MAX_CONCURRENCY",
+        "N8N_RUNNERS_TASK_BROKER_URI",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST",
+        "N8N_SENTRY_DSN",
+        "N8N_VERSION",
+        "ENVIRONMENT",
+        "DEPLOYMENT_NAME"
+      ],
+      "env-overrides": {
+        "PYTHONPATH": "/opt/runners/task-runner-python",
+        "PYTHONUNBUFFERED": "1",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST": "0.0.0.0",
+        "N8N_RUNNERS_STDLIB_DENY": "os,subprocess,sys,shutil,socket,ctypes,pickle,shelve,multiprocessing,tempfile,glob,cgi,cgitb,xmlrpc",
+        "N8N_RUNNERS_EXTERNAL_ALLOW": "pandas,numpy,requests,beautifulsoup4,scikit-learn,matplotlib,pillow,openpyxl,lxml,seaborn,scipy,openai,langchain,tiktoken,fastapi,uvicorn",
+        "N8N_RUNNERS_BUILTINS_DENY": "exec,eval,compile,open,input,memoryview"
+      }
+    }
+  ]
+}

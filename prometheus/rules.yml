@@ -1,0 +1,21 @@
+# prometheus/rules.yml
+groups:
+- name: General
+  rules:
+  - alert: InstanceDown
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instancia {{ $labels.instance }} caída"
+      description: "{{ $labels.instance }} del trabajo {{ $labels.job }} ha estado caída durante más de 1 minuto."
+
+  - alert: HighCpuUsage
+    expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Uso elevado de CPU en la instancia {{ $labels.instance }}"
+      description: "El uso de CPU en {{ $labels.instance }} ha superado el 80% durante más de 5 minutos."

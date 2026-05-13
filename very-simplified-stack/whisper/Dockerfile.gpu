@@ -1,0 +1,126 @@
+# Dockerfile para Whisper.cpp con servidor HTTP y soporte CUDA
+# Usa una imagen runtime más ligera después de compilar
+FROM nvidia/cuda:12.3.1-devel-ubuntu22.04 AS builder
+
+# Evitar prompts interactivos
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias de compilación
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    cmake \
+    libsdl2-dev \
+    curl \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clonar Whisper.cpp
+WORKDIR /tmp
+RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    git checkout a125f92275f6b218b0e8c6e26e251a37a6b306b9
+
+# Compilar Whisper.cpp con CUDA
+WORKDIR /tmp/whisper.cpp
+RUN mkdir build && cd build && \
+    cmake .. \
+    -DGGML_CUDA=ON \
+    -DWHISPER_BUILD_SERVER=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=native \
+    -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build . --config Release --target whisper-server --parallel $(nproc) || \
+    (echo "Build failed, trying without CUDA optimizations..." && \
+     cd .. && rm -rf build && mkdir build && cd build && \
+     cmake .. -DWHISPER_BUILD_SERVER=ON && \
+     cmake --build . --config Release --target whisper-server --parallel $(nproc))
+
+# ============================================
+# Imagen final más ligera
+# ============================================
+FROM nvidia/cuda:12.3.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar solo dependencias runtime
+RUN apt-get update && apt-get install -y \
+    curl \
+    libsdl2-2.0-0 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar binario compilado desde builder
+COPY --from=builder /tmp/whisper.cpp/build/bin/whisper-server /usr/local/bin/server
+RUN chmod +x /usr/local/bin/server
+
+# Crear directorios
+RUN mkdir -p /models /audio /app
+
+# Variables de entorno
+ENV WHISPER_MODEL_PATH=/models
+ENV PATH="/usr/local/bin:${PATH}"
+
+WORKDIR /app
+
+# Puerto por defecto
+EXPOSE 8080
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
+
+# Script de inicio
+RUN cat > /app/entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+MODEL=${WHISPER_MODEL:-base.en}
+MODEL_PATH=/models/ggml-${MODEL}.bin
+
+echo "========================================="
+echo "🎤 Whisper Server (GPU)"
+echo "========================================="
+echo "Model: ${MODEL}"
+echo "Path: ${MODEL_PATH}"
+echo ""
+
+# Verificar modelo
+if [ ! -f "${MODEL_PATH}" ]; then
+    echo "❌ ERROR: Model not found at ${MODEL_PATH}"
+    echo ""
+    echo "Available files in /models:"
+    ls -lh /models/ 2>/dev/null || echo "  (empty or not mounted)"
+    echo ""
+    echo "To download models:"
+    echo "  ./download_models.sh ${MODEL}"
+    exit 1
+fi
+
+# Info del modelo
+MODEL_SIZE=$(du -h "${MODEL_PATH}" | cut -f1)
+echo "✅ Model found (${MODEL_SIZE})"
+echo ""
+
+# Verificar CUDA (opcional, no crítico)
+if command -v nvidia-smi &> /dev/null; then
+    echo "🎮 GPU Information:"
+    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo "  Could not query GPU"
+    echo ""
+fi
+
+echo "🚀 Starting Whisper server..."
+echo "   Listening on: http://0.0.0.0:8080"
+echo "   Endpoints:"
+echo "     GET  /            - Health check"
+echo "     POST /inference  - Transcribe audio"
+echo "========================================="
+echo ""
+
+# Iniciar servidor
+exec server -m "${MODEL_PATH}" --host 0.0.0.0 --port 8080 "$@"
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

@@ -1,0 +1,5 @@
+{
+    "UncertaintyThreshold": 0.55,
+    "EnableUncertainty": true,
+    "ColorMode": "full"
+}

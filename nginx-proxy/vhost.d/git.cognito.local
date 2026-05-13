@@ -1,0 +1,2 @@
+# Redirigir a forgejo.cognito.local
+return 301 http://forgejo.cognito.local$request_uri;
