@@ -1,4 +1,4 @@
-# cognito-stack 🚀
+# connect-core **(cognito-stack)** 🚀
 [![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/README.en.md)
 [![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/README.md)
 [![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/README.ca.md)
