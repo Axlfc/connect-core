@@ -1,77 +1,81 @@
-# AUDIT 10: GESTIÓN DE VOLÚMENES Y PERSISTENCIA
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.zh-cn.md)
+# AUDIT 10: VOLUME MANAGEMENT AND PERSISTENCE
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Estrategia de Persistence** | La estrategia de utilizar volúmenes nombrados de Docker para todos los datos de estado (`postgres_storage`, `n8n_storage`, etc.) es **correcta y robusta**. Separa el ciclo de vida de los datos del de los contenedores. |
-| ✓ | **Intención de Backup** | La presencia de un servicio `duplicati` y un `duplicati-job-template.json` demuestra una **clara intención de implementar backups**, lo cual es fundamental para la resiliencia de los datos. |
-| ⚠️ | **Permisos de Volúmenes** | El script `inspect_volumes.sh` requiere `sudo` para calcular el tamaño de los volúmenes (`du -sh`). Esto sugiere que los permisos de los directorios de volúmenes en el host pueden no estar correctamente alineados con los usuarios del sistema, lo que podría llevar a problemas de permisos en tiempo de ejecución. |
-| ✗ | **Estrategia de Backup No Implementada** | El sistema **carece de una estrategia de backup automatizada y funcional**. El `duplicati-job-template.json` es solo una plantilla; no hay ningún script o mecanismo que configure automáticamente el trabajo de backup en Duplicati, dejando el proceso enteramente manual y propenso a errores. |
-| ✗ | **Sin Procedimientos de Recuperación (Recovery)** | No existe un procedimiento de recuperación de desastres documentado o probado. Las únicas referencias a la restauración son comandos de `docker` en la salida de `inspect_volumes.sh`, lo cual es **insuficiente para un entorno de producción**. |
+| ✓ | **Persistence Strategy** | The strategy of using Docker named volumes for all state data (`postgres_storage`, `n8n_storage`, etc.) is **correct and robust**. It separates the data life cycle from that of the containers. |
+| ✓ | **Backup Intent** | The presence of a `duplicati` service and a `duplicati-job-template.json` demonstrates a **clear intent to implement backups**, which is fundamental for data resilience. |
+| ⚠️ | **Volume Permissions** | The `inspect_volumes.sh` script requires `sudo` to calculate volume sizes (`du -sh`). This suggests that volume directory permissions on the host may not be correctly aligned with system users, which could lead to runtime permission issues. |
+| ✗ | **Backup Strategy Not Implemented** | The system **lacks an automated and functional backup strategy**. The `duplicati-job-template.json` is only a template; there is no script or mechanism that automatically configures the backup job in Duplicati, leaving the process entirely manual and error-prone. |
+| ✗ | **No Recovery Procedures** | There is no documented or tested disaster recovery procedure. The only references to restoration are `docker` commands in the `inspect_volumes.sh` output, which is **insufficient for a production environment**. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Usage de Volúmenes Nombrados:**
-    *   El `docker-compose.yml` define explícitamente volúmenes nombrados para cada servicio con estado. Esto es una mejor práctica en comparación con los montajes de `bind` para datos, ya que los volúmenes son gestionados por el motor de Docker y son más portables y fáciles de manejar.
+1.  **Use of Named Volumes:**
+    *   `docker-compose.yml` explicitly defines named volumes for each stateful service. This is a best practice compared to `bind` mounts for data, as volumes are managed by the Docker engine and are more portable and easier to handle.
 
-2.  **Plantilla de Backup Bien Definida:**
-    *   El archivo `backups/duplicati-job-template.json` define un trabajo de backup sólido:
-        *   **Fuentes Claras:** Identifica correctamente los directorios clave a respaldar (`./shared`, `./data`, `./models`).
-        *   **Cifrado Habilitado:** Especifica `encryption-module: aes`, lo cual es crucial para la seguridad de los backups.
-        *   **Programación Diaria:** El `Schedule: "@daily"` es un punto de partida razonable para la mayoría de los casos de uso.
+2.  **Well-Defined Backup Template:**
+    *   The `backups/duplicati-job-template.json` file defines a solid backup job:
+        *   **Clear Sources:** Correctly identifies key directories to backup (`./shared`, `./data`, `./models`).
+        *   **Encryption Enabled:** Specifies `encryption-module: aes`, which is crucial for backup security.
+        *   **Daily Schedule:** The `Schedule: "@daily"` is a reasonable starting point for most use cases.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **V-01** | **ALTO** | **Proceso de Backup Manual** | No hay automatización para configurar Duplicati. Un administrador debe: 1) Iniciar el stack. 2) Acceder a la UI de Duplicati. 3) Crear un nuevo trabajo de backup. 4) Configurar el destino. 5) Configurar la passphrase de cifrado. 6) Seleccionar los directorios fuente. Este proceso manual es propenso a errores de configuración y puede ser fácilmente olvidado. |
-| **V-02** | **ALTO** | **Ausencia de Plan de Recuperación de Desastres** | Si el servidor host falla catastróficamente, no hay una guía paso a paso que describa cómo restaurar los servicios y los datos en un nuevo host. Esto aumenta significativamente el Tiempo de Recuperación (RTO) y el riesgo de pérdida de datos si la restauración se realiza incorrectamente. |
-| **V-03** | **MEDIO** | **Potenciales Problemas de Permisos en Volúmenes** | El hecho de que se necesite `sudo` para inspeccionar el tamaño de los volúmenes en el script de diagnóstico es un "code smell". Indica que los UID/GID de los procesos dentro de los contenedores podrían no coincidir con la propiedad de los archivos en el host, una causa común de errores de "permiso denegado" en producción. |
+| **V-01** | **HIGH** | **Manual Backup Process** | There is no automation to configure Duplicati. An administrator must: 1) Start the stack. 2) Access the Duplicati UI. 3) Create a new backup job. 4) Configure the destination. 5) Configure the encryption passphrase. 6) Select source directories. This manual process is error-prone and easily forgotten. |
+| **V-02** | **HIGH** | **Absence of Disaster Recovery Plan** | If the host server fails catastrophically, there is no step-by-step guide describing how to restore services and data on a new host. This significantly increases Recovery Time Objective (RTO) and data loss risk if restoration is performed incorrectly. |
+| **V-03** | **MEDIUM** | **Potential Volume Permission Issues** | The fact that `sudo` is needed to inspect volume sizes in the diagnostic script is a "code smell". It indicates that UIDs/GIDs of processes inside containers might not match file ownership on the host, a common cause of "permission denied" errors in production. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Backup de Bases de Datos:**
-    *   El backup actual se basa en copiar los archivos del volumen de la base de datos (`postgres_storage`). Esto se conoce como un backup "en frío" o de sistema de archivos. Para garantizar la consistencia de los datos, la mejor práctica es utilizar herramientas específicas de la base de datos como `pg_dump`. El backup actual podría capturar la base de datos en un estado inconsistente si se está escribiendo en ella durante el proceso.
+### ⚠️ Warnings/Recommendations
 
-2.  **Pruebas de Restauración:**
-    *   Un plan de backup no está completo hasta que el proceso de restauración ha sido probado. No hay evidencia de que se hayan realizado pruebas de restauración.
+1.  **Database Backup:**
+    *   The current backup relies on copying database volume files (`postgres_storage`). This is known as a "cold" or filesystem backup. To ensure data consistency, the best practice is to use database-specific tools like `pg_dump`. The current backup could capture the database in an inconsistent state if it is being written to during the process.
 
-### 🔧 Soluciones Sugeridas
+2.  **Restoration Testing:**
+    *   A backup plan is not complete until the restoration process has been tested. There is no evidence that restoration tests have been performed.
 
-1.  **Para V-01 (Automatizar la Configuración de Duplicati):**
-    *   **Solution:** Crear un script de inicialización para Duplicati.
-        1.  **Crear un Script (`scripts/init_duplicati.sh`):** Este script utilizaría la API de Duplicati o su CLI (`duplicati-cli`) para configurar el trabajo de backup automáticamente en el primer inicio.
-        2.  **Lógica del Script:**
-            *   Esperar a que la API de Duplicati esté disponible.
-            *   Leer variables de entorno (ej. `DUPLICATI_DESTINATION`, `DUPLICATI_PASSPHRASE`) del archivo `.env`.
-            *   Usar `sed` o una herramienta similar para reemplazar los placeholders en `duplicati-job-template.json`.
-            *   Hacer un `POST` del JSON resultante al endpoint de la API de Duplicati para crear/actualizar el trabajo.
-        3.  **Ejecutar el Script:** Ejecutar este script como un servicio de `docker-compose` que se ejecuta una vez al inicio, o como parte del script `start.sh`.
+---
 
-2.  **Para V-02 (Crear un Plan de Recuperación):**
-    *   **Solution:** Crear un documento `DISASTER_RECOVERY.md`.
-        *   **Contenido del Documento:**
-            *   **Requisitos Previos:** (ej. nuevo host con Docker instalado).
-            *   **Paso 1: Restaurar Backups:** Instrucciones detalladas sobre cómo usar la UI o CLI de Duplicati para restaurar los datos desde el almacenamiento de destino a un directorio temporal.
-            *   **Paso 2: Re-inicializar el Stack:** Cómo clonar el repositorio, ejecutar `init_env.sh` y `setup-permissions.sh`.
-            *   **Paso 3: Importar Datos Restaurados:** Comandos `docker cp` o de montaje de volúmenes para mover los datos restaurados a los nuevos volúmenes de Docker.
-            *   **Paso 4: Verificación:** Cómo verificar que los servicios se han iniciado correctamente y que los datos están intactos.
-        *   **Pruebas:** Este procedimiento debe ser probado al menos una vez para garantizar que funciona como se espera.
+### 🔧 Suggested Solutions
 
-3.  **Para V-03 (Solucionar Permisos):**
-    *   **Solution:** Expandir y hacer cumplir el uso de `setup-permissions.sh`.
-        *   Asegurarse de que el script `setup-permissions.sh` crea los directorios en el host para **todos** los volúmenes que lo necesiten, no solo para los logs.
-        *   Utilizar las variables `PUID` y `PGID` del archivo `.env` de forma consistente en todos los servicios de `docker-compose.yml` y en el script `setup-permissions.sh` para que los permisos coincidan.
+1.  **For V-01 (Automate Duplicati Configuration):**
+    *   **Solution:** Create an initialization script for Duplicati.
+        1.  **Create a Script (`scripts/init_duplicati.sh`):** This script would use the Duplicati API or its CLI (`duplicati-cli`) to automatically configure the backup job on first start.
+        2.  **Script Logic:**
+            *   Wait for Duplicati API availability.
+            *   Read environment variables (e.g., `DUPLICATI_DESTINATION`, `DUPLICATI_PASSPHRASE`) from the `.env` file.
+            *   Use `sed` or a similar tool to replace placeholders in `duplicati-job-template.json`.
+            *   `POST` the resulting JSON to the Duplicati API endpoint to create/update the job.
+        3.  **Run the Script:** Run this script as a `docker-compose` service that runs once at startup, or as part of the `start.sh` script.
+
+2.  **For V-02 (Create a Recovery Plan):**
+    *   **Solution:** Create a `DISASTER_RECOVERY.md` document.
+        *   **Document Content:**
+            *   **Prerequisites:** (e.g., new host with Docker installed).
+            *   **Step 1: Restore Backups:** Detailed instructions on how to use the Duplicati UI or CLI to restore data from destination storage to a temporary directory.
+            *   **Step 2: Re-initialize the Stack:** How to clone the repository, run `init_env.sh` and `setup-permissions.sh`.
+            *   **Step 3: Import Restored Data:** `docker cp` or volume mount commands to move restored data to new Docker volumes.
+            *   **Step 4: Verification:** How to verify that services have started correctly and data is intact.
+        *   **Testing:** This procedure must be tested at least once to ensure it works as expected.
+
+3.  **For V-03 (Fix Permissions):**
+    *   **Solution:** Expand and enforce the use of `setup-permissions.sh`.
+        *   Ensure that the `setup-permissions.sh` script creates host directories for **all** volumes that need it, not just logs.
+        *   Use `PUID` and `PGID` variables from the `.env` file consistently across all `docker-compose.yml` services and in the `setup-permissions.sh` script so that permissions match.

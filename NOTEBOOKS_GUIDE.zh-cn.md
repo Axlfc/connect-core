@@ -1,43 +1,43 @@
-# Jupyter Notebooks for Testing cognito-stack
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
+# 用于测试 connect-core 的 Jupyter Notebooks
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
 
 
-Este directorio contiene notebooks de Jupyter para probar la arquitectura de agentes y la orquestación de cognito-stack.
+本目录包含用于测试 connect-core 智能体架构和编排功能的 Jupyter Notebooks。
 
-## Notebooks disponibles
+## 可用 Notebooks
 
 ### 1. `test_agent_router.ipynb` 🔀
-**目的:** Pruebas del enrutador de agentes y orquestación multi-agente
+**目的：** 测试智能体路由器和多智能体编排功能
 
-**Contenido:**
-- ✓ Pruebas de enrutamiento de tareas
-- ✓ Orquestación multi-agente
-- ✓ Descomposición de tareas
-- ✓ Comunicación entre agentes
+**内容：**
+- ✓ 任务路由测试
+- ✓ 多智能体编排
+- ✓ 任务拆解
+- ✓ 智能体间通信
 
-**Requerimientos:**
-- Módulos: `AgentRouter`, `MultiAgentOrchestrator`, `TaskDecomposer`
+**要求：**
+- 模块：`AgentRouter`, `MultiAgentOrchestrator`, `TaskDecomposer`
 
 ---
 
 ### 2. `test_communication.ipynb` 📡
-**目的:** Pruebas de comunicación entre n8n y servicios (Ollama, Qdrant)
+**目的：** 测试 n8n 与各项服务（Ollama, Qdrant）之间的通信
 
-**Contenido:**
-- ✓ Health checks de servicios
-- ✓ Integración con Ollama (LLM local)
-- ✓ Generación de texto
-- ✓ Qdrant Vector Database
-- ✓ Pipeline de comunicación completo
+**内容：**
+- ✓ 服务健康检查
+- ✓ Ollama 集成（本地 LLM）
+- ✓ 文本生成
+- ✓ Qdrant 向量数据库
+- ✓ 完整的通信流水线
 
-**Requerimientos:**
-- Docker services: n8n, Ollama, Qdrant
-- Librerías: `requests`
+**要求：**
+- Docker 服务：n8n, Ollama, Qdrant
+- 库：`requests`
 
-**URLs de servicios:**
+**服务 URLs：**
 - n8n: `http://localhost:5678`
 - Ollama: `http://localhost:11434`
 - Qdrant: `http://localhost:6333`
@@ -45,118 +45,118 @@ Este directorio contiene notebooks de Jupyter para probar la arquitectura de age
 ---
 
 ### 3. `test_task_decomposition.ipynb` 🔧
-**目的:** Pruebas de descomposición de tareas y ejecución paralela
+**目的：** 测试任务拆解和并行执行功能
 
-**Contenido:**
-- ✓ Descomposición de tareas complejas
-- ✓ Ejecución paralela de subtareas
-- ✓ Resolución de dependencias
-- ✓ Síntesis de resultados
-- ✓ Análisis de performance
+**内容：**
+- ✓ 复杂任务拆解
+- ✓ 子任务并行执行
+- ✓ 依赖关系解析
+- ✓ 结果综合
+- ✓ 性能分析
 
-**Requerimientos:**
-- Módulos: `TaskDecomposer`, `ParallelTaskExecutor`, `ResultSynthesizer`
-- Librerías: `concurrent.futures`, `time`
+**要求：**
+- 模块：`TaskDecomposer`, `ParallelTaskExecutor`, `ResultSynthesizer`
+- 库：`concurrent.futures`, `time`
 
 ---
 
 ### 4. `test_end_to_end.ipynb` 🚀
-**目的:** Prueba completa de flujo de trabajo con integración Ollama + Qdrant
+**目的：** 结合 Ollama + Qdrant 集成的完整工作流测试
 
-**Contenido:**
-- **Workflow 1:** Análisis de documentos con RAG (Retrieval Augmented Generation)
-  - Enrutamiento de tareas
-  - Descomposición de tareas
-  - Integración con Ollama
-  - Almacenamiento en Qdrant
-  - Síntesis de resultados
-  - Validación de salida
+**内容：**
+- **工作流 1：** 使用 RAG（检索增强生成）进行文档分析
+  - 任务路由
+  - 任务拆解
+  - Ollama 集成
+  - Qdrant 存储
+  - 结果综合
+  - 输出验证
 
-- **Workflow 2:** Colaboración multi-agente
-  - Simulación de conversación entre agentes
-  - Flujo de mensajes
-  - Intercambio de información
+- **工作流 2：** 多智能体协作
+  - 模拟智能体间的对话
+  - 消息流
+  - 信息交换
 
-**Requerimientos:**
-- Todos los módulos de agentes
-- 服务s: n8n, Ollama, Qdrant
-- Librerías: `requests`, `json`
+**要求：**
+- 所有智能体模块
+- 服务：n8n, Ollama, Qdrant
+- 库：`requests`, `json`
 
 ---
 
-## Cómo ejecutar los notebooks
+## 如何运行 Notebooks
 
-### Prerrequisitos
+### 前提条件
 
-1. **Iniciar el stack de Docker:**
+1. **启动 Docker 堆栈：**
 ```bash
 ./start.sh
 ```
 
-2. **Instalar Jupyter (si no está instalado):**
+2. **安装 Jupyter（如果尚未安装）：**
 ```bash
 pip install jupyter notebook
 ```
 
-3. **Navegar al directorio del proyecto:**
+3. **导航至项目目录：**
 ```bash
-cd /workspaces/cognito-stack
+cd /workspaces/connect-core
 ```
 
-### Ejecutar un notebook específico
+### 运行特定 Notebook
 
 ```bash
 jupyter notebook test_agent_router.ipynb
 ```
 
-### Ejecutar todos los notebooks en secuencia
+### 按顺序运行所有 Notebooks
 
 ```bash
 jupyter notebook
-# Luego abre cada notebook y ejecuta las celdas
+# 然后打开每个 notebook 并运行所有单元格
 ```
 
-### Ejecutar desde VS Code
+### 从 VS Code 中运行
 
-1. Abre VS Code en el directorio del proyecto
-2. Selecciona un archivo `.ipynb`
-3. VS Code detectará automáticamente los notebooks
-4. Haz clic en "Run All" para ejecutar todas las celdas
+1. 在项目目录中打开 VS Code
+2. 选择一个 `.ipynb` 文件
+3. VS Code 将自动检测 Notebooks
+4. 点击 "全部运行 (Run All)" 以执行所有单元格
 
 ---
 
-## Estructura de los notebooks
+## Notebook 结构
 
-Cada notebook sigue una estructura estándar:
+每个 Notebook 都遵循标准结构：
 
 ```
-1. Setup/Imports
-   └─ Importar módulos necesarios
-   └─ Configurar variables de entorno
+1. Setup/Imports (设置与导入)
+   └─ 导入必要的模块
+   └─ 配置环境变量
 
-2. Test 1: Component 1
-   └─ Verificar funcionamiento del componente
-   └─ Mostrar resultados
+2. Test 1: Component 1 (测试 1：组件 1)
+   └─ 验证组件功能
+   └─ 显示结果
 
-3. Test 2: Component 2
-   └─ Verificar funcionamiento del componente
-   └─ Mostrar resultados
+3. Test 2: Component 2 (测试 2：组件 2)
+   └─ 验证组件功能
+   └─ 显示结果
 
-... (más tests)
+... (更多测试)
 
-N. Summary
-   └─ Resumen de todos los tests
-   └─ Métricas finales
+N. Summary (总结)
+   └─ 所有测试的总结
+   └─ 最终指标
 ```
 
 ---
 
-## Variables de entorno
+## 环境变量
 
-Los notebooks usan las siguientes variables de entorno (con valores por defecto):
+Notebooks 使用以下环境变量（带有默认值）：
 
 ```bash
-# .env o en variables de sistema
+# .env 或系统变量中
 N8N_BASE_URL=http://localhost:5678
 OLLAMA_BASE_URL=http://localhost:11434
 QDRANT_BASE_URL=http://localhost:6333
@@ -164,108 +164,108 @@ QDRANT_BASE_URL=http://localhost:6333
 
 ---
 
-## Validaciones en cada notebook
+## 每个 Notebook 中的验证项
 
 ### `test_agent_router.ipynb`
-- ✓ Agentes detectados correctamente
-- ✓ Tareas enrutadas a agentes apropiados
-- ✓ Orquestación multi-agente funciona
-- ✓ Comunicación entre agentes establecida
+- ✓ 智能体被正确检测
+- ✓ 任务被路由到合适的智能体
+- ✓ 多智能体编排功能正常
+- ✓ 智能体间通信已建立
 
 ### `test_communication.ipynb`
-- ✓ n8n responde a health checks
-- ✓ Ollama accesible y modelos disponibles
-- ✓ Qdrant conectado y funcional
-- ✓ Pipeline de comunicación completo
+- ✓ n8n 响应健康检查
+- ✓ Ollama 可访问且模型可用
+- ✓ Qdrant 已连接且功能正常
+- ✓ 完整通信流水线畅通
 
 ### `test_task_decomposition.ipynb`
-- ✓ Tareas complejas descompuestas correctamente
-- ✓ Ejecución paralela eficiente
-- ✓ Dependencias resueltas correctamente
-- ✓ Resultados sintetizados acertadamente
+- ✓ 复杂任务被正确拆解
+- ✓ 并行执行效率高
+- ✓ 依赖关系被正确解析
+- ✓ 结果综合准确
 
 ### `test_end_to_end.ipynb`
-- ✓ Flujo de routing → decomposición → ejecución
-- ✓ Ollama genera respuestas válidas
-- ✓ Qdrant almacena resultados
-- ✓ Síntesis de resultados correcta
-- ✓ Validación de salida exitosa
-- ✓ Multi-agentes colaboran correctamente
+- ✓ 路由 → 拆解 → 执行流程顺畅
+- ✓ Ollama 生成有效响应
+- ✓ Qdrant 存储结果
+- ✓ 结果综合正确
+- ✓ 输出验证成功
+- ✓ 多智能体协作正常
 
 ---
 
-## Troubleshooting
+## 故障排除 (Troubleshooting)
 
-### Error: "Cannot connect to Docker services"
-**解决方案:**
+### 错误："Cannot connect to Docker services" (无法连接到 Docker 服务)
+**解决方案：**
 ```bash
-# Verificar que los servicios estén corriendo
+# 确认服务正在运行
 docker compose ps
 
-# Si no están corriendo, iniciar:
+# 如果未运行，请启动：
 ./start.sh
 ```
 
-### Error: "ModuleNotFoundError: No module named 'agents'"
-**解决方案:**
+### 错误："ModuleNotFoundError: No module named 'agents'"
+**解决方案：**
 ```bash
-# Asegúrate de estar en el directorio correcto
-cd /workspaces/cognito-stack
+# 确保您位于正确的目录中
+cd /workspaces/connect-core
 
-# Verifica que la ruta esté en sys.path
-# Debería incluirse en el notebook con: sys.path.insert(0, os.path.abspath('.'))
+# 验证路径是否在 sys.path 中
+# Notebook 中应包含：sys.path.insert(0, os.path.abspath('.'))
 ```
 
-### Ollama: "No models available"
-**解决方案:**
+### Ollama："No models available" (无可用模型)
+**解决方案：**
 ```bash
-# Descargar modelos manualmente
+# 手动下载模型
 docker exec ollama ollama pull llama3.2
 
-# O esperar a que se descarguen automáticamente
+# 或等待其自动下载
 ```
 
-### Timeout en requests
-**解决方案:**
+### 请求超时 (Timeout in requests)
+**解决方案：**
 ```bash
-# Aumentar timeout en los requests
-# En los notebooks, cambiar timeout=5 a timeout=30
+# 增加请求超时时间
+# 在 notebook 中，将 timeout=5 更改为 timeout=30
 ```
 
 ---
 
-## Próximos pasos
+## 后续步骤
 
-1. **Ejecutar todos los notebooks en orden:**
-   - `test_agent_router.ipynb` (verifica enrutamiento)
-   - `test_communication.ipynb` (verifica comunicación)
-   - `test_task_decomposition.ipynb` (verifica paralelización)
-   - `test_end_to_end.ipynb` (verifica flujo completo)
+1. **按顺序运行所有 Notebooks：**
+   - `test_agent_router.ipynb`（验证路由）
+   - `test_communication.ipynb`（验证通信）
+   - `test_task_decomposition.ipynb`（验证并行化）
+   - `test_end_to_end.ipynb`（验证完整流程）
 
-2. **Monitorear métricas:**
-   - Tiempo de ejecución
-   - 使用 de recursos (CPU, memoria)
-   - Errores y advertencias
+2. **监控指标：**
+   - 执行时间
+   - 资源使用情况（CPU, 内存）
+   - 错误和警告
 
-3. **Documentar resultados:**
-   - Guardar outputs de los notebooks
-   - Crear reporte de pruebas
+3. **记录结果：**
+   - 保存 notebook 输出
+   - 创建测试报告
 
-4. **Optimizar basado en resultados:**
-   - Ajustar timeouts si es necesario
-   - Optimizar descomposición de tareas
-   - Mejorar síntesis de resultados
+4. **根据结果进行优化：**
+   - 必要时调整超时时间
+   - 优化任务拆解逻辑
+   - 改进结果综合算法
 
 ---
 
-## Links útiles
+## 有用链接
 
-- [Jupyter Documentation](https://jupyter.readthedocs.io/)
-- [n8n Documentation](https://docs.n8n.io/)
+- [Jupyter 文档](https://jupyter.readthedocs.io/)
+- [n8n 文档](https://docs.n8n.io/)
 - [Ollama GitHub](https://github.com/ollama/ollama)
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
+- [Qdrant 文档](https://qdrant.tech/documentation/)
 
 ---
 
-**Última actualización:** 2025-12-20
-**版本 de cognito-stack:** Latest
+**最后更新日期：** 2025-12-20
+**connect-core 版本：** 最新版

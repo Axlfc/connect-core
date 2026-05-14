@@ -1,79 +1,79 @@
-# AUDIT 00: RESUMEN EJECUTIVO
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
+# AUDIT 00: RESUM EXECUTIU
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules, Ingeniero de Programari Senior
-**Proyecto:** `Axlfc/connect-core`
+**Data:** 2024-07-25
+**Analista:** Jules, Enginyer de Programari Senior
+**Projecte:** `[ORGANIZATION]/connect-core`
 
-## 1. Introducción
+## 1. Introducció
 
-Este documento resume los hallazgos de una auditoría técnica exhaustiva del proyecto `cognito-stack`. El análisis ha cubierto 17 áreas clave, incluyendo la arquitectura del sistema, la seguridad de la contenedorización, la gestión de secretos, la configuración del reverse proxy, la autenticación, las prácticas de testing y la calidad del código.
+Aquest document resumeix les troballes d'una auditoria tècnica exhaustiva del projecte `connect-core`. L'anàlisi ha cobert 17 àrees clau, incloent l'arquitectura del sistema, la seguretat de la containerització, la gestió de secrets, la configuració del reverse proxy, l'autenticació, les pràctiques de testing i la qualitat del codi.
 
-El proyecto `cognito-stack` es una plataforma de orquestación de IA ambiciosa y bien diseñada conceptualmente, con una base arquitectónica sólida. Sin embargo, la auditoría ha revelado **múltiples vulnerabilidades de seguridad críticas y debilidades de diseño significativas** que lo hacen **inadecuado para un despliegue en producción** en su estado actual.
-
----
-
-## 2. Estado General y Puntuación de Riesgo
-
-*   **Arquitectura:** Sólida y bien pensada, pero con fallos de implementación.
-*   **Seguridad:** **Deficiente.** Múltiples vectores de ataque críticos.
-*   **Operabilidad:** Compleja. La falta de alertas y logging centralizado haría la gestión de incidentes extremadamente difícil.
-*   **Mantenibilidad:** Buena, gracias a una estructura de proyecto limpia y scripts de alta calidad.
-
-### Puntuación de Riesgo de Producción: **9 / 10**
-*(Una puntuación de 10 representa el riesgo máximo. Este proyecto presenta un riesgo muy alto de compromiso de seguridad, pérdida de datos y denegación de servicio si se despliega en producción tal cual).*
+El projecte `connect-core` és una plataforma d'orquestració d'IA ambiciosa i ben dissenyada conceptualment, amb una base arquitectònica sòlida. No obstant això, l'auditoria ha revelat **múltiples vulnerabilitats de seguretat crítiques i febleses de disseny significatives** que el fan **inadequat per a un desplegament en producció** en el seu estat actual.
 
 ---
 
-## 3. Hallazgos Clave
+## 2. Estat General i Puntuació de Risc
 
-### Top 3 Problemas Críticos (Bloqueadores de Producción)
+*   **Arquitectura:** Sòlida i ben pensada, però amb fallades d'implementació.
+*   **Seguretat:** **Deficient.** Múltiples vectors d'atac crítics.
+*   **Operabilitat:** Complexa. La falta d'alertes i logging centralitzat faria la gestió d'incidents extremadament difícil.
+*   **Mantenibilitat:** Bona, gràcies a una estructura de projecte neta i scripts d'alta qualitat.
 
-1.  **Ejecución Remota de Código (RCE) en n8n (ID: S-n8n-01):**
-    *   **Descripción:** La configuración de los runners de n8n deshabilita completamente el sandboxing, permitiendo a cualquier usuario con acceso a la creación de workflows ejecutar código arbitrario en el sistema.
-    *   **Impacto:** Compromiso total del contenedor del runner, acceso a la red interna y a los secretos de otros servicios. **Esta es la vulnerabilidad más grave del sistema.**
-
-2.  **Configuración de Seguridad de Authelia Débil (ID: A-01, A-02):**
-    *   **Descripción:** La política de hashing de contraseñas es extremadamente débil (`iterations: 1`) y la cookie de sesión se transmite de forma insegura (`secure: false`).
-    *   **Impacto:** Facilita el cracking de contraseñas offline a alta velocidad y expone el sistema a ataques de secuestro de sesión (Session Hijacking).
-
-3.  **Ruptura del Aislamiento de Contenedores (ID: DS-01, DS-03, DS-04):**
-    *   **Descripción:** Múltiples fallos de seguridad en Docker, incluyendo `fail2ban` ejecutándose en `network_mode: host`, servicios clave ejecutándose como `root`, y el uso de la peligrosa capacidad `DAC_OVERRIDE`.
-    *   **Impacto:** Anula las protecciones de seguridad fundamentales de la contenedorización, exponiendo el host y la red interna a riesgos significativos.
-
-### Top 3 Fortalezas del Proyecto
-
-1.  **Diseño Arquitectónico y Estructura del Proyecto:**
-    *   La arquitectura general, la segmentación de redes de Docker, la estructura de directorios y la modularidad son de muy alta calidad. El proyecto está bien pensado a nivel conceptual.
-
-2.  **Calidad de los Scripts de Automatización:**
-    *   Los scripts de shell (`start.sh`, `stop.sh`, etc.) son robustos, fáciles de usar y siguen las mejores prácticas de scripting, lo que mejora enormemente la experiencia del operador.
-
-3.  **Documentación de Inicio y Ús:**
-    *   El `README.md` es excepcionalmente detallado y proporciona excelentes guías de instalación y uso para múltiples plataformas, lo que reduce la barrera de entrada para nuevos usuarios.
+### Puntuació de Risc de Producció: **9 / 10**
+*(Una puntuació de 10 representa el risc màxim. Aquest projecte presenta un risc molt alt de compromís de seguretat, pèrdua de dades i denegació de servei si es desplega en producció tal com està).*
 
 ---
 
-## 4. Veredicto y Recomendación Estratégica
+## 3. Troballes Clau
 
-**¿Es seguro desplegar este proyecto en producción tal como está hoy?**
-**No, en absoluto.** Desplegar `cognito-stack` en su estado actual expondría a la organización a un riesgo inaceptable de compromiso de seguridad, pérdida de datos y denegación de servicio.
+### Top 3 Problemes Crítics (Bloquejadors de Producció)
 
-**Recomendación Estratégica:**
-El proyecto tiene un gran potencial, pero la "deuda de seguridad" acumulada durante su rápido desarrollo es crítica. Se recomienda **detener cualquier plan de despliegue inminente** y asignar recursos de ingeniería para ejecutar el **Plan de Acción** definido en esta auditoría, comenzando inmediatamente con la **Fase 1: Remediación Crítica**.
+1.  **Execució Remota de Codi (RCE) en n8n (ID: S-n8n-01):**
+    *   **Descripció:** La configuració dels runners de n8n deshabilita completament el sandboxing, permetent a qualsevol usuari amb accés a la creació de workflows executar codi arbitrari en el sistema.
+    *   **Impacte:** Compromís total del contenidor del runner, accés a la xarxa interna i als secrets d'altres serveis. **Aquesta és la vulnerabilitat més greu del sistema.**
 
-Solo después de que se hayan completado las Fases 1 y 2 del plan de acción, el proyecto debería ser sometido a una nueva revisión de seguridad para evaluar su viabilidad para un entorno de producción.
+2.  **Configuració de Seguretat d'Authelia Feble (ID: A-01, A-02):**
+    *   **Descripció:** La política de hashing de contrasenyes és extremadament feble (`iterations: 1`) i la cookie de sessió es transmet de forma insegura (`secure: false`).
+    *   **Impacte:** Facilita el cracking de contrasenyes offline a alta velocitat i exposa el sistema a atacs de segrest de sessió (Session Hijacking).
+
+3.  **Ruptura de l'Aïllament de Contenidors (ID: DS-01, DS-03, DS-04):**
+    *   **Descripció:** Múltiples fallades de seguretat a Docker, incloent `fail2ban` executant-se en `network_mode: host`, serveis clau executant-se com a `root`, i l'ús de la perillosa capacitat `DAC_OVERRIDE`.
+    *   **Impacte:** Anul·la les proteccions de seguretat fonamentals de la containerització, exposant el host i la xarxa interna a riscos significatius.
+
+### Top 3 Fortaleses del Projecte
+
+1.  **Disseny Arquitectònic i Estructura del Projecte:**
+    *   L'arquitectura general, la segmentació de xarxes de Docker, l'estructura de directoris i la modularitat són de molt alta qualitat. El projecte està ben pensat a nivell conceptual.
+
+2.  **Qualitat dels Scripts d'Automatització:**
+    *   Els scripts de shell (`start.sh`, `stop.sh`, etc.) són robustos, fàcils d'utilitzar i segueixen les millors pràctiques de scripting, cosa que millora enormement l'experiència de l'operador.
+
+3.  **Documentació d'Inici i Ús:**
+    *   El `README.md` és excepcionalment detallat i proporciona excel·lents guies d'instal·lació i ús per a múltiples plataformes, cosa que redueix la barrera d'entrada per a nous usuaris.
 
 ---
 
-## 5. Próximos Pasos
+## 4. Veredicte i Recomanació Estratègica
 
-1.  **Revisar la Matriz de Riesgos:** Entender en detalle cada una de las vulnerabilidades identificadas.
-    *   [Ver Matriz de Riesgos](./RISK_MATRIX.md)
-2.  **Ejecutar el Plan de Acción:** Seguir el plan priorizado para remediar los problemas, comenzando por los bloqueadores críticos.
-    *   [Ver Plan de Acción](./ACTION_PLAN.md)
-3.  **Adoptar una Cultura de "Seguridad por Defecto":** Integrar las prácticas de seguridad recomendadas (fijación de dependencias, CI bloqueante, pruebas automatizadas) en el ciclo de vida de desarrollo para prevenir la acumulación de nueva deuda de seguridad.
+**És segur desplegar aquest projecte en producció tal com està avui?**
+**No, en absolut.** Desplegar `connect-core` en el seu estat actual exposaria l'organització a un risc inacceptable de compromís de seguretat, pèrdua de dades i denegació de servei.
+
+**Recomanació Estratègica:**
+El projecte té un gran potencial, però el "deute de seguretat" acumulat durant el seu ràpid desenvolupament és crític. Es recomana **aturar qualsevol pla de desplegament imminent** i assignar recursos d'enginyeria per executar el **Pla d'Acció** definit en aquesta auditoria, començant immediatament amb la **Fase 1: Remediació Crítica**.
+
+Només després que s'hagin completat les Fases 1 i 2 del pla d'acció, el projecte hauria de ser sotmès a una nova revisió de seguretat per avaluar la seva viabilitat per a un entorn de producció.
+
+---
+
+## 5. Propers Passos
+
+1.  **Revisar la Matriu de Riscos:** Entendre en detall cadascuna de les vulnerabilitats identificades.
+    *   [Veure Matriu de Riscos](./RISK_MATRIX.md)
+2.  **Executar el Pla d'Acció:** Seguir el pla prioritzat per remediar els problemes, començant pels bloquejadors crítics.
+    *   [Veure Pla d'Acció](./ACTION_PLAN.md)
+3.  **Adoptar una Cultura de "Seguretat per Defecte":** Integrar les pràctiques de seguretat recomanades (fixació de dependències, CI bloquejant, proves automatitzades) en el cicle de vida de desenvolupament per prevenir l'acumulació de nou deute de seguretat.

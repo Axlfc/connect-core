@@ -1,70 +1,70 @@
-# Informe de Auditoría Técnica - Proyecto Cognito-Stack
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.zh-cn.md)
+# Informe d'Auditoria Tècnica - Projecte connect-core
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules, Ingeniero de Programari Senior
+**Data:** 2024-07-25
+**Analista:** Jules, Enginyer de Programari Senior
 
-## Introducción
+## Introducció
 
-Este directorio contiene los resultados de una auditoría técnica exhaustiva del proyecto `Axlfc/connect-core`. El propósito de esta auditoría fue realizar un análisis profundo de la arquitectura, seguridad, mantenibilidad y preparación para producción del sistema.
+Aquest directori conté els resultats d'una auditoria tècnica exhaustiva del projecte `[ORGANIZATION]/connect-core`. El propòsit d'aquesta auditoria va ser realitzar una anàlisi profunda de l'arquitectura, seguretat, mantenibilitat i preparació per a producció del sistema.
 
-El informe está dividido en varios documentos Markdown, cada uno cubriendo un área específica del análisis.
+L'informe està dividit en diversos documents Markdown, cadascun cobrint una àrea específica de l'anàlisi.
 
 ---
 
-## 1. Documentos Principales (Entregables Clave)
+## 1. Documents Principals (Lliurables Clau)
 
-Estos documentos resumen los hallazgos y proporcionan una guía para la remediación. Se recomienda empezar por aquí.
+Aquests documents resumeixen les troballes i proporcionen una guia per a la remediació. Es recomana començar per aquí.
 
-| Documento | Descripción |
+| Document | Descripció |
 | :--- | :--- |
-| **[00_EXECUTIVE_SUMMARY.md](./00_EXECUTIVE_SUMMARY.md)** | **(Leer Primero)** Un resumen de alto nivel del estado general del proyecto, los hallazgos críticos y el veredicto final. |
-| **[RISK_MATRIX.md](./RISK_MATRIX.md)** | Una tabla consolidada de todos los riesgos identificados, clasificados por severidad e impacto. |
-| **[ACTION_PLAN.md](./ACTION_PLAN.md)** | Un plan de acción priorizado y por fases con los pasos concretos para remediar los problemas encontrados. |
+| **[00_EXECUTIVE_SUMMARY.md](./00_EXECUTIVE_SUMMARY.md)** | **(Llegir Primer)** Un resum d'alt nivell de l'estat general del projecte, les troballes crítiques i el veredicte final. |
+| **[RISK_MATRIX.md](./RISK_MATRIX.md)** | Una taula consolidada de tots els riscos identificats, classificats per severitat i impacte. |
+| **[ACTION_PLAN.md](./ACTION_PLAN.md)** | Un pla d'acció prioritzat i per fases amb els passos concrets per remediar els problemes trobats. |
 
 ---
 
-## 2. Hallazgos Detallados por Área
+## 2. Troballes Detallades per Àrea
 
-A continuación se presenta el desglose completo de los hallazgos en cada una de las 17 áreas auditadas.
+A continuació es presenta el desglossament complet de les troballes en cadascuna de les 17 àrees auditades.
 
-### Bloque 1: Estructura y Seguridad de Base
+### Bloc 1: Estructura i Seguretat de Base
 
-| ID | Documento | Descripción |
+| ID | Document | Descripció |
 | :-- | :--- | :--- |
-| 01 | **[STRUCTURE_AND_ORGANIZATION.md](./01_STRUCTURE_AND_ORGANIZATION.md)** | Análisis de la estructura de directorios, convenciones de nombrado y organización general del proyecto. |
-| 02 | **[ENVIRONMENT_AND_CONFIGURATION.md](./02_ENVIRONMENT_AND_CONFIGURATION.md)** | Auditoría de la gestión de variables de entorno, archivos `.env` y manejo de secretos. |
-| 03 | **[DOCKER_CONTAINERIZATION.md](./03_DOCKER_CONTAINERIZATION.md)** | Revisión de los archivos `docker-compose.yml` y Dockerfiles, enfocada en mejores prácticas de containerización. |
-| 04 | **[DOCKER_SECURITY.md](./04_DOCKER_SECURITY.md)** | Análisis específico de la seguridad de los contenedores: privilegios, usuarios, `capabilities` y aislamiento. |
+| 01 | **[STRUCTURE_AND_ORGANIZATION.md](./01_STRUCTURE_AND_ORGANIZATION.md)** | Anàlisi de l'estructura de directoris, convencions de nomenclat i organització general del projecte. |
+| 02 | **[ENVIRONMENT_AND_CONFIGURATION.md](./02_ENVIRONMENT_AND_CONFIGURATION.md)** | Auditoria de la gestió de variables d'entorn, fitxers `.env` i maneig de secrets. |
+| 03 | **[DOCKER_CONTAINERIZATION.md](./03_DOCKER_CONTAINERIZATION.md)** | Revisió dels fitxers `docker-compose.yml` i Dockerfiles, enfocada en millors pràctiques de containerització. |
+| 04 | **[DOCKER_SECURITY.md](./04_DOCKER_SECURITY.md)** | Anàlisi específica de la seguretat dels contenidors: privilegis, usuaris, `capabilities` i aïllament. |
 
-### Bloque 2: Seguridad Perimetral y Autenticación
+### Bloc 2: Seguretat Perimetral i Autenticació
 
-| ID | Documento | Descripción |
+| ID | Document | Descripció |
 | :-- | :--- | :--- |
-| 05 | **[REVERSE_PROXY_AND_NGINX.md](./05_REVERSE_PROXY_AND_NGINX.md)** | Auditoría del reverse proxy, configuración de SSL/TLS y `security headers`. |
-| 06 | **[AUTHELIA_AUTHENTICATION.md](./06_AUTHELIA_AUTHENTICATION.md)** | Análisis profundo de la configuración de Authelia, políticas de contraseña y seguridad de la sesión. |
-| 07 | **[NETWORK_SECURITY.md](./07_NETWORK_SECURITY.md)** | Revisión de las políticas de red de Docker, la configuración de `fail2ban` y el aislamiento de servicios. |
+| 05 | **[REVERSE_PROXY_AND_NGINX.md](./05_REVERSE_PROXY_AND_NGINX.md)** | Auditoria del reverse proxy, configuració de SSL/TLS i `security headers`. |
+| 06 | **[AUTHELIA_AUTHENTICATION.md](./06_AUTHELIA_AUTHENTICATION.md)** | Anàlisi profunda de la configuració d'Authelia, polítiques de contrasenya i seguretat de la sessió. |
+| 07 | **[NETWORK_SECURITY.md](./07_NETWORK_SECURITY.md)** | Revisió de les polítiques de xarxa de Docker, la configuració de `fail2ban` i l'aïllament de serveis. |
 
-### Bloque 3: Operaciones y Serveis
+### Bloc 3: Operacions i Serveis
 
-| ID | Documento | Descripción |
+| ID | Document | Descripció |
 | :-- | :--- | :--- |
-| 08 | **[MONITORING_AND_LOGGING.md](./08_MONITORING_AND_LOGGING.md)** | Evaluación del stack de monitoreo (Prometheus, Grafana) y de la estrategia de logging. |
-| 09 | **[SERVICES_SECURITY.md](./09_SERVICES_SECURITY.md)** | Revisión de la configuración de seguridad de los servicios principales (n8n, Ollama, ComfyUI, etc.). |
-| 10 | **[VOLUMES_AND_PERSISTENCE.md](./10_VOLUMES_AND_PERSISTENCE.md)** | Análisis de la estrategia de persistencia de datos, backups y planes de recuperación. |
-| 11 | **[AUTOMATION_SCRIPTS.md](./11_AUTOMATION_SCRIPTS.md)** | Auditoría de todos los scripts de shell (`.sh`) en busca de errores, vulnerabilidades y buenas prácticas. |
+| 08 | **[MONITORING_AND_LOGGING.md](./08_MONITORING_AND_LOGGING.md)** | Avaluació de l'stack de monitoratge (Prometheus, Grafana) i de l'estratègia de logging. |
+| 09 | **[SERVICES_SECURITY.md](./09_SERVICES_SECURITY.md)** | Revisió de la configuració de seguretat dels serveis principals (n8n, Ollama, ComfyUI, etc.). |
+| 10 | **[VOLUMES_AND_PERSISTENCE.md](./10_VOLUMES_AND_PERSISTENCE.md)** | Anàlisi de l'estratègia de persistència de dades, còpies de seguretat (backups) i plans de recuperació. |
+| 11 | **[AUTOMATION_SCRIPTS.md](./11_AUTOMATION_SCRIPTS.md)** | Auditoria de tots els scripts de shell (`.sh`) a la recerca d'errors, vulnerabilitats i bones pràctiques. |
 
-### Bloque 4: Capa de Aplicación y Gobernanza
+### Bloc 4: Capa d'Aplicació i Governança
 
-| ID | Documento | Descripción |
+| ID | Document | Descripció |
 | :-- | :--- | :--- |
-| 12 | **[VOICE_GATEWAY.md](./12_VOICE_GATEWAY.md)** | Análisis del microservicio Voice Gateway, incluyendo seguridad de WebSockets y manejo de datos. |
-| 13 | **[DEPENDENCIES_AND_LIBRARIES.md](./13_DEPENDENCIES_AND_LIBRARIES.md)** | Revisión de los archivos de dependencias (`requirements.txt`, etc.) en busca de versiones no fijadas y vulnerabilidades. |
-| 14 | **[DOCUMENTATION.md](./14_DOCUMENTATION.md)** | Evaluación de la completitud, claridad y precisión de la documentación del proyecto. |
-| 15 | **[TESTING_AND_QUALITY.md](./15_TESTING_AND_QUALITY.md)** | Análisis de la estrategia de testing, cobertura de pruebas y configuración del pipeline de CI/CD. |
-| 16 | **[ISSUES_AND_ROADMAP.md](./16_ISSUES_AND_ROADMAP.md)** | Revisión de los issues abiertos y del roadmap del proyecto para evaluar la dirección y prioridades. |
-| 17 | **[COMPLIANCE_AND_AUDIT.md](./17_COMPLIANCE_AND_AUDIT.md)** | Verificación del cumplimiento del proyecto con su propio `DESIGN_TRUTH_CONTRACT`. |
+| 12 | **[VOICE_GATEWAY.md](./12_VOICE_GATEWAY.md)** | Anàlisi del microservei Voice Gateway, incloent seguretat de WebSockets i maneig de dades. |
+| 13 | **[DEPENDENCIES_AND_LIBRARIES.md](./13_DEPENDENCIES_AND_LIBRARIES.md)** | Revisió dels fitxers de dependències (`requirements.txt`, etc.) a la recerca de versions no fixades i vulnerabilitats. |
+| 14 | **[DOCUMENTATION.md](./14_DOCUMENTATION.md)** | Avaluació de la completesa, claredat i precisió de la documentació del projecte. |
+| 15 | **[TESTING_AND_QUALITY.md](./15_TESTING_AND_QUALITY.md)** | Anàlisi de l'estratègia de testing, cobertura de proves i configuració del pipeline de CI/CD. |
+| 16 | **[ISSUES_AND_ROADMAP.md](./16_ISSUES_AND_ROADMAP.md)** | Revisió dels issues oberts i del roadmap del projecte per avaluar la direcció i prioritats. |
+| 17 | **[COMPLIANCE_AND_AUDIT.md](./17_COMPLIANCE_AND_AUDIT.md)** | Verificació del compliment del projecte amb el seu propi `DESIGN_TRUTH_CONTRACT`. |

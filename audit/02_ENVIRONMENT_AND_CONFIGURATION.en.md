@@ -1,38 +1,38 @@
-# AUDIT 02: GESTIÓN DE VARIABLES DE ENTORNO Y CONFIGURACIÓN
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.zh-cn.md)
+# AUDIT 02: ENVIRONMENT AND CONFIGURATION VARIABLE MANAGEMENT
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Generación de Secretos** | Los scripts de inicialización (`init_env.sh`) utilizan métodos criptográficamente seguros (`openssl rand`) para generar secretos, lo cual es una práctica excelente. |
-| ✓ | **Protección de Archivos** | El archivo `.gitignore` está configurado correctamente para excluir `secrets/` y `.env*`, previniendo la exposición accidental de credenciales en el repositorio. |
-| ⚠️ | **Metodología Mixta** | El proyecto utiliza dos métodos para la gestión de secretos simultáneamente: **Docker Secrets** (seguro) y **variables de entorno a través de `.env`** (menos seguro). Esta inconsistencia es la principal fuente de riesgo. |
-| ✗ | **Exposición Potencial** | Secretos críticos como `POSTGRES_PASSWORD` y `REDIS_PASSWORD` se inyectan en los contenedores como variables de entorno, lo que los hace visibles a través de `docker inspect`, logs y potencialmente en herramientas de monitoreo. |
-| ✗ | **Validación de Entradas** | Los scripts de shell, aunque robustos, no validan exhaustivamente las entradas del usuario en modo interactivo, lo que podría permitir la inyección de caracteres maliciosos en el archivo `.env`. |
+| ✓ | **Secret Generation** | Initialization scripts (`init_env.sh`) use cryptographically secure methods (`openssl rand`) to generate secrets, which is an excellent practice. |
+| ✓ | **File Protection** | The `.gitignore` file is correctly configured to exclude `secrets/` and `.env*`, preventing accidental exposure of credentials in the repository. |
+| ⚠️ | **Mixed Methodology** | The project uses two methods for secret management simultaneously: **Docker Secrets** (secure) and **environment variables via `.env`** (less secure). This inconsistency is the main source of risk. |
+| ✗ | **Potential Exposure** | Critical secrets such as `POSTGRES_PASSWORD` and `REDIS_PASSWORD` are injected into containers as environment variables, making them visible through `docker inspect`, logs, and potentially monitoring tools. |
+| ✗ | **Input Validation** | Shell scripts, while robust, do not exhaustively validate user inputs in interactive mode, which could allow the injection of malicious characters into the `.env` file. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Generación Segura de Secretos:**
-    *   El script `init_env.sh` utiliza `openssl rand` como método principal para la creación de contraseñas y claves. Esta es la mejor práctica industrial para generar valores aleatorios seguros.
+1.  **Secure Secret Generation:**
+    *   The `init_env.sh` script uses `openssl rand` as the primary method for creating passwords and keys. This is the industrial best practice for generating secure random values.
 
-2.  **Manejo de Archivos `.env.example`:**
-    *   El script `generate_env_example.sh` es notablemente inteligente. Identifica variables sensibles por patrones (`PASSWORD`, `KEY`, `TOKEN`, etc.) y las vacía, mientras preserva valores de configuración no sensibles. Esto asegura que el archivo de ejemplo sea seguro y útil.
+2.  **`.env.example` File Handling:**
+    *   The `generate_env_example.sh` script is remarkably intelligent. It identifies sensitive variables by patterns (`PASSWORD`, `KEY`, `TOKEN`, etc.) and empties them, while preserving non-sensitive configuration values. This ensures the example file is safe and useful.
 
-3.  **Usage Parcial de Docker Secrets:**
-    *   El `docker-compose.yml` define un bloque de `secrets:` y los utiliza correctamente en varios servicios (por ejemplo, `authelia`, `n8n-import`). Esto demuestra conocimiento de la forma correcta de manejar secretos en Docker.
-    *   **Ejemplo (`authelia` service):**
+3.  **Partial Usage of Docker Secrets:**
+    *   The `docker-compose.yml` defines a `secrets:` block and correctly uses them in several services (e.g., `authelia`, `n8n-import`). This demonstrates knowledge of the correct way to handle secrets in Docker.
+    *   **Example (`authelia` service):**
         ```yaml
         secrets:
           - authelia_jwt_secret
@@ -41,30 +41,34 @@
           - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
           - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/authelia_session_secret
         ```
-    *   Este método es seguro porque el secreto se monta como un archivo en `/run/secrets/` dentro del contenedor y nunca se expone como una variable de entorno.
+    *   This method is secure because the secret is mounted as a file in `/run/secrets/` inside the container and is never exposed as an environment variable.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **C-01** | **ALTO** | **Usage de Variables de Entorno para Secretos Críticos** | El servicio principal de `postgres` y `redis` reciben sus contraseñas a través de variables de entorno cargadas desde el archivo `.env`. Un atacante con acceso al host de Docker podría extraer estas credenciales con el comando `docker inspect postgres`. |
-| **C-02** | **MEDIO** | **Inconsistencia en la Gestión de Secretos** | El proyecto utiliza Docker Secrets para algunos servicios (Authelia) pero variables de entorno para otros (Postgres, Redis). Esta falta de un estándar único aumenta la complejidad, el riesgo de error humano y la superficie de ataque. |
-| **C-03** | **BAJO** | **Visualización de Secretos en Consola** | `init_env.sh` muestra una porción del secreto generado en la consola. Aunque es una porción truncada, esto podría exponer el secreto al historial del shell (`.bash_history`) o a observadores. |
+| **C-01** | **HIGH** | **Use of Environment Variables for Critical Secrets** | The main `postgres` and `redis` services receive their passwords through environment variables loaded from the `.env` file. An attacker with access to the Docker host could extract these credentials with the `docker inspect postgres` command. |
+| **C-02** | **MEDIUM** | **Inconsistency in Secret Management** | The project uses Docker Secrets for some services (Authelia) but environment variables for others (Postgres, Redis). This lack of a single standard increases complexity, human error risk, and attack surface. |
+| **C-03** | **LOW** | **Secret Visualization in Console** | `init_env.sh` displays a portion of the generated secret in the console. Although it is a truncated portion, this could expose the secret to shell history (`.bash_history`) or observers. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Documentación de `ENV_MANAGEMENT.md`:**
-    *   El archivo `ENV_MANAGEMENT.md` existe pero podría ser más explícito sobre la estrategia de secretos. Debería explicar *por qué* se prefiere Docker Secrets y advertir sobre los riesgos de usar variables de entorno para datos sensibles.
+### ⚠️ Warnings/Recommendations
 
-2.  **Hardening de Scripts de Shell:**
-    *   Los scripts `init_env.sh` y `generate_env_example.sh` son complejos. Una buena práctica sería añadir `set -o pipefail` al inicio para asegurar que los pipelines fallen si un comando intermedio falla.
+1.  **`ENV_MANAGEMENT.md` Documentation:**
+    *   The `ENV_MANAGEMENT.md` file exists but could be more explicit about the secret strategy. It should explain *why* Docker Secrets are preferred and warn about the risks of using environment variables for sensitive data.
 
-### 🔧 Soluciones Sugeridas
+2.  **Shell Script Hardening:**
+    *   The `init_env.sh` and `generate_env_example.sh` scripts are complex. A good practice would be to add `set -o pipefail` at the beginning to ensure pipelines fail if an intermediate command fails.
 
-1.  **Para C-01 y C-02 (Unificar en Docker Secrets - CRÍTICO):**
-    *   **Paso 1: Modificar `docker-compose.yml`:**
-        *   Reconfigurar todos los servicios que actualmente usan variables de entorno para secretos para que usen Docker Secrets.
-        *   **Ejemplo para el servicio `postgres`:**
+---
+
+### 🔧 Suggested Solutions
+
+1.  **For C-01 and C-02 (Unify on Docker Secrets - CRITICAL):**
+    *   **Step 1: Modify `docker-compose.yml`:**
+        *   Reconfigure all services that currently use environment variables for secrets to use Docker Secrets instead.
+        *   **Example for the `postgres` service:**
             ```diff
             --- a/docker-compose.yml
             +++ b/docker-compose.yml
@@ -82,19 +86,19 @@
                - POSTGRES_DB=${POSTGRES_DB}
                - PGDATA=/var/lib/postgresql/data/pgdata
             ```
-    *   **Paso 2: Actualizar `init_env.sh`:**
-        *   Modificar el script para que, en lugar de escribir `POSTGRES_PASSWORD=valor_secreto` en el `.env`, cree el archivo correspondiente en el directorio `secrets/`.
+    *   **Step 2: Update `init_env.sh`:**
+        *   Modify the script so that, instead of writing `POSTGRES_PASSWORD=secret_value` in the `.env`, it creates the corresponding file in the `secrets/` directory.
             ```bash
-            # En init_env.sh, en lugar de sed:
+            # In init_env.sh, instead of sed:
             echo "$new_value" > secrets/postgres_password.txt
             chmod 600 secrets/postgres_password.txt
-            # Y eliminar la variable del .env
+            # And remove the variable from .env
             sed -i '/^POSTGRES_PASSWORD=/d' "$TARGET_FILE"
             ```
-        *   Esto centraliza todos los secretos en un único lugar (`/secrets`) gestionado con los permisos correctos.
+        *   This centralizes all secrets in a single place (`/secrets`) managed with correct permissions.
 
-2.  **Para C-03 (Visualización de Secretos):**
-    *   **Solution:** Modificar `init_env.sh` para no mostrar el valor generado en la consola. Simplemente informar al usuario que se ha generado y guardado un valor.
+2.  **For C-03 (Secret Visualization):**
+    *   **Solution:** Modify `init_env.sh` to not show the generated value in the console. Simply inform the user that a value has been generated and saved.
         ```diff
         --- a/init_env.sh
         +++ b/init_env.sh
@@ -102,8 +106,8 @@
              echo ""
              echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
              echo -e "${BLUE}Variable:${NC} $var"
--            echo -e "${BLUE}Valor generado:${NC} ${new_value:0:20}...${new_value: -10}"
-+            echo -e "${BLUE}Valor generado:${NC} [OCULTO POR SEGURIDAD]"
-             echo -n "¿Usar este valor? (S/n/personalizar): "
+-            echo -e "${BLUE}Generated value:${NC} ${new_value:0:20}...${new_value: -10}"
++            echo -e "${BLUE}Generated value:${NC} [HIDDEN FOR SECURITY]"
+             echo -n "Use this value? (Y/n/customize): "
              read -r response
          ```

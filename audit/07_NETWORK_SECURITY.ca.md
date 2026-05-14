@@ -1,58 +1,58 @@
-# AUDIT 07: SEGURIDAD DE RED Y FIREWALL
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.zh-cn.md)
+# AUDIT 07: SEGURETAT DE XARXA I TALLAFOC
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Segmentación de Red Interna** | La arquitectura de red de Docker Compose está **excelentemente diseñada**, utilizando redes `internal` para aislar los servicios de backend y limitar la superficie de ataque interna. |
-| ⚠️ | **Configuración de `fail2ban`** | El servicio `fail2ban` está implementado, lo que demuestra una intención de proteger contra ataques de fuerza bruta. Sin embargo, su configuración es **demasiado simplista** y solo monitorea los intentos de login fallidos a través del log de Nginx. |
-| ✗ | **`fail2ban` en `network_mode: host`** | Este es un **defecto de diseño de seguridad crítico**. Ejecutar `fail2ban` en modo de red de host rompe el aislamiento del contenedor, otorgándole acceso sin restricciones a las interfaces de red del sistema anfitrión. Un compromiso de este contenedor podría comprometer toda la red del host. |
-| ✗ | **Falta de Egress Control** | No hay políticas de red que restrinjan el tráfico de salida de los contenedores. Si un contenedor es comprometido, podría ser utilizado para descargar malware, conectarse a servidores de comando y control (C2), o atacar otros sistemas en internet sin ninguna restricción. |
-| ✗ | **Exposición de Ports Innecesaria** | Múltiples servicios exponen sus puertos directamente a las interfaces del host (ej. `postgres` en `127.0.0.1:5432`, `whisper-stt` en `0.0.0.0:9001`). En una arquitectura de microservicios, la comunicación debería ocurrir principalmente a través de la red interna de Docker, y solo el reverse proxy debería exponer puertos externamente. |
+| ✓ | **Segmentació de Xarxa Interna** | L'arquitectura de xarxa de Docker Compose està **excel·lentment dissenyada**, utilitzant xarxes `internal` per aïllar els serveis de backend i limitar la superfície d'atac interna. |
+| ⚠️ | **Configuració de `fail2ban`** | El servei `fail2ban` està implementat, cosa que demostra una intenció de protegir contra atacs de força bruta. Tanmateix, la seva configuració és **massa simplista** i només monitoritza els intents de login fallits a través del log de Nginx. |
+| ✗ | **`fail2ban` en `network_mode: host`** | Aquest és un **defecte de disseny de seguretat crític**. Executar `fail2ban` en mode de xarxa d'host trenca l'aïllament del contenidor, atorgant-li accés sense restriccions a les interfícies de xarxa del sistema amfitrió. Un compromís d'aquest contenidor podria comprometre tota la xarxa del host. |
+| ✗ | **Falta d'Egress Control** | No hi ha polítiques de xarxa que restringeixin el trànsit de sortida dels contenidors. Si un contenidor és compromès, podria ser utilitzat per descarregar malware, connectar-se a servidors de comandament i control (C2), o atacar altres sistemes a internet sense cap restricció. |
+| ✗ | **Exposició de Ports Innecessària** | Múltiples serveis exposen els seus ports directament a les interfícies del host (ex. `postgres` a `127.0.0.1:5432`, `whisper-stt` a `0.0.0.0:9001`). En una arquitectura de microserveis, la comunicació hauria d'ocórrer principalment a través de la xarxa interna de Docker, i només el reverse proxy hauria d'exposar ports externament. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Aislamiento de Serveis por Red:**
-    *   La creación de redes separadas (`frontend`, `backend`, `ai`, `monitoring`) y el uso de `internal: true` para las redes que no necesitan acceso externo es la implementación correcta del principio de mínimo privilegio a nivel de red. Esto previene que un servicio comprometido en el backend (ej. una base de datos) pueda ser accedido directamente desde el exterior.
+1.  **Aïllament de Serveis per Xarxa:**
+    *   La creació de xarxes separades (`frontend`, `backend`, `ai`, `monitoring`) i l'ús d' `internal: true` per a les xarxes que no necessiten accés extern és la implementació correcta del principi de mínim privilegi a nivell de xarxa. Això prevé que un servei compromès al backend (ex. una base de dades) pugui ser accedit directament des de l'exterior.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **N-01** | **CRÍTICO** | **`fail2ban` con `network_mode: host`** | El contenedor `fail2ban` anula el aislamiento de red de Docker. Puede monitorear, interferir y manipular el tráfico de red del host. Un atacante que comprometa este contenedor podría evadir el firewall principal, atacar servicios del host que no están expuestos públicamente, y obtener un punto de apoyo persistente en la red del host. |
-| **N-02** | **ALTO** | **Filtros de `fail2ban` Insuficientes** | La configuración actual solo bloquea IPs que generan errores 401 en endpoints de login específicos. No protege contra una amplia gama de ataques comunes, como escaneo de directorios, inyección de SQL, XSS, o ataques de denegación de servicio a nivel de aplicación (capa 7). Proporciona una falsa sensación de seguridad. |
-| **N-03** | **MEDIO** | **Exposición Directa de Ports de Backend** | Serveis como `postgres` y `redis` exponen sus puertos a `127.0.0.1` en el host. Aunque esto no es públicamente accesible, permite que cualquier otro proceso que se ejecute en el mismo host (incluyendo otros contenedores mal configurados) pueda intentar conectarse directamente a la base de datos o al caché, eludiendo las capas de aplicación. |
-| **N-04** | **MEDIO** | **Falta de Control de Tráfico de Salida (Egress)** | Los contenedores pueden iniciar conexiones salientes a cualquier destino en internet. Si un atacante logra ejecutar código en un contenedor (ej. `ollama`), podría usarlo para descargar herramientas de hacking, exfiltrar datos a un servidor externo, o participar en una botnet. |
+| **N-01** | **CRÍTIC** | **`fail2ban` amb `network_mode: host`** | El contenidor `fail2ban` anul·la l'aïllament de xarxa de Docker. Pot monitoritzar, interferir i manipular el trànsit de xarxa del host. Un atacant que comprometi aquest contenidor podria evadir el tallafoc principal, atacar serveis del host que no estan exposats públicament, i obtenir un punt de suport persistent a la xarxa del host. |
+| **N-02** | **ALT** | **Filtres de `fail2ban` Insuficients** | La configuració actual només bloqueja IPs que generen errors 401 en endpoints de login específics. No protegeix contra una àmplia gamma d'atacs comuns, com escaneig de directoris, injecció de SQL, XSS, o atacs de denegació de servei a nivell d'aplicació (capa 7). Proporciona una falsa sensació de seguretat. |
+| **N-03** | **MITJÀ** | **Exposició Directa de Ports de Backend** | Serveis com `postgres` i `redis` exposen els seus ports a `127.0.0.1` al host. Tot i que això no és públicament accessible, permet que qualsevol altre procés que s'executi al mateix host (incloent altres contenidors mal configurats) pugui intentar connectar-se directament a la base de dades o al memòria cau (cache), eludint les capes d'aplicació. |
+| **N-04** | **MITJÀ** | **Falta de Control de Trànsit de Sortida (Egress)** | Els contenidors poden iniciar connexions sortints a qualsevol destí a internet. Si un atacant aconsegueix executar codi en un contenidor (ex. `ollama`), podria usar-lo per descarregar eines de hacking, exfiltrar dades a un servidor extern, o participar en una botnet. |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ Avisos/Recomanacions
 
-1.  **Visibilidad del Tráfico Interno:**
-    *   El tráfico entre contenedores en la misma red de Docker no está cifrado (TLS). Para entornos de muy alta seguridad (ej. cumplimiento de PCI DSS), se podría considerar implementar una malla de servicios (service mesh) como Istio o Linkerd para forzar el cifrado de todo el tráfico interno (mTLS).
+1.  **Visibilitat del Trànsit Intern:**
+    *   El trànsit entre contenidors a la mateixa xarxa de Docker no està xifrat (TLS). Per a entorns de molt alta seguretat (ex. compliment de PCI DSS), es podria considerar implementar una malla de serveis (service mesh) com Istio o Linkerd per forçar el xifratge de tot el trànsit intern (mTLS).
 
-### 🔧 Soluciones Sugeridas
+### 🔧 Solucions Suggerides
 
-1.  **Para N-01 y N-02 (Rediseñar la Estrategia de `fail2ban`):**
-    *   **Solució Ideal (Recomendada):** Eliminar el contenedor de `fail2ban`. Instalar y configurar `fail2ban` **directamente en el sistema operativo del host**. Esto le da acceso legítimo y seguro a los logs y a las `iptables` del host sin romper el modelo de seguridad de Docker.
-    *   **Solució Alternativa (Si debe ser en contenedor):**
+1.  **Per a N-01 i N-02 (Redissenyar l'Estratègia de `fail2ban`):**
+    *   **Solució Ideal (Recomanada):** Eliminar el contenidor de `fail2ban`. Instal·lar i configurar `fail2ban` **directament al sistema operatiu del host**. Això li dóna accés legítim i segur als logs i a les `iptables` del host sense trencar el model de seguretat de Docker.
+    *   **Solució Alternativa (Si ha de ser en contenidor):**
         1.  Eliminar `network_mode: host`.
-        2.  Añadir las capacidades `NET_ADMIN` y `NET_RAW` para permitir la manipulación de `iptables`.
-        3.  Montar el archivo de log de `iptables` del host dentro del contenedor para que pueda ver sus propias acciones.
-        4.  Expandir masivamente los filtros en `filter.d` para incluir reglas de `nginx-badbots`, `nginx-noscript`, `nginx-http-auth`, y otras reglas predefinidas de `fail2ban` para una protección más completa.
+        2.  Afegir les capacitats `NET_ADMIN` i `NET_RAW` per permetre la manipulació d' `iptables`.
+        3.  Muntar el fitxer de log d' `iptables` del host dins del contenidor perquè pugui veure les seves pròpies accions.
+        4.  Expandir massivament els filtres a `filter.d` per incloure regles de `nginx-badbots`, `nginx-noscript`, `nginx-http-auth`, i altres regles predefinides de `fail2ban` per a una protecció més completa.
 
-2.  **Para N-03 (Limitar Exposición de Ports):**
-    *   **Solució:** Revisar cada servicio en `docker-compose.yml` y eliminar cualquier mapeo de `ports` que no sea estrictamente necesario para el acceso externo (gestionado por `nginx-proxy`) o para la depuración local. La comunicación entre servicios debe realizarse a través de la red de Docker utilizando los nombres de servicio como DNS (ej. `postgres:5432`).
+2.  **Per a N-03 (Limitar Exposició de Ports):**
+    *   **Solució:** Revisar cada servei a `docker-compose.yml` i eliminar qualsevol mapatge de `ports` que no sigui estrictament necessari per a l'accés extern (gestionat per `nginx-proxy`) o per a la depuració local. La comunicació entre serveis s'ha de realitzar a través de la xarxa de Docker utilitzant els noms de servei com a DNS (ex. `postgres:5432`).
         ```diff
         --- a/docker-compose.yml
         +++ b/docker-compose.yml
@@ -69,19 +69,19 @@
            - postgres_user
         ```
 
-3.  **Para N-04 (Control de Egress):**
-    *   **Solució:** Crear una red de Docker dedicada para el acceso a internet y adjuntar solo a los contenedores que lo necesiten explícitamente.
-        1.  **Definir una red de salida en `docker-compose.yml`:**
+3.  **Per a N-04 (Control d'Egress):**
+    *   **Solució:** Crear una xarxa de Docker dedicada per a l'accés a internet i adjuntar només els contenidors que ho necessitin explícitament.
+        1.  **Definir una xarxa de sortida a `docker-compose.yml`:**
             ```yaml
             networks:
               egress_allowed:
                 driver: bridge
             ```
-        2.  **Modificar el firewall del host (iptables):** Añadir reglas para permitir el tráfico `FORWARD` solo desde la subred de la red `egress_allowed` hacia el exterior, y denegar el `FORWARD` del resto de redes de Docker.
+        2.  **Modificar el tallafoc del host (iptables):** Afegir regles per permetre el trànsit `FORWARD` només des de la subxarxa de la xarxa `egress_allowed` cap a l'exterior, i denegar el `FORWARD` de la resta de xarxes de Docker.
             ```bash
-            # Ejemplo de regla de iptables (requiere la subred correcta)
-            DOCKER_EGRESS_NW="172.x.y.0/24" # Subred de la red egress_allowed
+            # Exemple de regla d'iptables (requereix la subxarxa correcta)
+            DOCKER_EGRESS_NW="172.x.y.0/24" # Subxarxa de la xarxa egress_allowed
             iptables -A FORWARD -i br-$(docker network ls | grep egress_allowed | awk '{print $1}') -o <external_iface> -j ACCEPT
             iptables -A FORWARD -i docker0 -o <external_iface> -j DROP
             ```
-        3.  **Adjuntar contenedores a la red:** Solo los contenedores que necesiten acceder a internet (ej. `n8n` para webhooks) se añadirían a la red `egress_allowed`.
+        3.  **Adjuntar contenidors a la xarxa:** Només els contenidors que necessitin accedir a internet (ex. `n8n` per a webhooks) s'afegirien a la xarxa `egress_allowed`.

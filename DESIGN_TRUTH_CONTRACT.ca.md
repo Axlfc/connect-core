@@ -1,183 +1,183 @@
-# 📋 Design Truth Contract - Testing Framework de cognito-stack
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.zh-cn.md)
+# 📋 Design Truth Contract - Testing Framework de connect-core
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.zh-cn.md)
 
 
-**Versión:** 1.0
+**Versió:** 1.0
 **Data:** 2025-12-20
-**Estado:** Activo
-**Última actualización:** 2025-12-20
+**Estat:** Actiu
+**Última actualització:** 2025-12-20
 
 ---
 
-## 1. Requisitos de la Arquitectura Core
+## 1. Requisits de l'Arquitectura Core
 
-### 1.1 Orquestación Multi-Agente ✅
-**Indispensable:** Los agentes trabajan juntos en armonía
-- [x] Enrutamiento de agentes basado en el tipo de tarea
-- [x] Comunicación entre agentes
-- [x] Distribución de tareas
-- [x] Síntesis de resultados
-- [ ] Priorización de agentes
-- [ ] Balanceo de carga
-- [ ] Tolerancia a fallos
+### 1.1 Orquestració Multi-Agent ✅
+**Must Have:** Els agents treballen junts en harmonia
+- [x] Enrutament d'agents basat en el tipus de tasca
+- [x] Comunicació entre agents
+- [x] Distribució de tasques
+- [x] Síntesi de resultats
+- [ ] Priorització d'agents
+- [ ] Balanceig de càrrega
+- [ ] Tolerància a fallades
 
-### 1.2 Integración con LLM ✅
-**Indispensable:** Ollama funciona de forma fiable
-- [x] Comprobación de disponibilidad del modelo
-- [x] Generación de texto
-- [x] Gestión de prompts
-- [x] Validación de respuestas
-- [ ] Conteo de tokens
-- [ ] Gestión de contexto
-- [ ] Capacidad de fine-tuning
+### 1.2 Integració amb LLM ✅
+**Must Have:** Ollama funciona de forma fiable
+- [x] Comprovació de disponibilitat del model
+- [x] Generació de text
+- [x] Gestió de prompts
+- [x] Validació de respostes
+- [ ] Comptatge de tokens
+- [ ] Gestió de context
+- [ ] Capacitat de fine-tuning
 
-### 1.3 Base de Datos Vectorial ✅
-**Indispensable:** Qdrant para embeddings
-- [x] Gestión de colecciones
-- [x] Almacenamiento de vectores
-- [x] Búsqueda por similitud
-- [x] Recuperación de datos
-- [ ] Optimización de índices
-- [ ] Operaciones de borrado
-- [ ] Operaciones por lote (batch)
+### 1.3 Base de Dades Vectorial ✅
+**Must Have:** Qdrant per a embeddings
+- [x] Gestió de col·leccions
+- [x] Emmagatzematge de vectors
+- [x] Cerca per similitud
+- [x] Recuperació de dades
+- [ ] Optimització d'índexs
+- [ ] Operacions d'esborrat
+- [ ] Operacions per lot (batch)
 
-### 1.4 Orquestación de Workflows ✅
-**Indispensable:** Integración con n8n
-- [x] Comunicación vía Webhook
-- [x] Disparo (triggering) de tareas
-- [x] Gestión de resultados
-- [x] Gestión de errores
-- [ ] Programación de workflows (scheduling)
-- [ ] Lógica condicional
-- [ ] Gestión de bucles (loops)
+### 1.4 Orquestració de Workflows ✅
+**Must Have:** Integració amb n8n
+- [x] Comunicació via Webhook
+- [x] Disparament (triggering) de tasques
+- [x] Gestió de resultats
+- [x] Gestió d'errors
+- [ ] Programació de workflows (scheduling)
+- [ ] Lògica condicional
+- [ ] Gestió de bucles (loops)
 
 ---
 
-## 2. Testing de Componentes de Agentes
+## 2. Testing de Components d'Agents
 
-### 2.1 Agentes Críticos
+### 2.1 Agents Crítics
 
 #### AgentRouter 🔀
-**Estado:** Necesita testing exhaustivo
+**Estat:** Necessita testing exhaustiu
 ```
-Propósito: Enrutar tareas a los agentes apropiados
-Tests Necesarios:
-  □ Enrutar tareas de análisis
-  □ Enrutar tareas de generación
-  □ Enrutar tareas de procesamiento
-  □ Gestionar tipos de tareas desconocidos
-  □ Rendimiento bajo carga
+Propòsit: Enrutar tasques als agents apropiats
+Tests Necessaris:
+  □ Enrutar tasques d'anàlisi
+  □ Enrutar tasques de generació
+  □ Enrutar tasques de processament
+  □ Gestionar tipus de tasques desconeguts
+  □ Rendiment sota càrrega
 ```
 
 #### ChainOfThoughtAgent 🧠
-**Estado:** Necesita testing
+**Estat:** Necessita testing
 ```
-Propósito: Raonamiento estratégico
-Tests Necesarios:
-  □ Generar cadenas de razonamiento
-  □ Validar flujo lógico
-  □ Métricas de rendimiento
-  □ Gestión de errores
+Propòsit: Raonament estratègic
+Tests Necessaris:
+  □ Generar cadenes de raonament
+  □ Validar flux lògic
+  □ Mètriques de rendiment
+  □ Gestió d'errors
 ```
 
 #### IterativeAgent 🔄
-**Estado:** Necesita testing
+**Estat:** Necessita testing
 ```
-Propósito: Refinamiento iterativo
-Tests Necesarios:
-  □ Ejecución multi-paso
-  □ Seguimiento de mejoras
-  □ Detección de convergencia
-  □ Uso de recursos
+Propòsit: Refinament iteratiu
+Tests Necessaris:
+  □ Execució multi-pas
+  □ Seguiment de millores
+  □ Detecció de convergència
+  □ Ús de recursos
 ```
 
 #### ResultSynthesizer 🔗
-**Estado:** Testeado parcialmente
+**Estat:** Testejat parcialment
 ```
-Propósito: Combinar salidas de agentes
-Tests Necesarios:
-  □ Combinar resultados heterogéneos
-  □ Gestionar datos faltantes
-  □ Estandarización de formato
-  □ Métricas de calidad
+Propòsit: Combinar sortides d'agents
+Tests Necessaris:
+  □ Combinar resultats heterogenis
+  □ Gestionar dades faltants
+  □ Estandardització de format
+  □ Mètriques de qualitat
 ```
 
 #### OutputValidator ✅
-**Estado:** Necesita testing
+**Estat:** Necessita testing
 ```
-Propósito: Validar salidas
-Tests Necesarios:
-  □ Validación de esquema
-  □ Validación de contenido
-  □ Comprobación de formato
-  □ Verificación de consistencia
+Propòsit: Validar sortides
+Tests Necessaris:
+  □ Validació d'esquema
+  □ Validació de contingut
+  □ Comprovació de format
+  □ Verificació de consistència
 ```
 
-### 2.2 Agentes de Soporte
+### 2.2 Agents de Suport
 
 #### TaskDecomposer 📦
-- [x] Desglosar tareas complejas
-- [ ] Análisis de dependencias
-- [ ] Optimización
-- [ ] Asignación de recursos
+- [x] Desglossar tasques complexes
+- [ ] Anàlisi de dependències
+- [ ] Optimització
+- [ ] Assignació de recursos
 
 #### ParallelTaskExecutor ⚡
-- [ ] Ejecución concurrente
-- [ ] Gestión de dependencias
-- [ ] Recuperación de errores
-- [ ] Optimización del rendimiento
+- [ ] Execució concurrent
+- [ ] Gestió de dependències
+- [ ] Recuperació d'errors
+- [ ] Optimització del rendiment
 
 #### MemoryManager 🧠
-- [ ] Almacenamiento de contexto
-- [ ] Eficiencia en la recuperación
-- [ ] Gestión de tamaño
-- [ ] Limpieza de caché
+- [ ] Emmagatzematge de context
+- [ ] Eficiència en la recuperació
+- [ ] Gestió de mida
+- [ ] Neteja de memòria cau (cache)
 
 #### ModelRouter 🛣️
-- [ ] Selección de modelo
-- [ ] Comparación de rendimiento
-- [ ] Optimización de costes
-- [ ] Emparejamiento de capacidades
+- [ ] Selecció de model
+- [ ] Comparació de rendiment
+- [ ] Optimització de costos
+- [ ] Aparellament de capacitats
 
 ---
 
-## 3. Requisitos de Integration Testing
+## 3. Requisits d'Integration Testing
 
-### 3.1 n8n ↔ Agentes
-**DEBE TESTEARSE:**
+### 3.1 n8n ↔ Agents
+**CAL TESTEJAR:**
 ```
-□ Webhook → Enrutamiento de agentes
-□ Parámetros de tarea → Entrada del agente
-□ Salida del agente → Formateo de respuesta
-□ Gestión de errores
-□ Gestión de timeouts
-```
-
-### 3.2 Agentes ↔ Ollama
-**DEBE TESTEARSE:**
-```
-□ Carga de modelos
-□ Formateo de prompts
-□ Parseo de respuestas
-□ Gestión de tokens
-□ Modelos de respaldo (fallback)
+□ Webhook → Enrutament d'agents
+□ Paràmetres de tasca → Entrada de l'agent
+□ Sortida de l'agent → Formateig de resposta
+□ Gestió d'errors
+□ Gestió de timeouts
 ```
 
-### 3.3 Agentes ↔ Qdrant
-**DEBE TESTEARSE:**
+### 3.2 Agents ↔ Ollama
+**CAL TESTEJAR:**
 ```
-□ Generación de embeddings
-□ Almacenamiento de vectores
-□ Búsqueda por similitud
-□ Gestión de colecciones
-□ Persistencia de datos
+□ Càrrega de models
+□ Formateig de prompts
+□ Parseig de respostes
+□ Gestió de tokens
+□ Models de reserva (fallback)
 ```
 
-### 3.4 Pipeline Completo
-**DEBE TESTEARSE:**
+### 3.3 Agents ↔ Qdrant
+**CAL TESTEJAR:**
+```
+□ Generació d'embeddings
+□ Emmagatzematge de vectors
+□ Cerca per similitud
+□ Gestió de col·leccions
+□ Persistència de dades
+```
+
+### 3.4 Pipeline Complet
+**CAL TESTEJAR:**
 ```
 n8n Webhook
     ↓
@@ -185,227 +185,227 @@ AgentRouter
     ↓
 TaskDecomposer
     ↓
-Ejecución Paralela
+Execució Paral·lela
     ↓
-Ollama (llamadas LLM)
+Ollama (trucades LLM)
     ↓
-Qdrant (Almacenamiento)
+Qdrant (Emmagatzematge)
     ↓
 ResultSynthesizer
     ↓
 OutputValidator
     ↓
-Respuesta n8n
+Resposta n8n
 ```
 
 ---
 
-## 4. Estado Actual de los Notebooks
+## 4. Estat Actual dels Notebooks
 
-### ✅ Lo que tenemos
+### ✅ El que tenim
 1. **test_agent_router.ipynb**
-   - Tests básicos de enrutamiento
-   - Asignación de tareas
-   - Detección de agentes
+   - Tests bàsics d'enrutament
+   - Assignació de tasques
+   - Detecció d'agents
 
 2. **test_communication.ipynb**
-   - Health checks de servicios
-   - Integración con Ollama
-   - Operaciones básicas de Qdrant
-   - Resumen del pipeline
+   - Health checks de serveis
+   - Integració amb Ollama
+   - Operacions bàsiques de Qdrant
+   - Resum del pipeline
 
 3. **test_task_decomposition.ipynb**
-   - Desglose de tareas
-   - Ejecución paralela
-   - Resolución de dependencias
+   - Desglossament de tasques
+   - Execució paral·lela
+   - Resolució de dependències
 
 4. **test_end_to_end.ipynb**
-   - Workflow de análisis de documentos
-   - Colaboración multi-agente
-   - Patrón RAG
+   - Workflow d'anàlisi de documents
+   - Col·laboració multi-agent
+   - Patró RAG
 
-### ❌ Lo que necesitamos (Indispensable)
+### ❌ El que necessitem (Must Have)
 
-1. **test_agent_components.ipynb** ⭐ CRÍTICO
-   - Testear cada agente individualmente
-   - Verificar contratos de componentes
-   - Medir rendimiento
+1. **test_agent_components.ipynb** ⭐ CRITICAL
+   - Testejar cada agent individualment
+   - Verificar contractes de components
+   - Mesurar rendiment
 
-2. **test_integration_n8n_agents.ipynb** ⭐ CRÍTICO
-   - Comunicación n8n → Agente
-   - Flujo petición/respuesta
-   - Escenarios de error
+2. **test_integration_n8n_agents.ipynb** ⭐ CRITICAL
+   - Comunicació n8n → Agent
+   - Flux petició/resposta
+   - Escenaris d'error
 
-3. **test_llm_pipeline.ipynb** ⭐ CRÍTICO
-   - Integración con Ollama
-   - Gestión de prompts
-   - Validación de respuestas
-   - Gestión de tokens
+3. **test_llm_pipeline.ipynb** ⭐ CRITICAL
+   - Integració amb Ollama
+   - Gestió de prompts
+   - Validació de respostes
+   - Gestió de tokens
 
-4. **test_rag_system.ipynb** ⭐ CRÍTICO
-   - Workflow RAG de principio a fin
-   - Generación de embeddings
-   - Precisión en la recuperación
-   - Uso del contexto
+4. **test_rag_system.ipynb** ⭐ CRITICAL
+   - Workflow RAG de principi a fi
+   - Generació d'embeddings
+   - Precisió en la recuperació
+   - Ús del context
 
-5. **test_agent_reliability.ipynb** ⭐ CRÍTICO
-   - Recuperación de errores
-   - Gestión de timeouts
-   - Mecanismos de reintento
-   - Degradación controlada
+5. **test_agent_reliability.ipynb** ⭐ CRITICAL
+   - Recuperació d'errors
+   - Gestió de timeouts
+   - Mecanismes de reintent
+   - Degradació controlada
 
-6. **test_performance_benchmarks.ipynb** ⭐ IMPORTANTE
-   - Medición de rendimiento (throughput)
-   - Análisis de latencia
-   - Perfilado de recursos
-   - Tests de escalabilidad
+6. **test_performance_benchmarks.ipynb** ⭐ IMPORTANT
+   - Mesurament de rendiment (throughput)
+   - Anàlisi de latència
+   - Perfilat de recursos
+   - Tests d'escalabilitat
 
-7. **test_concurrent_workflows.ipynb** ⭐ IMPORTANTE
-   - Ejecución de tareas en paralelo
-   - Contención de recursos
-   - Gestión de colas
-   - Balanceo de carga
+7. **test_concurrent_workflows.ipynb** ⭐ IMPORTANT
+   - Execució de tasques en paral·lel
+   - Contenció de recursos
+   - Gestió de cues
+   - Balanç de càrrega
 
-8. **test_data_persistence.ipynb** ⭐ IMPORTANTE
-   - Gestión de estado
-   - Recuperación de datos
-   - Comprobaciones de consistencia
-   - Procedimientos de recuperación
+8. **test_data_persistence.ipynb** ⭐ IMPORTANT
+   - Gestió d'estat
+   - Recuperació de dades
+   - Comprovacions de consistència
+   - Procediments de recuperació
 
 ---
 
-## 5. Patrón de Diseño de Notebooks
+## 5. Patró de Disseny de Notebooks
 
 ### Estructura de la Plantilla
 ```
-1. Configuración e Imports
-   └─ Inicializar servicios
+1. Configuració i Imports
+   └─ Inicialitzar serveis
    └─ Configurar logging
-   └─ Cargar credenciales
+   └─ Carregar credencials
 
-2. Comprobación de Prerrequisitos
-   └─ Salud de los servicios
-   └─ Dependencias listas
-   └─ Datos disponibles
+2. Comprovació de Prerequisits
+   └─ Salut dels serveis
+   └─ Dependències llestes
+   └─ Dades disponibles
 
 3. Suites de Test
    └─ Unit tests
    └─ Integration tests
    └─ Stress tests
-   └─ Casos límite (edge cases)
+   └─ Casos límit (edge cases)
 
-4. Validación
-   └─ Condiciones de aserción (assert)
-   └─ Medición de métricas
-   └─ Documentación de resultados
+4. Validació
+   └─ Condicions d'asserció (assert)
+   └─ Mesurament de mètriques
+   └─ Documentació de resultats
 
-5. Limpieza y Resumen
-   └─ Limpieza de recursos
-   └─ Generación de informes
-   └─ Siguientes pasos
+5. Neteja i Resum
+   └─ Neteja de recursos
+   └─ Generació d'informes
+   └─ Següents passos
 ```
 
 ---
 
-## 6. Estrategia de Ejecución de Tests
+## 6. Estratègia d'Execució de Tests
 
-### Fase 1: Testing de Componentes (Semana 1)
+### Fase 1: Testing de Components (Setmana 1)
 ```
 1. test_agent_components.ipynb
 2. test_llm_pipeline.ipynb
 3. test_integration_n8n_agents.ipynb
 ```
 
-### Fase 2: Integration Testing (Semana 2)
+### Fase 2: Integration Testing (Setmana 2)
 ```
 4. test_rag_system.ipynb
 5. test_agent_reliability.ipynb
 6. test_concurrent_workflows.ipynb
 ```
 
-### Fase 3: Rendimiento y Escala (Semana 3)
+### Fase 3: Rendiment i Escala (Setmana 3)
 ```
 7. test_performance_benchmarks.ipynb
 8. test_data_persistence.ipynb
-9. Validación end-to-end
+9. Validació end-to-end
 ```
 
 ---
 
-## 7. Criterios de Éxito
+## 7. Criteris d'Èxit
 
-### Para cada Notebook
-- ✅ Todos los tests pasan
-- ✅ Sin excepciones no gestionadas
-- ✅ Rendimiento dentro de los objetivos
-- ✅ Resultados reproducibles
-- ✅ Documentación completa
+### Per a cada Notebook
+- ✅ Tots els tests passen
+- ✅ Sense excepcions no gestionades
+- ✅ Rendiment dins dels objectius
+- ✅ Resultats reproduïbles
+- ✅ Documentació completa
 
 ### Sistema Global
-- ✅ Los componentes funcionan individualmente
-- ✅ Los componentes se integran correctamente
+- ✅ Els components funcionen individualment
+- ✅ Els components s'integren correctament
 - ✅ El sistema escala de forma fiable
-- ✅ Rendimiento aceptable
-- ✅ Los mecanismos de recuperación funcionan
+- ✅ Rendiment acceptable
+- ✅ Els mecanismes de recuperació funcionen
 
 ---
 
-## 8. Checklist de Validación
+## 8. Checklist de Validació
 
-### Antes de fusionar (merge) el código:
-- [ ] Pasan los tests de componentes
-- [ ] Pasan los tests de integración
-- [ ] Benchmarks de rendimiento aceptables
-- [ ] Sin fugas de memoria (memory leaks)
-- [ ] Gestión de errores testeada
-- [ ] Casos límite cubiertos
-- [ ] Documentación actualizada
+### Abans de fusionar (merge) el codi:
+- [ ] Passen els tests de components
+- [ ] Passen els tests d'integració
+- [ ] Benchmarks de rendiment acceptables
+- [ ] Sense fugues de memòria (memory leaks)
+- [ ] Gestió d'errors testejada
+- [ ] Casos límit coberts
+- [ ] Documentació actualitzada
 
-### Antes de producción:
-- [ ] Todos los tests de los notebooks pasan
-- [ ] Tests de carga exitosos
-- [ ] Escenarios de fallo gestionados
-- [ ] Seguridad revisada
-- [ ] Rendimiento optimizado
-- [ ] Monitorización en marcha
+### Abans de producció:
+- [ ] Tots els tests dels notebooks passen
+- [ ] Tests de càrrega exitosos
+- [ ] Escenaris de fallada gestionats
+- [ ] Seguretat revisada
+- [ ] Rendiment optimitzat
+- [ ] Monitorització en marxa
 
 ---
 
-## 9. Métricas a Seguir
+## 9. Mètriques a Seguir
 
-### Rendimiento
-- Tiempo de ejecución de tareas
-- Latencia de respuesta de los agentes
-- Uso de memoria
-- Utilización de CPU
-- I/O de red
+### Rendiment
+- Temps d'execució de tasques
+- Latència de resposta dels agents
+- Ús de memòria
+- Utilització de CPU
+- I/O de xarxa
 
-### Fiabilidad
-- Tasa de éxito por agente
-- Tiempo de recuperación de errores
-- Tiempo de actividad del sistema (uptime)
-- Consistencia de datos
-- Finalización de transacciones
+### Fiabilitat
+- Taxa d'èxit per agent
+- Temps de recuperació d'errors
+- Temps d'activitat del sistema (uptime)
+- Consistència de dades
+- Finalització de transaccions
 
-### Calidad
+### Qualitat
 - Cobertura de tests
-- Tasa de detección de bugs
-- Puntuación de calidad del código
-- Completitud de la documentación
-- Satisfacción del usuario
+- Taxa de detecció de bugs
+- Puntuació de qualitat del codi
+- Completesa de la documentació
+- Satisfacció de l'usuari
 
 ---
 
-## 10. Hoja de Ruta (Roadmap)
+## 10. Full de Ruta (Roadmap)
 
-### Estado Actual 📊
+### Estat Actual 📊
 ```
-Completado: ████░░░░░░░░░░░░░░ 20%
-En Progreso: ░░░░░░░░░░░░░░░░░░ 0%
-Planificado: ██████████████░░░░ 80%
+Completat: ████░░░░░░░░░░░░░░ 20%
+En Progrés: ░░░░░░░░░░░░░░░░░░ 0%
+Planificat: ██████████████░░░░ 80%
 ```
 
-### Próximas Acciones
+### Properes Accions
 1. **Crear test_agent_components.ipynb** ⭐
 2. **Crear test_integration_n8n_agents.ipynb** ⭐
 3. **Crear test_llm_pipeline.ipynb** ⭐
@@ -414,44 +414,44 @@ Planificado: ██████████████░░░░ 80%
 6. **Crear test_performance_benchmarks.ipynb**
 7. **Crear test_concurrent_workflows.ipynb**
 8. **Crear test_data_persistence.ipynb**
-9. Ejecutar tests de la Fase 1
-10. Analizar y optimizar
+9. Executar tests de la Fase 1
+10. Analitzar i optimitzar
 
 ---
 
-## Resumen
+## Resum
 
-**Notebooks actuales (4):** ✅ Buena base
-- Proporcionan cobertura de testing básica
-- Validan los flujos de comunicación
-- Testean la descomposición y síntesis
+**Notebooks actuals (4):** ✅ Bona base
+- Proporcionen cobertura de testing bàsica
+- Validen els fluxos de comunicació
+- Testegen la descomposició i síntesi
 
-**Notebooks faltantes (5 Críticos + 3 Importantes):**
-- Necesitan testing detallado de componentes de agentes
-- Necesitan validación de integración con n8n
-- Necesitan verificación del pipeline de LLM
-- Necesitan validación del sistema RAG
-- Necesitan testing de fiabilidad
-- Necesitan benchmarks de rendimiento
+**Notebooks faltants (5 Crítics + 3 Importants):**
+- Necessiten testing detallat de components d'agents
+- Necessiten validació d'integració amb n8n
+- Necessiten verificació del pipeline de LLM
+- Necessiten validació del sistema RAG
+- Necessiten testing de fiabilitat
+- Necessiten benchmarks de rendiment
 
-**Evaluación Global:** 📊
-- **30% completado** - Testing de infraestructura básica terminado
-- **70% restante** - Crítico: testing de componentes e integración
-
----
-
-**Verdad de Diseño:** El sistema es arquitectónicamente sólido, pero necesitamos
-un testing exhaustivo de:
-1. Comportamiento individual de los agentes
-2. Comunicación entre agentes
-3. Fiabilidad de la integración con LLM
-4. Precisión del sistema RAG
-5. Tolerancia a fallos del sistema
-
-Una vez validados, podremos pasar a producción con confianza.
+**Avaluació Global:** 📊
+- **30% completat** - Testing d'infraestructura bàsica acabat
+- **70% restant** - Crític: testing de components i integració
 
 ---
 
-**Creado por:** GitHub Copilot
-**Propósito:** Asegurar la calidad y fiabilidad del sistema
-**Válido hasta:** Cambios en la arquitectura del sistema
+**Veritat de Disseny:** El sistema és arquitectònicament sòlid, però necessitem
+un testing exhaustiu de:
+1. Comportament individual dels agents
+2. Comunicació entre agents
+3. Fiabilitat de la integració amb LLM
+4. Precisió del sistema RAG
+5. Tolerància a fallades del sistema
+
+Una vegada validats, podrem passar a producció amb confiança.
+
+---
+
+**Creat per:** GitHub Copilot
+**Propòsit:** Assegurar la qualitat i fiabilitat del sistema
+**Vàlid fins a:** Canvis en l'arquitectura del sistema

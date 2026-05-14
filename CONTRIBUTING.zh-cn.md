@@ -1,22 +1,22 @@
-# Contributing to cognito-stack 🤝
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.ca.md)
+# 贡献于 connect-core 🤝
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.ca.md)
 
 
-¡Gracias por tu interés en contribuir a cognito-stack! Este documento proporciona las pautas para contribuir al proyecto.
+感谢您对贡献 connect-core 的兴趣！本文档提供了参与项目的指南。
 
 ## 目录
 
-- [行为准则](#código-de-conducta)
-- [如何贡献？](#cómo-contribuir)
-- [报告错误](#reportar-bugs)
-- [建议改进](#sugerir-mejoras)
+- [行为准则](#行为准则)
+- [如何贡献？](#如何贡献)
+- [报告错误](#报告错误)
+- [建议改进](#建议改进)
 - [Pull Requests](#pull-requests)
-- [代码标准](#estándares-de-código)
-- [本地验证](#validación-local)
-- [Commit conventions](#commit-conventions)
+- [代码标准](#代码标准)
+- [本地验证](#本地验证)
+- [Commit 约定](#commit-约定)
 
 ---
 
@@ -24,27 +24,27 @@
 
 ### 我们的承诺
 
-Nos comprometemos a proporcionar un entorno abierto y acogedor para todos, independientemente de:
-- Edad, tamaño corporal, capacidad/discapacidad
-- Etnia, identidad y expresión de género
-- Nivel de experiencia, educación
-- Situación socioeconómica
+我们致力于为每个人提供一个开放和友好的环境，无论其：
+- 年龄、体型、残疾情况
+- 种族、性别认同和表达
+- 经验水平、教育程度
+- 社会经济地位
 
 ### 我们的标准
 
-Comportamientos que contribuyen a crear un entorno positivo:
-- ✅ Usar lenguaje inclusivo y acogedor
-- ✅ Ser respetuoso con los puntos de vista diferentes
-- ✅ Aceptar críticas constructivas
-- ✅ Enfocarse en lo mejor para la comunidad
-- ✅ Mostrar empatía hacia otros miembros
+有助于创造积极环境的行为：
+- ✅ 使用包容和友好的语言
+- ✅ 尊重不同的观点
+- ✅ 接受建设性的批评
+- ✅ 专注于对社区最有利的事情
+- ✅ 对其他成员表现出共情
 
-Comportamientos inaceptables:
-- ❌ Lenguaje o imágenes sexuales
-- ❌ Trolling, comentarios insultantes o ataques personales
-- ❌ Acoso público o privado
-- ❌ Publicar información privada sin consentimiento
-- ❌ Otra conducta inapropiada
+不可接受的行为：
+- ❌ 性暗示语言或图像
+- ❌ 恶意挑衅、侮辱性评论或人身攻击
+- ❌ 公开或私下骚扰
+- ❌ 未经许可发布私人信息
+- ❌ 其他不当行为
 
 ---
 
@@ -52,61 +52,61 @@ Comportamientos inaceptables:
 
 ### 先决条件
 
-- Git instalado (`git --version`)
+- 已安装 Git (`git --version`)
 - Docker & Docker Compose (`docker --version`, `docker compose version`)
 - Bash 4.0+ (`bash --version`)
-- Cuenta GitHub
+- GitHub 账号
 
-### Workflow de contribución
+### 贡献工作流程
 
-1. **Fork el repositorio**
+1. **Fork 仓库**
    ```bash
-   # En GitHub, haz clic en "Fork"
-   # Luego clona tu fork
-   git clone https://github.com/TU_USUARIO/cognito-stack.git
-   cd cognito-stack
+   # 在 GitHub 上点击 "Fork"
+   # 然后克隆你的 fork
+   git clone https://github.com/[YOUR_USER]/connect-core.git
+   cd connect-core
    ```
 
-2. **Crea una rama para tu feature**
+2. **为你的特性创建分支**
    ```bash
-   git checkout -b feature/descripcion-clara
-   # o para bugs:
-   git checkout -b fix/descripcion-del-bug
+   git checkout -b feature/clear-description
+   # 或针对错误修复：
+   git checkout -b fix/bug-description
    ```
 
-3. **Realiza cambios**
-   - Edita archivos necesarios
-   - Mantén commits atómicos y con mensajes claros
-   - Valida localmente (ver [本地验证](#validación-local))
+3. **进行更改**
+   - 编辑必要的文件
+   - 保持 commit 的原子性，并带有清晰的消息
+   - 进行本地验证（参见 [本地验证](#本地验证)）
 
-4. **Push a tu fork**
+4. **推送到你的 fork**
    ```bash
-   git push origin feature/descripcion-clara
+   git push origin feature/clear-description
    ```
 
-5. **Abre un Pull Request**
-   - Haz clic en "New Pull Request" en GitHub
-   - Completa el template de PR
-   - Espera review
+5. **开启 Pull Request**
+   - 在 GitHub 上点击 "New Pull Request"
+   - 填写 PR 模板
+   - 等待审核
 
 ---
 
 ## 报告错误
 
-### Antes de reportar
+### 报告之前
 
-- ✅ Verifica que no exista un issue similar
-- ✅ Actualiza al código más reciente (`git pull origin master`)
-- ✅ Reproduce el bug con el código actual
-- ✅ Recopila información de debugging
+- ✅ 确认不存在类似的 issue
+- ✅ 更新到最新代码 (`git pull origin master`)
+- ✅ 在当前代码中复现错误
+- ✅ 收集调试信息
 
-### Cómo reportar
+### 如何报告
 
-**Abre un issue** con los siguientes detalles:
+**开启一个 issue** 并包含以下详细信息：
 
 ```markdown
-## Descripción
-Breve descripción del bug
+## 描述
+错误的简要描述
 
 ## 复现步骤
 1. ...
@@ -114,152 +114,152 @@ Breve descripción del bug
 3. ...
 
 ## 当前行为
-¿Qué sucedió?
+发生了什么？
 
 ## 预期行为
-¿Qué debería suceder?
+应该发生什么？
 
 ## 系统信息
-- OS: [ej: Ubuntu 22.04]
-- Docker version: [ej: 24.0.0]
-- Profile: [cpu/gpu-nvidia/gpu-amd]
+- 操作系统: [例如: Ubuntu 22.04]
+- Docker 版本: [例如: 24.0.0]
+- 配置文件 (Profile): [cpu/gpu-nvidia/gpu-amd]
 
-## Logs
+## 日志
 ```
-<logs relevantes aquí>
+<此处填入相关日志>
 ```
 
 ## 附加信息
-Cualquier contexto adicional
+任何其他背景信息
 ```
 
 ---
 
 ## 建议改进
 
-### Antes de sugerir
+### 建议之前
 
-- ✅ Lee la documentación
-- ✅ Busca sugerencias similares
-- ✅ Considera el alcance del proyecto
+- ✅ 阅读文档
+- ✅ 搜索类似的建议
+- ✅ 考虑项目的范围
 
-### Template de sugerencia
+### 建议模板
 
 ```markdown
-## Descripción breve
-Una línea describiendo la mejora
+## 简要描述
+描述改进的一行文字
 
-## Problema que resuelve
-¿Qué problema de usuario resuelve esto?
+## 解决的问题
+这解决了用户的什么问题？
 
-## 解决方案 propuesta
-Descripción de la mejora
+## 提议的解决方案
+改进的描述
 
-## Beneficios
-- Beneficio 1
-- Beneficio 2
+## 益处
+- 益处 1
+- 益处 2
 
-## Ejemplos de implementación
-Pseudocódigo o ejemplos si aplica
+## 实现示例
+伪代码或示例（如果适用）
 
-## Alternativas consideradas
-Otras soluciones evaluadas
+## 已考虑的替代方案
+其他评估过的解决方案
 ```
 
 ---
 
 ## Pull Requests
 
-### Checklist antes de abrir PR
+### 开启 PR 之前的检查清单
 
-- [ ] Mi código sigue los estándares de código del proyecto
-- [ ] He actualizado la documentación
-- [ ] Mis commits tienen mensajes claros y descriptivos
-- [ ] He validado localmente con `scripts/validate.sh`
-- [ ] He testeado con `scripts/smoke-test.sh`
-- [ ] No contiene código "en construcción" o temporal
-- [ ] No añade dependencias innecesarias
+- [ ] 我的代码遵循项目的代码标准
+- [ ] 我已经更新了文档
+- [ ] 我的 commit 具有清晰且具描述性的消息
+- [ ] 我已经使用 `scripts/validate.sh` 进行了本地验证
+- [ ] 我已经通过 `scripts/smoke-test.sh` 进行了测试
+- [ ] 不包含“施工中”或临时代码
+- [ ] 不添加不必要的依赖项
 
-### Proceso de review
+### 审核过程
 
-1. **Validación automática** (GitHub Actions)
-   - YAML validation
-   - Shell linting
-   - Dockerfile linting
-   - Docker Compose validation
-   - Security checks
+1. **自动验证** (GitHub Actions)
+   - YAML 验证
+   - Shell lint 检查
+   - Dockerfile lint 检查
+   - Docker Compose 验证
+   - 安全检查
 
-2. **Review manual**
-   - Revisión de código
-   - Evaluación de cambios
-   - Solicitud de cambios si es necesario
+2. **人工审核**
+   - 代码审查
+   - 评估更改
+   - 如果有必要，要求进行更改
 
-3. **Merge**
-   - Aprobación del maintainer
-   - Squash & merge a master
-   - CI/CD deploys cambios
+3. **合并**
+   - 维护者批准
+   - Squash & merge 到 master 分支
+   - CI/CD 部署更改
 
-### Template de PR
+### PR 模板
 
 ```markdown
-## Descripción
-Breve descripción de los cambios
+## 描述
+更改的简要描述
 
-## Relacionado con
+## 相关内容
 - Closes #123
 - Fixes #456
 
 ## 更改类型
-- [ ] Bug fix
-- [ ] Nueva feature
-- [ ] Cambio de documentación
-- [ ] Refactoring
+- [ ] 错误修复 (Bug fix)
+- [ ] 新特性 (New feature)
+- [ ] 文档更改
+- [ ] 重构
 
 ## 所做的更改
-- Cambio 1
-- Cambio 2
-- Cambio 3
+- 更改 1
+- 更改 2
+- 更改 3
 
 ## 已执行的测试
-Describe cómo testeaste los cambios
+描述你如何测试这些更改
 
-## Screenshots (si aplica)
-Añade screenshots si hay cambios visuales
+## 截图（如果适用）
+如果有视觉上的更改，请添加截图
 
 ## 附加说明
-Cualquier información adicional para los reviewers
+给审核者的任何其他信息
 ```
 
 ---
 
 ## 代码标准
 
-### Shell Scripts (.sh)
+### Shell 脚本 (.sh)
 
 ```bash
 #!/bin/bash
-set -e  # Exit on error
+set -e  # 出错时退出
 
-# Usar comentarios descriptivos
-# Variables en MAYUSCULAS
+# 使用具描述性的注释
+# 变量使用大写字母
 CONFIG_FILE="/path/to/file"
 
-# Funciones con nombres descriptivos
+# 函数名具描述性
 print_info() {
     echo "ℹ️ $1"
 }
 
-# Validación de entrada
+# 输入验证
 if [ -z "$1" ]; then
-    echo "Error: Falta parametro"
+    echo "错误：缺失参数"
     exit 1
 fi
 
-# Usar comillas para variables
-echo "Mensaje: $CONFIG_FILE"
+# 变量使用引号
+echo "消息：$CONFIG_FILE"
 ```
 
-**Herramienta:** `shellcheck`
+**工具：** `shellcheck`
 ```bash
 shellcheck script.sh
 ```
@@ -270,32 +270,32 @@ shellcheck script.sh
 FROM base-image:version
 
 LABEL maintainer="maintainer@example.com"
-LABEL description="Clear description"
+LABEL description="清晰的描述"
 
-# Usar comentarios para secciones
+# 为各部分使用注释
 USER root
 
-# Combinar RUN cuando sea posible
+# 尽可能合并 RUN 指令
 RUN apt-get update && \
     apt-get install -y \
     package1 \
     package2 && \
     rm -rf /var/lib/apt/lists/*
 
-# Exponer puertos explícitamente
+# 显式暴露端口
 EXPOSE 5678
 
-# Definir volúmenes
+# 定义卷
 VOLUME ["/data"]
 
-# Usuario no-root
+# 非 root 用户
 USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["start"]
 ```
 
-**Herramienta:** `hadolint`
+**工具：** `hadolint`
 ```bash
 hadolint Dockerfile
 ```
@@ -303,30 +303,30 @@ hadolint Dockerfile
 ### YAML (docker-compose.yml)
 
 ```yaml
-# Indentación de 2 espacios
+# 2 空格缩进
 version: "3.8"
 
 services:
   service-name:
     image: image:version
 
-    # Organización lógica
+    # 逻辑组织
     container_name: service-name
     restart: unless-stopped
 
-    # Variables de entorno primero
+    # 环境变量优先
     environment:
       - VAR_NAME=value
 
-    # 端口s
+    # 端口
     ports:
       - "5678:5678"
 
-    # Volúmenes
+    # 卷
     volumes:
       - volume-name:/path
 
-    # Healthcheck
+    # 健康检查
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5678"]
       interval: 30s
@@ -353,70 +353,70 @@ networks:
 }
 ```
 
-**Validar con:** `python -m json.tool n8n-task-runners.json`
+**验证方法：** `python -m json.tool n8n-task-runners.json`
 
-### Documentación (Markdown)
+### 文档 (Markdown)
 
-- ✅ Títulos jerárquicos claros
-- ✅ Ejemplos de código en bloques
-- ✅ Enlaces internos a archivos
-- ✅ 目录 para documentos largos
-- ✅ Notas destacadas con blockquotes
-- ✅ Listas estructuradas
+- ✅ 清晰的层级标题
+- ✅ 代码块中的代码示例
+- ✅ 到文件的内部链接
+- ✅ 长文档的目录
+- ✅ 使用 blockquotes 的突出注释
+- ✅ 结构化列表
 
 ```markdown
-# Título Principal
+# 主标题
 
-## Subtítulo
+## 副标题
 
-### Subsubtítulo
+### 子标题
 
-**Texto en negrita** y *en itálica*
+**加粗文本** 和 *斜体文本*
 
-> Nota o cita importante
+> 重要注释或引用
 
-### Ejemplo de código
+### 代码示例
 \`\`\`bash
-# Bash code
+# Bash 代码
 echo "Hello"
 \`\`\`
 
-- Punto 1
-- Punto 2
-  - Subpunto 2a
+- 点 1
+- 点 2
+  - 子点 2a
 ```
 
 ---
 
 ## 本地验证
 
-### 1. Script de validación general
+### 1. 通用验证脚本
 
 ```bash
-# Ejecuta todas las comprobaciones
+# 运行所有检查
 ./scripts/validate.sh
 
-# Salida esperada:
-# ✓ Validaciones pasadas
-# ⚠ Warnings (no bloquea)
-# ✗ Errores (bloquea)
+# 预期输出：
+# ✓ 验证通过
+# ⚠ 警告（不阻塞）
+# ✗ 错误（阻塞）
 ```
 
-### 2. Smoke test
+### 2. 冒烟测试 (Smoke test)
 
 ```bash
-# Prueba rápida del stack (requiere Docker)
-./scripts/smoke-test.sh          # Usa profile CPU
-./scripts/smoke-test.sh gpu-nvidia  # Usa GPU NVIDIA
-./scripts/smoke-test.sh gpu-amd     # Usa GPU AMD
+# 快速堆栈测试（需要 Docker）
+./scripts/smoke-test.sh          # 使用 CPU 配置文件
+./scripts/smoke-test.sh gpu-nvidia  # 使用 NVIDIA GPU
+./scripts/smoke-test.sh gpu-amd     # 使用 AMD GPU
 
-# Comprueba:
-# - Inicio de servicios
-# - Health checks
-# - Disponibilidad de APIs
+# 检查项：
+# - 服务启动
+# - 健康检查
+# - API 可用性
 ```
 
-### 3. Linting manual
+### 3. 手动 Lint
 
 ```bash
 # Shell
@@ -435,120 +435,120 @@ python3 -m json.tool n8n-task-runners.json
 markdownlint *.md
 ```
 
-### 4. Validación de Docker Compose
+### 4. Docker Compose 验证
 
 ```bash
-# Verificar sintaxis
+# 验证语法
 docker compose config --quiet
 
-# Listar servicios
+# 列出服务
 docker compose config | grep "^  [a-z]"
 
-# Simular inicio (sin pull)
+# 模拟启动（不拉取镜像）
 docker compose --profile cpu config --quiet
 ```
 
 ---
 
-## Commit conventions
+## Commit 约定
 
-### Formato de mensaje
+### 消息格式
 
 ```
-<tipo>(<alcance>): <asunto>
+<类型>(<范围>): <主题>
 
-<descripción>
+<描述>
 
 <footer>
 ```
 
-### Tipos de commit
+### Commit 类型
 
-- `feat:` Nueva funcionalidad
-- `fix:` Corrección de bug
-- `docs:` Cambios de documentación
-- `style:` Cambios de formato (no lógica)
-- `refactor:` Refactorización sin cambio funcional
-- `test:` Cambios en tests/validación
-- `ci:` Cambios en CI/CD
-- `chore:` Cambios de build, dependencias, etc
+- `feat:` 新功能
+- `fix:` 错误修复
+- `docs:` 文档更改
+- `style:` 格式更改（不涉及逻辑）
+- `refactor:` 重构，不涉及功能更改
+- `test:` 测试/验证方面的更改
+- `ci:` CI/CD 方面的更改
+- `chore:` 构建、依赖项等方面的更改
 
-### Ejemplos
+### 示例
 
 ```bash
-# Feature
-git commit -m "feat(n8n): agregar soporte para runners paralelos"
+# 特性
+git commit -m "feat(n8n): 添加对并行运行器的支持"
 
-# Bug fix
-git commit -m "fix(docker-compose): corregir puerto de Ollama"
+# 错误修复
+git commit -m "fix(docker-compose): 修复 Ollama 端口"
 
-# Documentation
-git commit -m "docs: actualizar guía de instalación"
+# 文档
+git commit -m "docs: 更新安装指南"
 
-# Con descripción
-git commit -m "feat(comfyui): agregar soporte para custom nodes
+# 带有描述
+git commit -m "feat(comfyui): 添加对自定义节点的支持
 
-- Instala git durante build
-- Clona repositorio de custom nodes
-- Configura rutas correctas
+- 构建期间安装 git
+- 克隆自定义节点仓库
+- 配置正确路径
 
 Closes #42"
 ```
 
 ---
 
-## 常见问题
+## 常见问题 (FAQ)
 
-### ¿Cuál es el proceso de release?
+### 发布流程是怎样的？
 
-1. Cambios en master van a production
-2. GitHub Actions valida y construye imágenes
-3. Imágenes se publican en GHCR
-4. Tags semánticos para releases
+1. master 分支的更改进入生产环境
+2. GitHub Actions 验证并构建镜像
+3. 镜像发布到 GHCR
+4. 使用语义化标签进行发布
 
-### ¿Cómo reporto un vulnerability?
+### 如何报告漏洞？
 
-**NO** abras un issue público. Contáctanos privadamente:
-- Email: [maintainer email si disponible]
-- GitHub Security Advisory: Usa la opción "Report a vulnerability"
+**不要**开启公开 issue。请私下联系我们：
+- 电子邮件：[MAINTAINER_EMAIL]
+- GitHub 安全公告：使用 "Report a vulnerability" 选项
 
-### ¿Cuánto tiempo tarda el review?
+### 审核需要多长时间？
 
-- Bugs críticos: 24-48 horas
-- Features: 3-7 días
-- Documentación: 1-3 días
-- Depende de complejidad y disponibilidad
+- 关键错误：24-48 小时
+- 新特性：3-7 天
+- 文档：1-3 天
+- 取决于复杂性和可用性
 
-### ¿Puedo sugerir nuevas dependencias?
+### 我可以建议新的依赖项吗？
 
-Sí, pero:
-- Justifica por qué es necesaria
-- Considera alternativas ligeras
-- Actualiza Dockerfiles correspondientes
-- Añade a documentación
+可以，但请：
+- 说明为什么是必要的
+- 考虑轻量级替代方案
+- 更新相应的 Dockerfile
+- 添加到文档中
 
 ---
 
 ## 有用资源
 
-- [GitHub Flow Guide](https://guides.github.com/introduction/flow/)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [Markdown Guide](https://www.markdownguide.org/)
+- [GitHub Flow 指南](https://guides.github.com/introduction/flow/)
+- [约定式提交 (Conventional Commits)](https://www.conventionalcommits.org/)
+- [Markdown 指南](https://www.markdownguide.org/)
 - [ShellCheck Wiki](https://www.shellcheck.net/wiki/)
-- [Dockerfile Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Dockerfile 最佳实践](https://docs.docker.com/develop/dev-best-practices/)
 
 ---
 
 ## 致谢
 
-¡Gracias por contribuir a cognito-stack! Cada contribución, sin importar su tamaño, ayuda a mejorar el proyecto.
+感谢您为 connect-core 做出贡献！每一次贡献，无论大小，都有助于改进项目。
 
-Si tienes preguntas, no dudes en abrir un issue de discussion o contactar a los maintainers.
+如果您有任何疑问，请随时开启讨论 issue 或联系维护者。
 
 ---
 
 <div align="center">
 
-**¡Esperamos tu contribución! ❤️**
+**我们期待您的贡献！ ❤️**
 
 </div>

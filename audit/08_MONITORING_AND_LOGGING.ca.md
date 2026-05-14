@@ -1,57 +1,61 @@
-# AUDIT 08: MONITOREO, LOGGING Y OBSERVABILIDAD
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
+# AUDIT 08: MONITORATGE, LOGGING I OBSERVABILITAT
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Recolección de Métricas** | El stack de Prometheus está **bien configurado** para recolectar métricas clave de la infraestructura, incluyendo métricas del host (`node-exporter`), de los contenedores (`cadvisor`), y métricas especializadas de GPU (`nvidia-dcgm-exporter`). |
-| ✓ | **Provisioning de Grafana** | El enfoque de GitOps para la configuración de Grafana es **excelente**. Tanto la fuente de datos de Prometheus como los dashboards se provisionan automáticamente, lo que asegura consistencia y reproducibilidad. |
-| ⚠️ | **Visibilidad Limitada** | Los dashboards existentes se centran casi exclusivamente en métricas de los servicios de IA (Ollama, GPU). **Faltan dashboards cruciales** para la salud general del sistema y de los contenedores, lo que crea puntos ciegos importantes. |
-| ✗ | **Sin Sistema de Alertas** | La configuración de Prometheus **carece por completo de una sección de `alerting` y de `rule_files`**. Esto significa que el sistema no puede notificar proactivamente a los operadores sobre fallos de servicio, agotamiento de recursos o comportamiento anómalo. El monitoreo es puramente pasivo. |
-| ✗ | **Logging No Centralizado** | No existe un sistema de agregación de logs (como el stack ELK/Loki). Los logs se escriben en archivos dentro de volúmenes de Docker o en la salida estándar (`stdout`). Esto hace que la correlación de eventos entre diferentes servicios sea **extremadamente difícil y lenta**, especialmente durante la investigación de un incidente. |
-| ✗ | **Acceso Inseguro a Logs** | No hay un mecanismo centralizado y securizado para acceder a los logs. Para revisar los logs, un operador necesitaría acceso directo al sistema de archivos del host de Docker, lo cual es una mala práctica de seguridad que viola el principio de mínimo privilegio. |
+| ✓ | **Recollida de Mètriques** | L'stack de Prometheus està **ben configurat** per recollir mètriques clau de la infraestructura, incloent mètriques del host (`node-exporter`), dels contenidors (`cadvisor`), i mètriques especialitzades de GPU (`nvidia-dcgm-exporter`). |
+| ✓ | **Provisioning de Grafana** | L'enfocament de GitOps per a la configuració de Grafana és **excel·lent**. Tant la font de dades de Prometheus com els dashboards es provisionen automàticament, cosa que assegura consistència i reproductibilitat. |
+| ⚠️ | **Visibilitat Limitada** | Els dashboards existents se centren gairebé exclusivament en mètriques dels serveis d'IA (Ollama, GPU). **Manquen dashboards crucials** per a la salut general del sistema i dels contenidors, cosa que crea punts cecs importants. |
+| ✗ | **Sense Sistema d'Alertes** | La configuració de Prometheus **manca completament d'una secció d' `alerting` i de `rule_files`**. Això significa que el sistema no pot notificar proactivament els operadors sobre fallades de servei, esgotament de recursos o comportament anòmal. El monitoratge és purament passiu. |
+| ✗ | **Logging No Centralitzat** | No existeix un sistema d'agregació de logs (com l'stack ELK/Loki). Els logs s'escriuen en fitxers dins de volums de Docker o en la sortida estàndard (`stdout`). Això fa que la correlació d'esdeveniments entre diferents serveis sigui **extremadament difícil i lenta**, especialment durant la investigació d'un incident. |
+| ✗ | **Accés Insegur a Logs** | No hi ha un mecanisme centralitzat i securitzat per accedir als logs. Per a revisar els logs, un operador necessitaria accés directe al sistema de fitxers del host de Docker, la qual cosa és una mala pràctica de seguretat que viola el principi de mínim privilegi. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Base de Métricas Sólida:**
-    *   La configuración de `prometheus.yml` es robusta. Incluye `scrape_configs` para `node-exporter` (métricas del host), `cadvisor` (métricas de contenedores), `nvidia-dcgm-exporter` (métricas de GPU), y el `blackbox-exporter` para health checks de endpoints de aplicación. Esta es una base excelente para la observabilidad.
+1.  **Base de Mètriques Sòlida:**
+    *   La configuració de `prometheus.yml` és robusta. Inclou `scrape_configs` per a `node-exporter` (mètriques del host), `cadvisor` (mètriques de contenidors), `nvidia-dcgm-exporter` (mètriques de GPU), i el `blackbox-exporter` per a health checks d'endpoints d'aplicació. Aquesta és una base excel·lent per a l'observabilitat.
 
-2.  **Infraestructura como Código (IaC) para Monitoreo:**
-    *   Grafana se provisiona a través de archivos YAML (`grafana/provisioning`), lo que significa que la configuración de la fuente de datos y los dashboards está versionada en Git. Esto es una práctica moderna y muy recomendada que evita la configuración manual y la deriva de configuración.
+2.  **Infraestructura com a Codi (IaC) per a Monitoratge:**
+    *   Grafana es provisiona a través de fitxers YAML (`grafana/provisioning`), la qual cosa significa que la configuració de la font de dades i els dashboards està versionada a Git. Aquesta és una pràctica moderna i molt recomanada que evita la configuració manual i la deriva de configuració.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **M-01** | **CRÍTICO** | **Ausencia Total de Alertas** | Si un servicio crítico como `postgres` o `authelia` cae, o si el disco del servidor se llena, **nadie será notificado**. El fallo solo se descubrirá cuando los usuarios reporten problemas, lo que aumenta drásticamente el Tiempo Medio de Detección (MTTD) y el Tiempo Medio de Resolución (MTTR). |
-| **M-02** | **ALTO** | **Falta de Agregación de Logs** | Durante un incidente de seguridad o un fallo en cascada, es crucial poder ver una secuencia de eventos correlacionada en el tiempo a través de múltiples servicios. Sin un sistema de logging centralizado, esta tarea es manual, lenta y propensa a errores, lo que dificulta enormemente el análisis de la causa raíz. |
-| **M-03** | **MEDIO** | **Puntos Ciegos en los Dashboards** | Aunque existen dashboards para Ollama, no hay ninguno para visualizar métricas vitales del host (CPU, memoria, I/O de disco, uso de red del `node-exporter`) ni para la salud general de los contenedores (uso de recursos, reinicios, estado del `cadvisor`). Esto impide la detección proactiva de problemas de rendimiento o de capacidad. |
+| **M-01** | **CRÍTIC** | **Absència Total d'Alertes** | Si un servei crític com `postgres` o `authelia` cau, o si el disc del servidor s'omple, **ningú serà notificat**. La fallada només es descobrirà quan els usuaris reportin problemes, la qual cosa augmenta dràsticament el Temps Mig de Detecció (MTTD) i el Temps Mig de Resolució (MTTR). |
+| **M-02** | **ALT** | **Falta d'Agregació de Logs** | Durant un incident de seguretat o una fallada en cascada, és crucial poder veure una seqüència d'esdeveniments correlacionada en el temps a través de múltiples serveis. Sense un sistema de logging centralitzat, aquesta tasca és manual, lenta i propensa a errors, cosa que dificulta enormement l'anàlisi de la causa arrel. |
+| **M-03** | **MITJÀ** | **Punts Cecs als Dashboards** | Tot i que existeixen dashboards per a Ollama, no n'hi ha cap per a visualitzar mètriques vitals del host (CPU, memòria, I/O de disc, ús de xarxa del `node-exporter`) ni per a la salut general dels contenidors (ús de recursos, reinicis, estat del `cadvisor`). Això impedeix la detecció proactiva de problemes de rendiment o de capacitat. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Retención de Métricas:**
-    *   Prometheus está configurado con una retención de 15 días (`--storage.tsdb.retention.time=15d`). Esto es bajo para análisis de tendencias a largo plazo. Se debería considerar el uso de una solución de almacenamiento a largo plazo como Thanos o VictoriaMetrics si se necesita un historial más extenso.
+### ⚠️ Avisos/Recomanacions
 
-2.  **Seguridad de Grafana:**
-    *   Las credenciales de administrador de Grafana se establecen a través de variables de entorno, lo cual es mejor que tenerlas hardcodeadas. Sin embargo, la contraseña por defecto es `admin`. El `docker-compose.yml` debe incluir un comentario claro que indique que esta contraseña debe ser cambiada inmediatamente después del primer inicio de sesión.
+1.  **Retenció de Mètriques:**
+    *   Prometheus està configurat amb una retenció de 15 dies (`--storage.tsdb.retention.time=15d`). Això és baix per a anàlisis de tendències a llarg termini. S'hauria de considerar l'ús d'una solució d'emmagatzematge a llarg termini com Thanos o VictoriaMetrics si es necessita un historial més extens.
 
-### 🔧 Soluciones Sugeridas
+2.  **Seguretat de Grafana:**
+    *   Les credencials d'administrador de Grafana s'estableixen a través de variables d'entorn, la qual cosa és millor que tenir-les hardcodejades. Tanmateix, la contrasenya per defecte és `admin`. El `docker-compose.yml` ha d'incloure un comentari clar que indiqui que aquesta contrasenya s'ha de canviar immediatament després del primer inici de sessió.
 
-1.  **Para M-01 (Implementar Alertas):**
-    *   **Solució:** Integrar `Alertmanager` en el stack de monitoreo.
-        1.  **Añadir `Alertmanager` a `docker-compose.yml`:**
+---
+
+### 🔧 Solucions Suggerides
+
+1.  **Per a M-01 (Implementar Alertes):**
+    *   **Solució:** Integrar `Alertmanager` a l'stack de monitoratge.
+        1.  **Afegir `Alertmanager` a `docker-compose.yml`:**
             ```yaml
             alertmanager:
               image: prom/alertmanager:v0.27.0
@@ -63,10 +67,10 @@
               ports:
                 - "9093:9093"
             ```
-        2.  **Crear `prometheus/alertmanager.yml`:** Configurar los receptores de notificaciones (ej. Email, Slack, Telegram).
-        3.  **Actualizar `prometheus.yml`:** Añadir la configuración para que Prometheus envíe las alertas a Alertmanager y cargar los archivos de reglas.
+        2.  **Crear `prometheus/alertmanager.yml`:** Configurar els receptors de notificacions (ex. Email, Slack, Telegram).
+        3.  **Actualitzar `prometheus.yml`:** Afegir la configuració perquè Prometheus enviï les alertes a Alertmanager i carregar els fitxers de regles.
             ```yaml
-            # En prometheus.yml
+            # A prometheus.yml
             alerting:
               alertmanagers:
                 - static_configs:
@@ -75,22 +79,22 @@
             rule_files:
               - "/etc/prometheus/alert-rules.yml"
             ```
-        4.  **Crear `prometheus/alert-rules.yml`:** Definir reglas de alerta críticas (ej. `HostHighCpuLoad`, `ContainerDown`, `DiskSpaceLow`).
+        4.  **Crear `prometheus/alert-rules.yml`:** Definir regles d'alerta crítiques (ex. `HostHighCpuLoad`, `ContainerDown`, `DiskSpaceLow`).
 
-2.  **Para M-02 (Centralizar Logs):**
-    *   **Solució:** Añadir `Loki` y `Promtail` al stack para la agregación de logs.
-        1.  **Añadir `Loki` y `Promtail` a `docker-compose.yml`:**
+2.  **Per a M-02 (Centralitzar Logs):**
+    *   **Solució:** Afegir `Loki` i `Promtail` a l'stack per a l'agregació de logs.
+        1.  **Afegir `Loki` i `Promtail` a `docker-compose.yml`:**
             ```yaml
             loki:
               image: grafana/loki:2.9.0
-              # ... configuración de Loki ...
+              # ... configuració de Loki ...
             promtail:
               image: grafana/promtail:2.9.0
-              # ... configuración de Promtail para recolectar logs de contenedores ...
+              # ... configuració de Promtail per recollir logs de contenidors ...
             ```
-        2.  **Configurar Grafana:** Añadir Loki como una nueva fuente de datos para poder explorar y visualizar los logs junto a las métricas.
+        2.  **Configurar Grafana:** Afegir Loki com una nova font de dades per a poder explorar i visualitzar els logs juntament amb les mètriques.
 
-3.  **Para M-03 (Mejorar la Visibilidad):**
-    *   **Solució:** Añadir dashboards estándar de la comunidad para `node-exporter` y `cadvisor`.
-        *   Descargar los JSON de dashboards populares desde el [Marketplace de Grafana](https://grafana.com/grafana/dashboards/), como el "Node Exporter Full" (ID 1860) y el de "Docker and System Monitoring" (ID 893).
-        *   Añadirlos al directorio `grafana/dashboards/` para que sean provisionados automáticamente.
+3.  **Per a M-03 (Millorar la Visibilitat):**
+    *   **Solució:** Afegir dashboards estàndard de la comunitat per a `node-exporter` i `cadvisor`.
+        *   Descarregar els JSON de dashboards populars des del [Marketplace de Grafana](https://grafana.com/grafana/dashboards/), com el "Node Exporter Full" (ID 1860) i el de "Docker and System Monitoring" (ID 893).
+        *   Afegir-los al directori `grafana/dashboards/` perquè siguin provisionats automàticament.

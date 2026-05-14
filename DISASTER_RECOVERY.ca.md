@@ -1,111 +1,111 @@
-# Guía de Recuperación ante Desastres (Disaster Recovery)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.zh-cn.md)
+# Guia de Recuperació davant Desastres (Disaster Recovery)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.zh-cn.md)
 
 
-## 1. Introducción
+## 1. Introducció
 
-Este documento describe la estrategia de copias de seguridad y los procedimientos de restauración para el stack `Cognito-Stack`. El objetivo es asegurar la integridad y disponibilidad de los datos críticos en caso de un fallo del sistema, corrupción de datos o cualquier otro evento catastrófico.
+Aquest document descriu l'estratègia de còpies de seguretat i els procediments de restauració per a l'stack `connect-core`. L'objectiu és assegurar la integritat i disponibilitat de les dades crítiques en cas d'una fallada del sistema, corrupció de dades o qualsevol altre esdeveniment catastròfic.
 
-La estrategia se basa en el uso de **Duplicati**, un cliente de copias de seguridad de código abierto que se ejecuta como un contenedor dentro del stack.
+L'estratègia es basa en l'ús de **Duplicati**, un client de còpies de seguretat de codi obert que s'executa com un contenidor dins de l'stack.
 
-## 2. Acceso a Duplicati
+## 2. Accés a Duplicati
 
-La interfaz web de Duplicati está disponible en el siguiente `URL`:
+La interfície web de Duplicati està disponible al següent `URL`:
 
-- **URL:** `http://duplicati.localhost` (o el dominio que hayas configurado)
-- **Acceso:** Protegido por Authelia. Deberás iniciar sesión con tus credenciales.
+- **URL:** `http://duplicati.localhost` (o el domini que hagis configurat)
+- **Accés:** Protegit per Authelia. Hauràs d'iniciar sessió amb les teves credencials.
 
-## 3. Configuración de un Trabajo de Copia de Seguridad
+## 3. Configuració d'un Treball de Còpia de Seguretat
 
-A continuación, se detalla el procedimiento para crear un trabajo de copia de seguridad para los datos más críticos del sistema.
+A continuació, es detalla el procediment per crear un treball de còpia de seguretat per a les dades més crítiques del sistema.
 
-### Paso 1: Añadir una nueva copia de seguridad
+### Pas 1: Afegir una nova còpia de seguretat
 
-1.  En la interfaz de Duplicati, haz clic en **"Add backup"**.
-2.  Selecciona **"Configure a new backup"** y haz clic en "Next".
+1.  A la interfície de Duplicati, fes clic a **"Add backup"**.
+2.  Selecciona **"Configure a new backup"** i fes clic a "Next".
 
-### Paso 2: Configuración general
+### Pas 2: Configuració general
 
-1.  **Name:** Asigna un nombre descriptivo (ej. "Cognito-Stack Critical Data").
-2.  **Encryption:** Se recomienda encarecidamente **habilitar el cifrado**. Selecciona "AES-256 encryption, built-in" y genera una contraseña segura. **¡Guarda esta contraseña en un lugar seguro! Sin ella, no podrás restaurar tus datos.**
-3.  Haz clic en "Next".
+1.  **Name:** Assigna un nom descriptiu (ex. "connect-core Critical Data").
+2.  **Encryption:** Es recomana encaridament **habilitar el xifratge**. Selecciona "AES-256 encryption, built-in" i genera una contrasenya segura. **Guarda aquesta contrasenya en un lloc segur! Sense ella, no podràs restaurar les teves dades.**
+3.  Fes clic a "Next".
 
-### Paso 3: Destino de la copia de seguridad
+### Pas 3: Destí de la còpia de seguretat
 
-1.  **Storage Type:** Elige dónde quieres almacenar tus copias de seguridad. Duplicati soporta una gran variedad de destinos, como `SFTP`, `WebDAV`, `Google Drive`, `Amazon S3`, etc.
-2.  **Local folder or drive:** Para este ejemplo, usaremos un directorio local en el `host`. La ruta dentro del contenedor que apunta a un directorio en el `host` es `/backups`.
+1.  **Storage Type:** Tria on vols emmagatzemar les teves còpies de seguretat. Duplicati suporta una gran varietat de destins, com `SFTP`, `WebDAV`, `Google Drive`, `Amazon S3`, etc.
+2.  **Local folder or drive:** Per a aquest exemple, utilitzarem un directori local al `host`. La ruta dins del contenidor que apunta a un directori al `host` és `/backups`.
     - **Path:** `/backups`
-3.  Configura las credenciales o la información de conexión necesaria para tu destino elegido.
-4.  Haz clic en **"Test connection"** para verificar que Duplicati puede acceder al destino.
-5.  Haz clic en "Next".
+3.  Configura les credencials o la informació de connexió necessària per al teu destí triat.
+4.  Fes clic a **"Test connection"** per verificar que Duplicati pot accedir al destí.
+5.  Fes clic a "Next".
 
-### Paso 4: Datos de origen
+### Pas 4: Dades d'origen
 
-1.  Esta es la parte más importante. Aquí seleccionarás los directorios que quieres respaldar. Los datos de los servicios de Docker se encuentran en el directorio `/source` dentro del contenedor de Duplicati.
-2.  Expande el árbol de directorios y selecciona los siguientes volúmenes, que contienen los datos más críticos:
+1.  Aquesta és la part més important. Aquí seleccionaràs els directoris que vols protegir. Les dades dels serveis de Docker es troben al directori `/source` dins del contenidor de Duplicati.
+2.  Expandeix l'arbre de directoris i selecciona els següents volums, que contenen les dades més crítiques:
     - `postgres_storage`
     - `n8n_storage`
     - `forgejo_data`
     - `redis_data`
     - `qdrant_storage`
     - `matrix_data`
-    - `authelia` (para la configuración de usuarios)
-3.  Haz clic en "Next".
+    - `authelia` (per a la configuració d'usuaris)
+3.  Fes clic a "Next".
 
-### Paso 5: Programación
+### Pas 5: Programació
 
-1.  Define con qué frecuencia quieres que se ejecuten las copias de seguridad. Se recomienda una copia de seguridad **diaria**.
-2.  Selecciona una hora en la que el sistema tenga poca carga (ej. 3:00 AM).
-3.  Haz clic en "Next".
+1.  Defineix amb quina freqüència vols que s'executin les còpies de seguretat. Es recomana una còpia de seguretat **diària**.
+2.  Selecciona una hora en què el sistema tingui poca càrrega (ex. 3:00 AM).
+3.  Fes clic a "Next".
 
-### Paso 6: Opciones de la copia de seguridad
+### Pas 6: Opcions de la còpia de seguretat
 
-1.  **Remote volume size:** Ajusta el tamaño de los volúmenes de la copia de seguridad. Un valor de `50 MB` es un buen punto de partida.
-2.  **Backup retention:** Define cuánto tiempo quieres conservar las copias de seguridad. Se recomienda **"Keep a specific number of backups"** y establecer un valor como `14` para tener dos semanas de historial.
-3.  Haz clic en **"Save"**.
+1.  **Remote volume size:** Ajusta la mida dels volums de la còpia de seguretat. Un valor de `50 MB` és un bon punt de partida.
+2.  **Backup retention:** Defineix quant de temps vols conservar les còpies de seguretat. Es recomana **"Keep a specific number of backups"** i establir un valor com `14` per tenir dues setmanes d'historial.
+3.  Fes clic a **"Save"**.
 
-## 4. Procedimiento de Restauración
+## 4. Procediment de Restauració
 
-En caso de que necesites restaurar los datos, sigue estos pasos:
+En cas que necessitis restaurar les dades, segueix aquests passos:
 
-### Paso 1: Detener los servicios
+### Pas 1: Aturar els serveis
 
-Antes de restaurar, es crucial detener todos los servicios para evitar inconsistencias en los datos.
+Abans de restaurar, és crucial aturar tots els serveis per evitar inconsistències en les dades.
 
 ```bash
 ./stop.sh
 ```
 
-### Paso 2: Acceder a la restauración en Duplicati
+### Pas 2: Accedir a la restauració a Duplicati
 
-1.  Abre la interfaz de Duplicati.
-2.  Haz clic en el trabajo de copia de seguridad que quieres restaurar.
-3.  Haz clic en **"Restore"**.
+1.  Obre la interfície de Duplicati.
+2.  Fes clic en el treball de còpia de seguretat que vols restaurar.
+3.  Fes clic a **"Restore"**.
 
-### Paso 3: Seleccionar los archivos a restaurar
+### Pas 3: Seleccionar els fitxers a restaurar
 
-1.  Selecciona la fecha de la copia de seguridad que quieres restaurar.
-2.  Puedes restaurar todos los archivos o seleccionar directorios específicos. Para una recuperación completa, selecciona todos los directorios.
-3.  Haz clic en "Continue".
+1.  Selecciona la data de la còpia de seguretat que vols restaurar.
+2.  Pots restaurar tots els fitxers o seleccionar directoris específics. Per a una recuperació completa, selecciona tots els directoris.
+3.  Fes clic a "Continue".
 
-### Paso 4: Opciones de restauración
+### Pas 4: Opcions de restauració
 
-1.  **Restore to original location:** Selecciona esta opción para restaurar los archivos a sus directorios originales.
-2.  **Overwrite:** Selecciona "Overwrite" para reemplazar cualquier archivo existente (corrupto) con la versión de la copia de seguridad.
-3.  Haz clic en **"Restore"**.
+1.  **Restore to original location:** Selecciona aquesta opció per restaurar els fitxers als seus directoris originals.
+2.  **Overwrite:** Selecciona "Overwrite" per reemplaçar qualsevol fitxer existent (corrupte) amb la versió de la còpia de seguretat.
+3.  Fes clic a **"Restore"**.
 
-### Paso 5: Verificar y reiniciar los servicios
+### Pas 5: Verificar i reiniciar els serveis
 
-1.  Una vez que la restauración se haya completado, verifica que los archivos se han restaurado correctamente en los volúmenes de Docker en el `host`.
-2.  Reinicia el stack de `Cognito-Stack`.
+1.  Una vegada que la restauració s'hagi completat, verifica que els fitxers s'han restaurat correctament als volums de Docker al `host`.
+2.  Reinicia l'stack de `connect-core`.
 
 ```bash
 ./start.sh
 ```
 
-## 5. Conclusión
+## 5. Conclusió
 
-Esta guía proporciona los pasos fundamentales para asegurar y restaurar los datos de `Cognito-Stack`. Es responsabilidad del administrador del sistema asegurarse de que las copias de seguridad se configuren correctamente, se ejecuten de forma regular y se prueben periódicamente.
+Aquesta guia proporciona els passos fonamentals per assegurar i restaurar les dades de `connect-core`. És responsabilitat de l'administrador del sistema assegurar-se que les còpies de seguretat es configurin correctament, s'executin de forma regular i es provin periòdicament.

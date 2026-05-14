@@ -1,28 +1,28 @@
-# Cognito Stack - Instrucciones para GitHub Copilot
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.zh-cn.md)
+# connect-core - Instruccions per a GitHub Copilot
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.zh-cn.md)
 
 
-## Resumen del Proyecto
+## Resum del Projecte
 
-**cognito-stack** es una plataforma de automatización con IA que integra:
-- **n8n**: Orquestador de workflows
-- **Ollama**: Modelos LLM locales
+**connect-core** és una plataforma d'automatització amb IA que integra:
+- **n8n**: Orquestrador de workflows
+- **Ollama**: Models LLM locals
 - **Whisper**: Speech-to-Text
 - **Kokoro**: Text-to-Speech
 - **Qdrant**: Vector database
-- **Matrix**: Mensajería federada
+- **Matrix**: Missatgeria federada
 - **Forgejo**: Git hosting
 
-## Arquitectura de Servicios
+## Arquitectura de Serveis
 
-### Servicios Core (Siempre activos)
+### Serveis Core (Sempre actius)
 ```
-PostgreSQL → Base de datos principal
+PostgreSQL → Base de dades principal
     ↓
-Redis → Cache y sesiones
+Redis → Memòria cau (cache) i sessions
     ↓
 Qdrant → Vector embeddings
     ↓
@@ -31,7 +31,7 @@ Ollama → LLM inference
 n8n → Workflow orchestration
 ```
 
-### Servicios de Voz (Profile: voice)
+### Serveis de Veu (Profile: voice)
 ```
 Whisper STT ← Audio input
     ↓
@@ -40,90 +40,90 @@ n8n workflows
 Kokoro TTS → Audio output
 ```
 
-### Servicios Opcionales
+### Serveis Opcionals
 - **Monitoring**: Prometheus + Grafana + Loki
-- **Zrok**: Túnel público seguro
-- **ComfyUI**: Generación de imágenes
+- **Zrok**: Túnel públic segur
+- **ComfyUI**: Generació d'imatges
 
 ---
 
-## Comandos Críticos
+## Comandes Crítiques
 
-### Primera Inicialización (OBLIGATORIO)
+### Primera Inicialització (OBLIGATORI)
 
 ```bash
-# 1. Generar secrets (una sola vez)
+# 1. Generar secrets (una sola vegada)
 ./scripts/generate-secrets.sh
 
-# 2. Construir imágenes personalizadas (SIEMPRE PRIMERO)
+# 2. Construir imatges personalitzades (SEMPRE PRIMER)
 docker compose --profile gpu-nvidia --profile voice build
 
-# 3. Verificar construcción
+# 3. Verificar construcció
 docker images | grep local/
 
-# 4. Iniciar servicios
+# 4. Iniciar serveis
 docker compose --profile gpu-nvidia --profile voice up -d
 
-# 5. Verificar estado
+# 5. Verificar estat
 docker compose ps
 docker compose logs -f n8n
 ```
 
-### Desarrollo Diario
+### Desenvolupament Diari
 
 ```bash
-# Ver logs de un servicio
-docker compose logs -f [servicio]
+# Veure logs d'un servei
+docker compose logs -f [servei]
 
-# Reiniciar un servicio
-docker compose restart [servicio]
+# Reiniciar un servei
+docker compose restart [servei]
 
-# Reconstruir tras cambios en Dockerfile
-docker compose build --no-cache [servicio]
-docker compose up -d [servicio]
+# Reconstruir després de canvis en Dockerfile
+docker compose build --no-cache [servei]
+docker compose up -d [servei]
 
-# Detener todo
+# Aturar tot
 docker compose down
 
-# Detener y limpiar volúmenes (PELIGRO: borra datos)
+# Aturar i netejar volums (PERILL: esborra dades)
 docker compose down -v
 ```
 
-### Perfiles Disponibles
+### Perfils Disponibles
 
 ```bash
 # GPU NVIDIA + Voice
 docker compose --profile gpu-nvidia --profile voice up -d
 
-# CPU only (sin GPU)
+# CPU only (sense GPU)
 docker compose --profile cpu --profile voice-cpu up -d
 
 # AMD GPU
 docker compose --profile gpu-amd up -d
 
-# Con monitoring
+# Amb monitoring
 docker compose --profile gpu-nvidia --profile voice --profile monitoring up -d
 
-# Con túnel Zrok
+# Amb túnel Zrok
 docker compose --profile gpu-nvidia --profile voice --profile zrok up -d
 ```
 
 ---
 
-## Reglas de Coherencia
+## Regles de Coherència
 
-### Al Modificar docker-compose.yml
+### En Modificar docker-compose.yml
 
-1. **Servicios con `build:`** SIEMPRE necesitan:
+1. **Serveis amb `build:`** SEMPRE necessiten:
    ```yaml
    build:
      context: .
-     dockerfile: Dockerfile.servicio
-   image: local/servicio:tag
-   pull_policy: build  # Opcional pero recomendado
+     dockerfile: Dockerfile.servei
+   image: local/servei:tag
+   pull_policy: build  # Opcional però recomanat
    ```
 
-2. **Servicios con GPU** SIEMPRE necesitan:
+2. **Serveis amb GPU** SEMPRE necessiten:
    ```yaml
    profiles: ["gpu-nvidia"]
    deploy:
@@ -135,20 +135,20 @@ docker compose --profile gpu-nvidia --profile voice --profile zrok up -d
              capabilities: [gpu]
    ```
 
-3. **Servicios con secrets** SIEMPRE necesitan:
+3. **Serveis amb secrets** SEMPRE necessiten:
    ```yaml
    secrets:
-     - nombre_secret
+     - nom_secret
    environment:
-     - VARIABLE_FILE=/run/secrets/nombre_secret
+     - VARIABLE_FILE=/run/secrets/nom_secret
    ```
 
-### Al Crear Nuevos Servicios
+### En Crear Nous Serveis
 
-1. **Añadir healthcheck** para servicios críticos
-2. **Limitar recursos** con `deploy.resources.limits`
-3. **Usar redes internas** (`backend`, `ai`) para servicios no públicos
-4. **Añadir logging estructurado** (json-file con rotación)
+1. **Afegir healthcheck** per a serveis crítics
+2. **Limitar recursos** amb `deploy.resources.limits`
+3. **Utilitzar xarxes internes** (`backend`, `ai`) per a serveis no públics
+4. **Afegir logging estructurat** (json-file amb rotació)
 5. **Aplicar security hardening**:
    ```yaml
    security_opt:
@@ -156,49 +156,49 @@ docker compose --profile gpu-nvidia --profile voice --profile zrok up -d
    cap_drop:
      - ALL
    cap_add:
-     - [SOLO_CAPABILITIES_NECESARIAS]
+     - [SOLS_CAPABILITIES_NECESSÀRIES]
    ```
 
 ---
 
-## Troubleshooting Rápido
+## Troubleshooting Ràpid
 
-| Error | Causa | Solución |
+| Error | Causa | Solució |
 |-------|-------|----------|
-| `pull access denied for local/*` | Imagen no construida | `docker compose build` primero |
-| `failed to resolve source metadata` | Imagen base no existe | Verificar versión en Docker Hub |
-| `connection refused` en healthcheck | Servicio no iniciado | Revisar logs: `docker compose logs [servicio]` |
-| `secret not found` | Archivo en `./secrets/` falta | Ejecutar `./scripts/generate-secrets.sh` |
-| GPU no detectada | Driver NVIDIA no instalado | Instalar `nvidia-container-toolkit` |
+| `pull access denied for local/*` | Imatge no construïda | `docker compose build` primer |
+| `failed to resolve source metadata` | Imatge base no existeix | Verificar versió a Docker Hub |
+| `connection refused` en healthcheck | Servei no iniciat | Revisar logs: `docker compose logs [servei]` |
+| `secret not found` | Fitxer a `./secrets/` falta | Executar `./scripts/generate-secrets.sh` |
+| GPU no detectada | Driver NVIDIA no instal·lat | Instal·lar `nvidia-container-toolkit` |
 
 ---
 
-## Patrones de Solución
+## Patrons de Solució
 
-### Problema: Servicio no inicia
+### Problema: El servei no s'inicia
 
 ```bash
-# 1. Ver logs completos
-docker compose logs [servicio] --tail=100
+# 1. Veure logs complets
+docker compose logs [servei] --tail=100
 
-# 2. Verificar dependencias
+# 2. Verificar dependències
 docker compose ps | grep -E 'postgres|redis|qdrant'
 
 # 3. Verificar secrets
 ls -la secrets/
 
-# 4. Entrar al contenedor para debug
-docker compose exec [servicio] /bin/sh
+# 4. Entrar al contenidor per a depurar
+docker compose exec [servei] /bin/sh
 ```
 
-### Problema: Error de permisos en volúmenes
+### Problema: Error de permisos en volums
 
 ```bash
 # 1. Verificar ownership
-docker compose exec [servicio] ls -la /path/to/volume
+docker compose exec [servei] ls -la /path/to/volume
 
-# 2. Corregir permisos (si necesario)
-sudo chown -R $(id -u):$(id -g) ./volumes/[servicio]
+# 2. Corregir permisos (si cal)
+sudo chown -R $(id -u):$(id -g) ./volumes/[servei]
 ```
 
 ### Problema: GPU no detectada
@@ -210,36 +210,36 @@ nvidia-smi
 # 2. Verificar runtime de Docker
 docker run --rm --gpus all nvidia/cuda:12.3.0-base-ubuntu22.04 nvidia-smi
 
-# 3. Si falla, reinstalar nvidia-container-toolkit
+# 3. Si falla, reinstal·lar nvidia-container-toolkit
 ```
 
 ---
 
-## Variables de Entorno Críticas
+## Variables d'Entorn Crítiques
 
-### Obligatorias (en .env)
+### Obligatòries (a .env)
 
 ```bash
-# Base de datos
+# Base de dades
 POSTGRES_USER=n8n_user
-POSTGRES_PASSWORD=<generado>
+POSTGRES_PASSWORD=<generat>
 POSTGRES_DB=n8n_db
 
 # n8n
-N8N_ENCRYPTION_KEY=<generado>
-N8N_RUNNERS_AUTH_TOKEN=<generado>
-WEBHOOK_URL=https://n8n.tu-dominio.com
+N8N_ENCRYPTION_KEY=<generat>
+N8N_RUNNERS_AUTH_TOKEN=<generat>
+WEBHOOK_URL=https://n8n.el-teu-domini.com
 
-# Dominios (para nginx-proxy)
+# Dominis (per a nginx-proxy)
 N8N_DOMAIN=n8n.localhost
 OLLAMA_DOMAIN=ollama.localhost
 FORGEJO_DOMAIN=forgejo.localhost
 ```
 
-### Opcionales
+### Opcionals
 
 ```bash
-# Ollama models (se descargan al iniciar)
+# Ollama models (es descarreguen en iniciar)
 OLLAMA_MODEL_1=llama3:8b
 OLLAMA_MODEL_2=nomic-embed-text
 
@@ -248,77 +248,77 @@ ASR_MODEL=base.en
 
 # Monitoring
 GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=<generado>
+GRAFANA_ADMIN_PASSWORD=<generat>
 ```
 
 ---
 
-## Referencias Rápidas
+## Referències Ràpides
 
-- **Documentación completa**: `./docs/README.md`
-- **Troubleshooting avanzado**: `./docs/WHISPER_TROUBLESHOOTING.md`
-- **Scripts útiles**: `./scripts/`
-- **Configuraciones**: `./config/`
-- **Logs**: `./logs/[servicio]/`
+- **Documentació completa**: `./docs/README.md`
+- **Troubleshooting avançat**: `./docs/WHISPER_TROUBLESHOOTING.md`
+- **Scripts útils**: `./scripts/`
+- **Configuracions**: `./config/`
+- **Logs**: `./logs/[servei]/`
 
 ---
 
-## Validación de Versiones de Imágenes Base
+## Validació de Versions d'Imatges Base
 
-### ⚠️ ISSUE CONOCIDO: Imágenes Base Obsoletas
+### ⚠️ ISSUE CONEGUT: Imatges Base Obsoletes
 
-**Problema:** Las versiones de imágenes base en los Dockerfiles pueden no estar disponibles si:
-- Versiones futuras son especificadas (ej: `25.01` cuando aún estamos en `24.12`)
-- Imágenes son removidas de registros públicos
-- Tags son renombrados o deprecated
+**Problema:** Les versions d'imatges base als Dockerfiles poden no estar disponibles si:
+- Versions futures són especificades (ex: `25.01` quan encara som al `24.12`)
+- Les imatges són eliminades de registres públics
+- Els tags són reanomenats o deprecated
 
-**Solución rápida antes de hacer build:**
+**Solució ràpida abans de fer build:**
 
 ```bash
-# Ver qué imágenes se usan
+# Veure quines imatges s'usen
 grep -h "^FROM " Dockerfile* | sort -u
 
-# Si hay errores "not found", actualizar versión y reintentar
+# Si hi ha errors "not found", actualitzar versió i reintentar
 docker compose build --no-cache
 ```
 
-**Versiones conocidas como estables (Jan 2026):**
+**Versions conegudes com a estables (Gen 2026):**
 - `nvcr.io/nvidia/pytorch:24.12-py3` ✅
 - `ollama/ollama:0.2.1` ✅
 - `qdrant/qdrant:v1.9.2` ✅
-- `python:3.11-slim` (para LibreTranslate, vía pip) ✅
+- `python:3.11-slim` (per a LibreTranslate, via pip) ✅
 - `erikvl87/languagetool:6.4` ✅
 
-**Versiones problemáticas:**
-- `nvcr.io/nvidia/pytorch:25.01-py3` ❌ NO EXISTE (versión futura)
-- `libretranslate/libretranslate:1.6.1` ❌ NO ENCONTRADA
-- `libretranslate/libretranslate:1.5.0` ❌ NO ENCONTRADA (imagen oficial removida)
+**Versions problemàtiques:**
+- `nvcr.io/nvidia/pytorch:25.01-py3` ❌ NO EXISTEIX (versió futura)
+- `libretranslate/libretranslate:1.6.1` ❌ NO TROBADA
+- `libretranslate/libretranslate:1.5.0` ❌ NO TROBADA (imatge oficial eliminada)
 
-**Solución implementada para LibreTranslate:**
-- Cambio a `python:3.11-slim` + `pip install libretranslate`
-- Más confiable y se mantiene automáticamente
-- Ver [docs/LIBRETRANSLATE_TROUBLESHOOTING.md](../docs/LIBRETRANSLATE_TROUBLESHOOTING.md)
+**Solució implementada per a LibreTranslate:**
+- Canvi a `python:3.11-slim` + `pip install libretranslate`
+- Més confiable i es manté automàticament
+- Vegeu [docs/LIBRETRANSLATE_TROUBLESHOOTING.md](../docs/LIBRETRANSLATE_TROUBLESHOOTING.md)
 
-**Si encuentras error "failed to resolve source metadata":**
+**Si trobes l'error "failed to resolve source metadata":**
 ```bash
-# 1. Verificar versión disponible en Docker Hub
-# Ejemplo para imágenes: https://hub.docker.com/r/nombre/imagen/tags
+# 1. Verificar versió disponible a Docker Hub
+# Exemple per a imatges: https://hub.docker.com/r/nom/imatge/tags
 
-# 2. Actualizar Dockerfile (si aplica)
-sed -i 's/VERSION_VIEJA/VERSION_NUEVA/g' Dockerfile.servicio
+# 2. Actualitzar Dockerfile (si s'aplica)
+sed -i 's/VERSIO_VELLA/VERSIO_NOVA/g' Dockerfile.servei
 
 # 3. Reconstruir
-docker compose build --no-cache [servicio]
+docker compose build --no-cache [servei]
 ```
 
 ---
 
-## Notas para GitHub Copilot
+## Notes per a GitHub Copilot
 
-- **SIEMPRE construir antes de iniciar** servicios con `local/*` images
-- **Perfiles son excluyentes**: usa `gpu-nvidia` O `cpu`, no ambos
-- **Secrets son archivos**, no variables de entorno directas
-- **Healthchecks tienen `start_period`**: esperar antes de diagnosticar fallos
-- **Volúmenes nombrados** persisten entre reinicios, **bind mounts** reflejan cambios inmediatos
-- **Versiones de imágenes**: Usar siempre versiones LTS/estables, no futures
-- **LibreTranslate**: Usa Python + pip en lugar de imagen Docker oficial (más confiable)
+- **SEMPRE construir abans d'iniciar** serveis amb imatges `local/*`
+- **Els perfils són excloents**: usa `gpu-nvidia` O `cpu`, no tots dos
+- **Els secrets són fitxers**, no variables d'entorn directes
+- **Els healthchecks tenen `start_period`**: esperar abans de diagnosticar fallades
+- **Els volums amb nom** persisteixen entre reinicis, els **bind mounts** reflecteixen canvis immediats
+- **Versions d'imatges**: Utilitzar sempre versions LTS/estables, no futures
+- **LibreTranslate**: Usa Python + pip en lloc de la imatge Docker oficial (més confiable)

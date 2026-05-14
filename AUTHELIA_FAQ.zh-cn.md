@@ -1,18 +1,18 @@
-# Configuración de Authelia - FAQ y Respuestas a sus Preguntas
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.ca.md)
+# Authelia 配置 - 常见问题解答与您的疑问
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.ca.md)
 
 
-## Q1: Configuración SMTP - ¿Cuál es la forma correcta de configurar SMTP?
+## Q1: SMTP 配置 - 配置 SMTP 的正确方式是什么？
 
-### Su pregunta
-"¿Cuál es la forma correcta de configurar SMTP en el nuevo formato? ¿Deberíamos usar `notifier.smtp.address` en lugar de `host` y `port` por separado?"
+### 您的疑问
+"在新的格式中，配置 SMTP 的正确方式是什么？我们是否应该使用 `notifier.smtp.address` 而不是单独的 `host` 和 `port`？"
 
-### Respuesta: SÍ, use solo el formato `address`
+### 解答：是的，仅使用 `address` 格式
 
-**Correcto (Moderno v4.38.0+)**:
+**正确方式 (现代版本 v4.38.0+)**:
 ```yaml
 notifier:
   smtp:
@@ -24,131 +24,131 @@ notifier:
       skip_verify: false
 ```
 
-**Formato**: `smtp[s]://[usuario@]host[:puerto]`
+**格式**: `smtp[s]://[user@]host[:port]`
 
-**Ejemplos**:
+**示例**:
 ```
-smtp://smtp.example.com:587              # STARTTLS en el puerto 587
-smtps://smtp.example.com:465             # TLS implícito en el puerto 465
-smtp://user@smtp.example.com:587         # Con usuario en la URL
+smtp://smtp.example.com:587              # 端口 587 上的 STARTTLS
+smtps://smtp.example.com:465             # 端口 465 上的隐式 TLS
+smtp://user@smtp.example.com:587         # 在 URL 中包含用户
 ```
 
-**Credenciales mediante variables de entorno**:
+**通过环境变量配置凭据**:
 ```yaml
 environment:
   - AUTHELIA_NOTIFIER_SMTP_ADDRESS=smtp://smtp.tinet.cat:587
-  - AUTHELIA_NOTIFIER_SMTP_USERNAME=su_correo@example.com
-  - AUTHELIA_NOTIFIER_SMTP_PASSWORD=su_contraseña
+  - AUTHELIA_NOTIFIER_SMTP_USERNAME=your_email@example.com
+  - AUTHELIA_NOTIFIER_SMTP_PASSWORD=your_password
   - AUTHELIA_NOTIFIER_SMTP_SENDER=Authelia <noreply@example.com>
 ```
 
-**Desde `.env`**:
+**从 `.env` 文件配置**:
 ```bash
 SMTP_HOST=smtp.tinet.cat
 SMTP_PORT=587
-SMTP_USERNAME=su_correo@example.com
-SMTP_PASSWORD=su_contraseña
+SMTP_USERNAME=your_email@example.com
+SMTP_PASSWORD=your_password
 SMTP_SENDER=Authelia <noreply@example.com>
 ```
 
-**NO mezcle formatos** (causará conflicto):
+**不要混合使用格式** (会导致冲突):
 ```yaml
-# ❌ INCORRECTO - Esto causa el error de conflicto:
+# ❌ 错误 - 这会导致冲突错误：
 notifier:
   smtp:
-    host: smtp.example.com        # ❌ Formato antiguo
-    port: 587                      # ❌ Formato antiguo
-    address: 'smtp://...:587'      # ❌ Formato nuevo (¡conflicto!)
+    host: smtp.example.com        # ❌ 旧格式
+    port: 587                      # ❌ 旧格式
+    address: 'smtp://...:587'      # ❌ 新格式 (冲突!)
 ```
 
 ---
 
-## Q2: Cookies de sesión para Localhost
+## Q2: Localhost 的会话 Cookie
 
-### Su pregunta
-"¿Cómo debemos configurar las cookies de sesión para el desarrollo local usando dominios `.localhost`? El error indica que los dominios deben tener un punto o ser una dirección IP."
+### 您的疑问
+"对于使用 `.localhost` 域名的本地开发，我们应该如何配置会话 Cookie？错误提示域名必须包含点号或是一个 IP 地址。"
 
-### Respuesta: Use `localhost` en la configuración, nginx-proxy gestiona la compatibilidad del navegador
+### 解答：在配置中使用 `localhost`，nginx-proxy 会处理浏览器兼容性
 
-**La Configuración**:
+**配置内容**:
 ```yaml
 session:
   cookies:
     - name: authelia_session
-      domain: localhost              # ✅ Correcto para la red Docker
+      domain: localhost              # ✅ 适用于 Docker 网络
       authelia_url: https://auth.localhost
       default_redirection_url: https://forgejo.localhost
       same_site: Lax
-      secure: false                  # Cambiar a true en producción
+      secure: false                  # 在生产环境中更改为 true
 ```
 
-**Cómo funciona**:
-1. **Red Docker**: Los servicios se comunican usando `localhost` (funciona bien)
-2. **Acceso desde el navegador**: El usuario va a `http://auth.localhost:9091`
-3. **nginx-proxy**: Intercepta la petición a `auth.localhost` y la dirige a Authelia
-4. **Dominio de la cookie**: nginx-proxy gestiona la reescritura de la cookie para la compatibilidad del navegador
-5. **Resultado**: El navegador nunca ve el dominio `localhost` inválido directamente
+**工作原理**:
+1. **Docker 网络**: 服务之间使用 `localhost` 通信 (运行良好)
+2. **浏览器访问**: 用户访问 `http://auth.localhost:9091`
+3. **nginx-proxy**: 拦截对 `auth.localhost` 的请求并将其转发给 Authelia
+4. **Cookie 域名**: nginx-proxy 会处理 Cookie 重写以实现浏览器兼容性
+5. **结果**: 浏览器永远不会直接看到无效的 `localhost` 域名
 
-**Por qué funciona esto**:
-- El DNS interno de Docker resuelve `localhost` dentro de los contenedores
-- El navegador nunca establece cookies directamente en el dominio `localhost`
-- nginx-proxy intermedia y gestiona la traducción del dominio de la cookie
-- Tanto el acceso interno de Docker como el del navegador funcionan perfectamente
+**为什么这样可行**:
+- Docker 内部 DNS 会在容器内解析 `localhost`
+- 浏览器永远不会直接在 `localhost` 域名上设置 Cookie
+- nginx-proxy 作为中间层管理 Cookie 域名的转换
+- Docker 内部访问和浏览器访问都能完美运行
 
-**Qué NO hacer**:
+**不应该做的**:
 ```yaml
-# ❌ INCORRECTO - Esto también fallará:
-domain: .localhost    # El navegador sigue rechazando dominios de una sola etiqueta
+# ❌ 错误 - 这也会失败：
+domain: .localhost    # 浏览器仍然拒绝单标签域名
 
-# ❌ INCORRECTO - Demasiado restrictivo para desarrollo:
-domain: auth.localhost  # Solo funciona para auth.localhost, no para otros servicios
+# ❌ 错误 - 对于开发来说限制太严：
+domain: auth.localhost  # 仅适用于 auth.localhost，不适用于其他服务
 
-# ✅ CORRECTO:
-domain: localhost     # Funciona para la red Docker + nginx-proxy gestiona el navegador
+# ✅ 正确:
+domain: localhost     # 适用于 Docker 网络 + nginx-proxy 管理浏览器
 ```
 
-**Variables de entorno**:
+**环境变量**:
 ```yaml
 environment:
   - VIRTUAL_HOST=${AUTHELIA_DOMAIN:-auth.localhost}
   - VIRTUAL_PORT=9091
 ```
 
-**En `.env`**:
+**在 `.env` 中**:
 ```bash
 AUTHELIA_DOMAIN=auth.localhost
 ```
 
 ---
 
-## Q3: Migración del Secreto JWT
+## Q3: JWT 密钥迁移
 
-### Su pregunta
-"¿Deberíamos actualizar el archivo de configuración para usar la nueva clave `identity_validation.reset_password.jwt_secret`?"
+### 您的疑问
+"我们是否应该更新配置文件以使用新的 `identity_validation.reset_password.jwt_secret` 键？"
 
-### Respuesta: SÍ, migre a la nueva ruta de clave
+### 解答：是的，请迁移到新的键路径
 
-**Antiguo (Obsoleto)**:
+**旧方式 (已废弃)**:
 ```yaml
-jwt_secret: su_secreto_aqui
+jwt_secret: your_secret_here
 ```
 
-**Nuevo (v4.38.0+)**:
+**新方式 (v4.38.0+)**:
 ```yaml
 identity_validation:
   reset_password:
     jwt:
       expiration: 15m
-      # Secreto inyectado vía variable de entorno
+      # 密钥通过环境变量注入
 ```
 
-**Variable de entorno**:
+**环境变量**:
 ```yaml
 environment:
   - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
 ```
 
-**Configuración de Docker Compose**:
+**Docker Compose 配置**:
 ```yaml
 secrets:
   - authelia_jwt_secret
@@ -159,113 +159,113 @@ services:
       - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
 ```
 
-**¿Por qué migrar?**:
-- ✅ Soporta el nuevo flujo de restablecimiento de contraseña de Authelia
-- ✅ Sigue el versionado semántico (JWT separado para diferentes propósitos)
-- ✅ Permite la futura separación de JWTs para autenticación frente a restablecimiento de contraseña
-- ✅ Elimina las advertencias de obsolescencia
+**为什么要迁移？**:
+- ✅ 支持 Authelia 新的密码重置流程
+- ✅ 遵循语义化版本控制 (针对不同用途使用独立的 JWT)
+- ✅ 允许未来将身份验证与密码重置的 JWT 分离
+- ✅ 消除废弃警告
 
-**Compatibilidad con versiones anteriores**:
-- Authelia 4.38.0+ sigue aceptando el antiguo `jwt_secret` pero muestra una advertencia
-- Se requiere la nueva configuración para tener logs limpios
-- La funcionalidad de restablecimiento de contraseña solo funciona con la nueva clave
+**向后兼容性**:
+- Authelia 4.38.0+ 仍然接受旧的 `jwt_secret` 但会显示警告
+- 为了获得整洁的日志，需要使用新配置
+- 密码重置功能仅在使用新密钥时有效
 
 ---
 
-## Q4: Configuración de la URL de redirección por defecto
+## Q4: 默认重定向 URL 配置
 
-### Su pregunta
-"¿Cómo debemos configurar correctamente `default_redirection_url` a nivel de cada cookie en lugar de hacerlo globalmente?"
+### 您的疑问
+"我们应该如何在每个 Cookie 级别正确配置 `default_redirection_url`，而不是进行全局配置？"
 
-### Respuesta: Muévalo dentro de la configuración de cada cookie
+### 解答：将其移动到每个 Cookie 的配置内部
 
-**Antiguo (Causa Error)**:
+**旧方式 (会导致错误)**:
 ```yaml
 session:
   expiration: 1h
-  default_redirection_url: https://forgejo.localhost  # ❌ INCORRECTO
+  default_redirection_url: https://forgejo.localhost  # ❌ 错误
   cookies:
     - name: authelia_session
       domain: localhost
 ```
 
-**Nuevo (Correcto)**:
+**新方式 (正确)**:
 ```yaml
 session:
   expiration: 1h
-  # No lo ponga aquí ❌
+  # 不要放在这里 ❌
 
   cookies:
     - name: authelia_session
       domain: localhost
-      default_redirection_url: https://forgejo.localhost  # ✅ AQUÍ
+      default_redirection_url: https://forgejo.localhost  # ✅ 在这里
       authelia_url: https://auth.localhost
       same_site: Lax
       secure: false
 
-# Opcional: Fallback global al nivel de la raíz
+# 可选：根级别的全局备选方案
 default_redirection_url: 'https://forgejo.localhost'
 ```
 
-**Múltiples Cookies (Avanzado)**:
+**多个 Cookie (进阶)**:
 ```yaml
 session:
   cookies:
-    # Cookie de producción
+    # 生产环境 Cookie
     - name: authelia_session
-      domain: ejemplo.com
-      default_redirection_url: https://app.ejemplo.com
+      domain: example.com
+      default_redirection_url: https://app.example.com
       secure: true
 
-    # Cookie de desarrollo
+    # 开发环境 Cookie
     - name: authelia_session_dev
       domain: localhost
       default_redirection_url: https://forgejo.localhost
       secure: false
 
-# Fallback global
-default_redirection_url: 'https://ejemplo.com'
+# 全局备选方案
+default_redirection_url: 'https://example.com'
 ```
 
-**Cómo funciona**:
-1. El usuario accede a un servicio protegido (ej. n8n.localhost)
-2. Es redirigido al login de Authelia (auth.localhost)
-3. Tras el login, Authelia comprueba el `default_redirection_url` de cada cookie
-4. Redirige a la URL configurada (ej. forgejo.localhost)
-5. Si no hay configuración por cookie, usa el `default_redirection_url` global
+**工作原理**:
+1. 用户访问受保护的服务 (例如 n8n.localhost)
+2. 被重定向到 Authelia 登录页面 (auth.localhost)
+3. 登录后，Authelia 会检查每个 Cookie 的 `default_redirection_url`
+4. 重定向到配置的 URL (例如 forgejo.localhost)
+5. 如果没有设置每个 Cookie 的配置，则使用全局 `default_redirection_url`
 
-**Campos de configuración requeridos**:
+**必填配置字段**:
 ```yaml
 cookies:
-  - name: authelia_session              # Nombre de la cookie
-    domain: localhost                   # Dominio de la cookie
-    authelia_url: https://auth.localhost  # Endpoint de Authelia
-    default_redirection_url: https://forgejo.localhost  # Destino de fallback
-    same_site: Lax                      # Protección CSRF
-    secure: false                       # true en producción
+  - name: authelia_session              # Cookie 名称
+    domain: localhost                   # Cookie 域名
+    authelia_url: https://auth.localhost  # Authelia 端点
+    default_redirection_url: https://forgejo.localhost  # 备选目标
+    same_site: Lax                      # CSRF 保护
+    secure: false                       # 生产环境为 true
 ```
 
 ---
 
-## Q5: HTTP vs HTTPS - Desarrollo Local vs Producción
+## Q5: HTTP vs HTTPS - 本地开发 vs 生产环境
 
-### Su pregunta
-"¿Podemos ejecutar Authelia con HTTP en desarrollo local (con nginx-proxy gestionando SSL mediante certificados autofirmados o sin SSL) y luego cambiar a HTTPS en producción?"
+### 您的疑问
+"我们可以在本地开发中使用 HTTP 运行 Authelia (由 nginx-proxy 通过自签名证书管理 SSL 或不使用 SSL)，然后在生产环境中切换到 HTTPS 吗？"
 
-### Respuesta: SÍ, Authelia es agnóstico al protocolo
+### 解答：是的，Authelia 与协议无关
 
-**Desarrollo Local (HTTP, sin SSL)**:
+**本地开发 (HTTP，无 SSL)**:
 ```yaml
-# En authelia/configuration.yml:
+# 在 authelia/configuration.yml 中:
 server:
   address: 'tcp://0.0.0.0:9091'
   tls:
-    enabled: false          # ✅ Solo HTTP
+    enabled: false          # ✅ 仅使用 HTTP
 
 session:
   cookies:
     - name: authelia_session
-      secure: false         # ✅ Permitir cookies HTTP
+      secure: false         # ✅ 允许 HTTP Cookie
       same_site: Lax
 ```
 
@@ -277,30 +277,30 @@ authelia:
   environment:
     - VIRTUAL_HOST=auth.localhost
     - VIRTUAL_PORT=9091
-    # nginx-proxy sirve vía HTTP
+    # nginx-proxy 通过 HTTP 提供服务
 ```
 
-**Cómo acceder**:
+**如何访问**:
 ```
-Navegador: http://auth.localhost:9091
-Navegador: http://n8n.localhost
+浏览器访问: http://auth.localhost:9091
+浏览器访问: http://n8n.localhost
 ```
 
 ---
 
-**Producción (HTTPS con Let's Encrypt)**:
+**生产环境 (带有 Let's Encrypt 的 HTTPS)**:
 ```yaml
-# En authelia/configuration.yml (NO SE NECESITAN CAMBIOS):
+# 在 authelia/configuration.yml 中 (无需更改):
 server:
   address: 'tcp://0.0.0.0:9091'
   tls:
-    enabled: false          # ✅ Sigue siendo false
-    # nginx-proxy gestiona la terminación TLS
+    enabled: false          # ✅ 仍为 false
+    # 由 nginx-proxy 处理 TLS 终止
 
 session:
   cookies:
     - name: authelia_session
-      secure: true          # ✅ Requerir HTTPS
+      secure: true          # ✅ 要求 HTTPS
       same_site: Strict
 ```
 
@@ -312,64 +312,64 @@ authelia:
   labels:
     - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
   environment:
-    - VIRTUAL_HOST=auth.ejemplo.com
+    - VIRTUAL_HOST=auth.example.com
     - VIRTUAL_PORT=9091
-    # nginx-proxy + acme-companion gestionan HTTPS + Let's Encrypt
+    # nginx-proxy + acme-companion 处理 HTTPS + Let's Encrypt
 ```
 
-**Cómo acceder**:
+**如何访问**:
 ```
-Navegador: https://auth.ejemplo.com
-Navegador: https://app.ejemplo.com
+浏览器访问: https://auth.example.com
+浏览器访问: https://app.example.com
 ```
 
 ---
 
-**Puntos Clave**:
+**关键点**:
 
-1. **Authelia en sí**: Siempre se ejecuta en HTTP (puerto 9091) internamente
-2. **Terminación TLS**: Deje que nginx-proxy gestione la terminación HTTPS
-3. **Configuración de Authelia**: `tls.enabled: false` para todos los escenarios
-4. **Seguridad de la sesión**:
-   - Dev local: `secure: false` (permitir HTTP)
-   - Producción: `secure: true` (requerir HTTPS)
-5. **Ruta de migración**:
-   - Empezar con dev local (HTTP, sin SSL)
-   - Mover a producción (HTTPS vía nginx-proxy + Let's Encrypt)
-   - No se necesitan cambios en la configuración de Authelia
-   - Solo cambiar las etiquetas de docker-compose y las variables de entorno
+1. **Authelia 本身**: 内部始终运行在 HTTP (端口 9091) 上
+2. **TLS 终止**: 让 nginx-proxy 处理 HTTPS 终止
+3. **Authelia 配置**: 在所有场景下 `tls.enabled: false`
+4. **会话安全**:
+   - 本地开发: `secure: false` (允许 HTTP)
+   - 生产环境: `secure: true` (要求 HTTPS)
+5. **迁移路径**:
+   - 从本地开发开始 (HTTP，无 SSL)
+   - 迁移到生产环境 (通过 nginx-proxy + Let's Encrypt 使用 HTTPS)
+   - 无需更改 Authelia 配置
+   - 仅更改 docker-compose 标签和环境变量
 
 ---
 
-## Estado de la Implementación
+## 实施状态
 
-Todas las correcciones han sido implementadas:
+所有修复均已实施：
 
-| 问题 | Estado | Archivo |
+| 问题 | 状态 | 文件 |
 |-------|--------|------|
-| Obsolescencia de secreto JWT | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| Conflicto SMTP | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) + [docker-compose.yml](docker-compose.yml) |
-| Cookies de sesión | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| Dominio de la cookie | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| HTTP vs HTTPS | ✅ Configurado | [authelia/configuration.yml](authelia/configuration.yml) |
-| Documentación | ✅ Completa | [docs/authelia-setup.md](docs/authelia-setup.md) + [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md) |
+| JWT 密钥废弃 | ✅ 已修复 | [authelia/configuration.yml](authelia/configuration.yml) |
+| SMTP 冲突 | ✅ 已修复 | [authelia/configuration.yml](authelia/configuration.yml) + [docker-compose.yml](docker-compose.yml) |
+| 会话 Cookie | ✅ 已修复 | [authelia/configuration.yml](authelia/configuration.yml) |
+| Cookie 域名 | ✅ 已修复 | [authelia/configuration.yml](authelia/configuration.yml) |
+| HTTP vs HTTPS | ✅ 已配置 | [authelia/configuration.yml](authelia/configuration.yml) |
+| 文档 | ✅ 已完成 | [docs/authelia-setup.md](docs/authelia-setup.md) + [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md) |
 
 ---
 
-## Inicio Rápido
+## 快速入门
 
-1. **Actualizar archivos de configuración** ✅ (Ya hecho)
-2. **Crear `.env` con SMTP**:
+1. **更新配置文件** ✅ (已完成)
+2. **创建包含 SMTP 的 `.env`**:
    ```bash
    SMTP_HOST=smtp.tinet.cat
    SMTP_PORT=587
-   SMTP_USERNAME=su_correo@example.com
-   SMTP_PASSWORD=su_contraseña
+   SMTP_USERNAME=your_email@example.com
+   SMTP_PASSWORD=your_password
    SMTP_SENDER=Authelia <noreply@example.com>
    AUTHELIA_DOMAIN=auth.localhost
    ```
 
-3. **Generar secretos** (si no se ha hecho):
+3. **生成密钥** (如果尚未完成):
    ```bash
    mkdir -p ./secrets
    openssl rand -base64 32 > ./secrets/authelia_jwt_secret.txt
@@ -377,28 +377,28 @@ Todas las correcciones han sido implementadas:
    chmod 600 ./secrets/*.txt
    ```
 
-4. **Iniciar servicios**:
+4. **启动服务**:
    ```bash
    docker compose up -d redis authelia
    docker compose logs -f authelia
    ```
 
-5. **Prueba**:
+5. **测试**:
    ```bash
    curl http://localhost:9091/api/health
-   # Esperado: 200 OK
+   # 预期结果: 200 OK
    ```
 
-6. **Acceder a la UI**:
+6. **访问 UI**:
    ```
-   Navegador: http://auth.localhost:9091
+   浏览器访问: http://auth.localhost:9091
    ```
 
 ---
 
-## ¿Aún necesita ayuda?
+## 仍需帮助？
 
-- **Guía de configuración completa**: Ver [docs/authelia-setup.md](docs/authelia-setup.md)
-- **Explicaciones detalladas de los problemas**: Ver [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md)
-- **Solución de problemas**: Consulte la sección "Troubleshooting" en [docs/authelia-setup.md](docs/authelia-setup.md)
-- **Docs oficiales**: https://www.authelia.com/configuration/
+- **完整设置指南**: 请参阅 [docs/authelia-setup.md](docs/authelia-setup.md)
+- **详细问题说明**: 请参阅 [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md)
+- **故障排除**: 请参考 [docs/authelia-setup.md](docs/authelia-setup.md) 中的 "故障排除" 部分
+- **官方文档**: https://www.authelia.com/configuration/

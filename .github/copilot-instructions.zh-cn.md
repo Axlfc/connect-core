@@ -1,129 +1,129 @@
-# Cognito Stack - Instrucciones para GitHub Copilot
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/.github/copilot-instructions.ca.md)
+# connect-core - GitHub Copilot 指令
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/.github/copilot-instructions.ca.md)
 
 
-## Resumen del Proyecto
+## 项目摘要
 
-**cognito-stack** es una plataforma de automatización con IA que integra:
-- **n8n**: Orquestador de workflows
-- **Ollama**: Modelos LLM locales
-- **Whisper**: Speech-to-Text
-- **Kokoro**: Text-to-Speech
-- **Qdrant**: Vector database
-- **Matrix**: Mensajería federada
-- **Forgejo**: Git hosting
+**connect-core** 是一个集成了以下组件的 AI 自动化平台：
+- **n8n**: 工作流编排器
+- **Ollama**: 本地 LLM 模型
+- **Whisper**: 语音转文本 (STT)
+- **Kokoro**: 文本转语音 (TTS)
+- **Qdrant**: 向量数据库
+- **Matrix**: 联邦消息传递
+- **Forgejo**: Git 托管
 
-## Arquitectura de Servicios
+## 服务架构
 
-### Servicios Core (Siempre activos)
+### 核心服务（始终活动）
 ```
-PostgreSQL → Base de datos principal
+PostgreSQL → 主数据库
     ↓
-Redis → Cache y sesiones
+Redis → 缓存和会话
     ↓
-Qdrant → Vector embeddings
+Qdrant → 向量嵌入 (Embeddings)
     ↓
-Ollama → LLM inference
+Ollama → LLM 推理
     ↓
-n8n → Workflow orchestration
-```
-
-### Servicios de Voz (Profile: voice)
-```
-Whisper STT ← Audio input
-    ↓
-n8n workflows
-    ↓
-Kokoro TTS → Audio output
+n8n → 工作流编排
 ```
 
-### Servicios Opcionales
+### 语音服务（配置文件：voice）
+```
+Whisper STT ← 音频输入
+    ↓
+n8n 工作流
+    ↓
+Kokoro TTS → 音频输出
+```
+
+### 可选服务
 - **Monitoring**: Prometheus + Grafana + Loki
-- **Zrok**: Túnel público seguro
-- **ComfyUI**: Generación de imágenes
+- **Zrok**: 安全公共隧道
+- **ComfyUI**: 图像生成
 
 ---
 
-## Comandos Críticos
+## 关键命令
 
-### Primera Inicialización (OBLIGATORIO)
+### 首次初始化（必须执行）
 
 ```bash
-# 1. Generar secrets (una sola vez)
+# 1. 生成机密信息 (Secrets)（仅需执行一次）
 ./scripts/generate-secrets.sh
 
-# 2. Construir imágenes personalizadas (SIEMPRE PRIMERO)
+# 2. 构建自定义镜像（务必首先执行）
 docker compose --profile gpu-nvidia --profile voice build
 
-# 3. Verificar construcción
+# 3. 验证构建结果
 docker images | grep local/
 
-# 4. Iniciar servicios
+# 4. 启动服务
 docker compose --profile gpu-nvidia --profile voice up -d
 
-# 5. Verificar estado
+# 5. 验证状态
 docker compose ps
 docker compose logs -f n8n
 ```
 
-### Desarrollo Diario
+### 日常开发
 
 ```bash
-# Ver logs de un servicio
-docker compose logs -f [servicio]
+# 查看某个服务的日志
+docker compose logs -f [service]
 
-# Reiniciar un servicio
-docker compose restart [servicio]
+# 重启某个服务
+docker compose restart [service]
 
-# Reconstruir tras cambios en Dockerfile
-docker compose build --no-cache [servicio]
-docker compose up -d [servicio]
+# 修改 Dockerfile 后重新构建
+docker compose build --no-cache [service]
+docker compose up -d [service]
 
-# Detener todo
+# 停止所有服务
 docker compose down
 
-# Detener y limpiar volúmenes (PELIGRO: borra datos)
+# 停止并清理卷（危险：会删除数据）
 docker compose down -v
 ```
 
-### Perfiles Disponibles
+### 可用配置文件 (Profiles)
 
 ```bash
-# GPU NVIDIA + Voice
+# NVIDIA GPU + 语音服务
 docker compose --profile gpu-nvidia --profile voice up -d
 
-# CPU only (sin GPU)
+# 仅 CPU（无 GPU）
 docker compose --profile cpu --profile voice-cpu up -d
 
 # AMD GPU
 docker compose --profile gpu-amd up -d
 
-# Con monitoring
+# 带监控功能
 docker compose --profile gpu-nvidia --profile voice --profile monitoring up -d
 
-# Con túnel Zrok
+# 带 Zrok 隧道
 docker compose --profile gpu-nvidia --profile voice --profile zrok up -d
 ```
 
 ---
 
-## Reglas de Coherencia
+## 一致性规则
 
-### Al Modificar docker-compose.yml
+### 修改 docker-compose.yml 时
 
-1. **Servicios con `build:`** SIEMPRE necesitan:
+1. **带有 `build:` 的服务** 始终需要：
    ```yaml
    build:
      context: .
-     dockerfile: Dockerfile.servicio
-   image: local/servicio:tag
-   pull_policy: build  # Opcional pero recomendado
+     dockerfile: Dockerfile.service
+   image: local/service:tag
+   pull_policy: build  # 可选但推荐
    ```
 
-2. **Servicios con GPU** SIEMPRE necesitan:
+2. **使用 GPU 的服务** 始终需要：
    ```yaml
    profiles: ["gpu-nvidia"]
    deploy:
@@ -135,190 +135,190 @@ docker compose --profile gpu-nvidia --profile voice --profile zrok up -d
              capabilities: [gpu]
    ```
 
-3. **Servicios con secrets** SIEMPRE necesitan:
+3. **使用机密信息的服务** 始终需要：
    ```yaml
    secrets:
-     - nombre_secret
+     - secret_name
    environment:
-     - VARIABLE_FILE=/run/secrets/nombre_secret
+     - VARIABLE_FILE=/run/secrets/secret_name
    ```
 
-### Al Crear Nuevos Servicios
+### 创建新服务时
 
-1. **Añadir healthcheck** para servicios críticos
-2. **Limitar recursos** con `deploy.resources.limits`
-3. **Usar redes internas** (`backend`, `ai`) para servicios no públicos
-4. **Añadir logging estructurado** (json-file con rotación)
-5. **Aplicar security hardening**:
+1. 为关键服务**添加健康检查 (Healthcheck)**
+2. 通过 `deploy.resources.limits` **限制资源**
+3. 为非公共服务**使用内部网络** (`backend`, `ai`)
+4. **添加结构化日志** (带有轮转功能的 json-file)
+5. **应用安全增强**:
    ```yaml
    security_opt:
      - no-new-privileges:true
    cap_drop:
      - ALL
    cap_add:
-     - [SOLO_CAPABILITIES_NECESARIAS]
+     - [仅必要的 CAPABILITIES]
    ```
 
 ---
 
-## Troubleshooting Rápido
+## 快速故障排除
 
-| Error | Causa | Solución |
+| 错误 | 原因 | 解决方案 |
 |-------|-------|----------|
-| `pull access denied for local/*` | Imagen no construida | `docker compose build` primero |
-| `failed to resolve source metadata` | Imagen base no existe | Verificar versión en Docker Hub |
-| `connection refused` en healthcheck | Servicio no iniciado | Revisar logs: `docker compose logs [servicio]` |
-| `secret not found` | Archivo en `./secrets/` falta | Ejecutar `./scripts/generate-secrets.sh` |
-| GPU no detectada | Driver NVIDIA no instalado | Instalar `nvidia-container-toolkit` |
+| `pull access denied for local/*` | 镜像未构建 | 首先运行 `docker compose build` |
+| `failed to resolve source metadata` | 基础镜像不存在 | 在 Docker Hub 上核实版本 |
+| 健康检查中 `connection refused` | 服务未启动 | 检查日志：`docker compose logs [service]` |
+| `secret not found` | `./secrets/` 中的文件缺失 | 运行 `./scripts/generate-secrets.sh` |
+| 未检测到 GPU | 未安装 NVIDIA 驱动 | 安装 `nvidia-container-toolkit` |
 
 ---
 
-## Patrones de Solución
+## 解决方案模式
 
-### Problema: Servicio no inicia
+### 问题：服务无法启动
 
 ```bash
-# 1. Ver logs completos
-docker compose logs [servicio] --tail=100
+# 1. 查看完整日志
+docker compose logs [service] --tail=100
 
-# 2. Verificar dependencias
+# 2. 验证依赖项
 docker compose ps | grep -E 'postgres|redis|qdrant'
 
-# 3. Verificar secrets
+# 3. 验证机密信息
 ls -la secrets/
 
-# 4. Entrar al contenedor para debug
-docker compose exec [servicio] /bin/sh
+# 4. 进入容器进行调试
+docker compose exec [service] /bin/sh
 ```
 
-### Problema: Error de permisos en volúmenes
+### 问题：卷权限错误
 
 ```bash
-# 1. Verificar ownership
-docker compose exec [servicio] ls -la /path/to/volume
+# 1. 验证所有权
+docker compose exec [service] ls -la /path/to/volume
 
-# 2. Corregir permisos (si necesario)
-sudo chown -R $(id -u):$(id -g) ./volumes/[servicio]
+# 2. 修复权限（如有必要）
+sudo chown -R $(id -u):$(id -g) ./volumes/[service]
 ```
 
-### Problema: GPU no detectada
+### 问题：未检测到 GPU
 
 ```bash
-# 1. Verificar driver
+# 1. 验证驱动程序
 nvidia-smi
 
-# 2. Verificar runtime de Docker
+# 2. 验证 Docker 运行时
 docker run --rm --gpus all nvidia/cuda:12.3.0-base-ubuntu22.04 nvidia-smi
 
-# 3. Si falla, reinstalar nvidia-container-toolkit
+# 3. 如果失败，请重新安装 nvidia-container-toolkit
 ```
 
 ---
 
-## Variables de Entorno Críticas
+## 关键环境变量
 
-### Obligatorias (en .env)
+### 强制性（在 .env 中）
 
 ```bash
-# Base de datos
+# 数据库
 POSTGRES_USER=n8n_user
-POSTGRES_PASSWORD=<generado>
+POSTGRES_PASSWORD=<已生成>
 POSTGRES_DB=n8n_db
 
 # n8n
-N8N_ENCRYPTION_KEY=<generado>
-N8N_RUNNERS_AUTH_TOKEN=<generado>
-WEBHOOK_URL=https://n8n.tu-dominio.com
+N8N_ENCRYPTION_KEY=<已生成>
+N8N_RUNNERS_AUTH_TOKEN=<已生成>
+WEBHOOK_URL=https://n8n.your-domain.com
 
-# Dominios (para nginx-proxy)
+# 域名（用于 nginx-proxy）
 N8N_DOMAIN=n8n.localhost
 OLLAMA_DOMAIN=ollama.localhost
 FORGEJO_DOMAIN=forgejo.localhost
 ```
 
-### Opcionales
+### 可选
 
 ```bash
-# Ollama models (se descargan al iniciar)
+# Ollama 模型（启动时下载）
 OLLAMA_MODEL_1=llama3:8b
 OLLAMA_MODEL_2=nomic-embed-text
 
-# Whisper model
+# Whisper 模型
 ASR_MODEL=base.en
 
-# Monitoring
+# 监控
 GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=<generado>
+GRAFANA_ADMIN_PASSWORD=<已生成>
 ```
 
 ---
 
-## Referencias Rápidas
+## 快速参考
 
-- **Documentación completa**: `./docs/README.md`
-- **Troubleshooting avanzado**: `./docs/WHISPER_TROUBLESHOOTING.md`
-- **Scripts útiles**: `./scripts/`
-- **Configuraciones**: `./config/`
-- **Logs**: `./logs/[servicio]/`
+- **完整文档**: `./docs/README.md`
+- **高级故障排除**: `./docs/WHISPER_TROUBLESHOOTING.md`
+- **有用脚本**: `./scripts/`
+- **配置文件**: `./config/`
+- **日志**: `./logs/[service]/`
 
 ---
 
-## Validación de Versiones de Imágenes Base
+## 基础镜像版本验证
 
-### ⚠️ ISSUE CONOCIDO: Imágenes Base Obsoletas
+### ⚠️ 已知问题：基础镜像过时
 
-**Problema:** Las versiones de imágenes base en los Dockerfiles pueden no estar disponibles si:
-- Versiones futuras son especificadas (ej: `25.01` cuando aún estamos en `24.12`)
-- Imágenes son removidas de registros públicos
-- Tags son renombrados o deprecated
+**问题：** 如果发生以下情况，Dockerfile 中的基础镜像版本可能不可用：
+- 指定了未来版本（例如：现在是 `24.12`，却指定了 `25.01`）
+- 镜像从公共注册表中被移除
+- 标签 (Tags) 被重命名或弃用
 
-**Solución rápida antes de hacer build:**
+**构建前的快速修复：**
 
 ```bash
-# Ver qué imágenes se usan
+# 查看使用了哪些镜像
 grep -h "^FROM " Dockerfile* | sort -u
 
-# Si hay errores "not found", actualizar versión y reintentar
+# 如果出现 "not found" 错误，请更新版本并重试
 docker compose build --no-cache
 ```
 
-**Versiones conocidas como estables (Jan 2026):**
+**已知稳定版本 (2026年1月):**
 - `nvcr.io/nvidia/pytorch:24.12-py3` ✅
 - `ollama/ollama:0.2.1` ✅
 - `qdrant/qdrant:v1.9.2` ✅
-- `python:3.11-slim` (para LibreTranslate, vía pip) ✅
+- `python:3.11-slim` (用于 LibreTranslate，通过 pip 安装) ✅
 - `erikvl87/languagetool:6.4` ✅
 
-**Versiones problemáticas:**
-- `nvcr.io/nvidia/pytorch:25.01-py3` ❌ NO EXISTE (versión futura)
-- `libretranslate/libretranslate:1.6.1` ❌ NO ENCONTRADA
-- `libretranslate/libretranslate:1.5.0` ❌ NO ENCONTRADA (imagen oficial removida)
+**有问题的版本:**
+- `nvcr.io/nvidia/pytorch:25.01-py3` ❌ 不存在（未来版本）
+- `libretranslate/libretranslate:1.6.1` ❌ 未找到
+- `libretranslate/libretranslate:1.5.0` ❌ 未找到（官方镜像已被移除）
 
-**Solución implementada para LibreTranslate:**
-- Cambio a `python:3.11-slim` + `pip install libretranslate`
-- Más confiable y se mantiene automáticamente
-- Ver [docs/LIBRETRANSLATE_TROUBLESHOOTING.md](../docs/LIBRETRANSLATE_TROUBLESHOOTING.md)
+**针对 LibreTranslate 实施的解决方案:**
+- 切换到 `python:3.11-slim` + `pip install libretranslate`
+- 更可靠且自动维护
+- 参见 [docs/LIBRETRANSLATE_TROUBLESHOOTING.md](../docs/LIBRETRANSLATE_TROUBLESHOOTING.md)
 
-**Si encuentras error "failed to resolve source metadata":**
+**如果遇到 "failed to resolve source metadata" 错误:**
 ```bash
-# 1. Verificar versión disponible en Docker Hub
-# Ejemplo para imágenes: https://hub.docker.com/r/nombre/imagen/tags
+# 1. 在 Docker Hub 上验证可用版本
+# 镜像示例：https://hub.docker.com/r/name/image/tags
 
-# 2. Actualizar Dockerfile (si aplica)
-sed -i 's/VERSION_VIEJA/VERSION_NUEVA/g' Dockerfile.servicio
+# 2. 更新 Dockerfile（如果适用）
+sed -i 's/OLD_VERSION/NEW_VERSION/g' Dockerfile.service
 
-# 3. Reconstruir
-docker compose build --no-cache [servicio]
+# 3. 重新构建
+docker compose build --no-cache [service]
 ```
 
 ---
 
-## Notas para GitHub Copilot
+## GitHub Copilot 注意事项
 
-- **SIEMPRE construir antes de iniciar** servicios con `local/*` images
-- **Perfiles son excluyentes**: usa `gpu-nvidia` O `cpu`, no ambos
-- **Secrets son archivos**, no variables de entorno directas
-- **Healthchecks tienen `start_period`**: esperar antes de diagnosticar fallos
-- **Volúmenes nombrados** persisten entre reinicios, **bind mounts** reflejan cambios inmediatos
-- **Versiones de imágenes**: Usar siempre versiones LTS/estables, no futures
-- **LibreTranslate**: Usa Python + pip en lugar de imagen Docker oficial (más confiable)
+- 在启动使用 `local/*` 镜像的服务前，**务必先进行构建**
+- **配置文件是互斥的**：使用 `gpu-nvidia` 或 `cpu`，不要同时使用两者
+- **机密信息是文件**，而不是直接的环境变量
+- **健康检查有 `start_period`**：在诊断故障前请先等待
+- **命名卷 (Named volumes)** 在重启之间持久存在，**绑定挂载 (Bind mounts)** 反映即时更改
+- **镜像版本**：始终使用 LTS/稳定版本，不要使用未来版本
+- **LibreTranslate**: 使用 Python + pip 而不是官方 Docker 镜像（更可靠）

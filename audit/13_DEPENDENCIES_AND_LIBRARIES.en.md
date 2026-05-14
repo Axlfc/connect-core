@@ -1,53 +1,57 @@
-# AUDIT 13: DEPENDENCIAS Y LIBRERIAS
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.zh-cn.md)
+# AUDIT 13: DEPENDENCIES AND LIBRARIES
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Usage de Herramientas Estándar** | El proyecto utiliza manejadores de paquetes estándar de la industria (`pip` para Python, `npm`/`pnpm` para Node.js), lo que facilita la gestión y auditoría de las dependencias. |
-| ✗ | **Dependencias No Fijadas (Unpinned)** | **CRÍTICO:** Múltiples archivos `requirements.txt` y Dockerfiles **no fijan las versiones** de las dependencias que instalan. Esto conduce a builds no reproducibles y crea un riesgo significativo de que una nueva versión de una librería introduzca una vulnerabilidad o un cambio disruptivo. |
-| ✗ | **Falta de Escaneo de Vulnerabilidades** | No hay evidencia de que se utilice ninguna herramienta para escanear las dependencias (ej. `pip-audit`, `npm audit`, `snyk`, `trivy`) en busca de vulnerabilidades conocidas (CVEs). |
-| ⚠️ | **Usage de Dependencias "Nightly"** | El `Dockerfile.comfyui` instala versiones "nightly" de PyTorch. Estas versiones son inestables por definición, no están pensadas para producción, y pueden contener bugs o vulnerabilidades no descubiertas. |
-| ⚠️ | **Falta de `package-lock.json`** | El servicio `ollama-proxy` (Node.js) no incluye un archivo `package-lock.json` en el repositorio. Esto significa que las versiones exactas de las dependencias transitivas no están garantizadas, socavando la reproducibilidad. |
+| ✓ | **Use of Standard Tools** | The project uses industry-standard package managers (`pip` for Python, `npm`/`pnpm` for Node.js), which facilitates dependency management and auditing. |
+| ✗ | **Unpinned Dependencies** | **CRITICAL:** Multiple `requirements.txt` files and Dockerfiles **do not pin versions** of the dependencies they install. This leads to non-reproducible builds and creates a significant risk that a new version of a library introduces a vulnerability or a breaking change. |
+| ✗ | **Lack of Vulnerability Scanning** | There is no evidence that any tool is used to scan dependencies (e.g., `pip-audit`, `npm audit`, `snyk`, `trivy`) for known vulnerabilities (CVEs). |
+| ⚠️ | **Use of "Nightly" Dependencies** | `Dockerfile.comfyui` installs "nightly" versions of PyTorch. These versions are unstable by definition, are not intended for production, and may contain undiscovered bugs or vulnerabilities. |
+| ⚠️ | **Missing `package-lock.json`** | The `ollama-proxy` (Node.js) service does not include a `package-lock.json` file in the repository. This means exact versions of transitive dependencies are not guaranteed, undermining reproducibility. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Gestión Centralizada:**
-    *   Cada componente (ej. `voice-gateway`, `ollama-proxy`) tiene su propio archivo de dependencias (`requirements.txt`, `package.json`), lo cual es una buena práctica que aísla los entornos.
+1.  **Centralized Management:**
+    *   Each component (e.g., `voice-gateway`, `ollama-proxy`) has its own dependency file (`requirements.txt`, `package.json`), which is a good practice that isolates environments.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **DEP-01** | **CRÍTICO** | **Versiones No Fijadas en `requirements.txt`** | El archivo `voice-gateway/requirements.txt` lista dependencias como `fastapi` o `redis` sin especificar una versión. `pip install -r requirements.txt` instalará la última versión disponible en ese momento, lo que puede variar día a día, haciendo imposible garantizar un build estable y seguro. |
-| **DEP-02** | **ALTO** | **Usage de Versionado Flexible (`^`) en `package.json`** | El `ollama-proxy/package.json` utiliza `^` para sus dependencias (ej. `"express": "^4.18.2"`). Aunque esto previene cambios mayores (versión 5.x), sigue permitiendo actualizaciones menores (ej. 4.19.0) que podrían introducir regresiones o vulnerabilidades. La ausencia de un `package-lock.json` agrava este problema. |
-| **DEP-03** | **ALTO** | **Dependencias "Nightly" en `Dockerfile.comfyui`** | El Dockerfile instala PyTorch directamente desde un índice de `nightly`. Esto es inaceptable para un entorno de producción, ya que estas builds no tienen ninguna garantía de estabilidad o seguridad. |
+| **DEP-01** | **CRITICAL** | **Unpinned Versions in `requirements.txt`** | The `voice-gateway/requirements.txt` file lists dependencies like `fastapi` or `redis` without specifying a version. `pip install -r requirements.txt` will install the latest version available at that time, which can vary day to day, making it impossible to guarantee a stable and secure build. |
+| **DEP-02** | **HIGH** | **Use of Flexible Versioning (`^`) in `package.json`** | `ollama-proxy/package.json` uses `^` for its dependencies (e.g., `"express": "^4.18.2"`). While this prevents major changes (version 5.x), it still allows minor updates (e.g., 4.19.0) that could introduce regressions or vulnerabilities. The absence of a `package-lock.json` exacerbates this problem. |
+| **DEP-03** | **HIGH** | **"Nightly" Dependencies in `Dockerfile.comfyui`** | The Dockerfile installs PyTorch directly from a `nightly` index. This is unacceptable for a production environment, as these builds have no guarantee of stability or security. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Auditoría de Licenses:**
-    *   No hay un proceso para auditar las licencias de las dependencias. Esto podría suponer un riesgo legal si una librería con una licencia restrictiva (como AGPL) se utilizara sin cumplir con sus términos.
+### ⚠️ Warnings/Recommendations
 
-2.  **Dependencias del Sistema Operativo:**
-    *   Los Dockerfiles instalan dependencias del SO a través de `apt-get` o `apk`. Estas dependencias también deberían ser auditadas y, si es posible, fijadas a una versión específica si el manejador de paquetes lo permite.
+1.  **License Audit:**
+    *   There is no process to audit dependency licenses. This could pose a legal risk if a library with a restrictive license (such as AGPL) were used without complying with its terms.
 
-### 🔧 Soluciones Sugeridas
+2.  **Operating System Dependencies:**
+    *   Dockerfiles install OS dependencies via `apt-get` or `apk`. These dependencies should also be audited and, if possible, pinned to a specific version if the package manager allows it.
 
-1.  **Para DEP-01 (Fijar Versiones en `requirements.txt` - CRÍTICO):**
-    *   **Solution:** Utilizar una herramienta como `pip-tools` para gestionar las dependencias de Python de forma robusta.
-        1.  **Crear un archivo `requirements.in`:**
+---
+
+### 🔧 Suggested Solutions
+
+1.  **For DEP-01 (Pin Versions in `requirements.txt` - CRITICAL):**
+    *   **Solution:** Use a tool like `pip-tools` to manage Python dependencies robustly.
+        1.  **Create a `requirements.in` file:**
             ```
             # voice-gateway/requirements.in
             fastapi
@@ -56,36 +60,36 @@
             redis
             python-multipart
             ```
-        2.  **Generar `requirements.txt`:**
+        2.  **Generate `requirements.txt`:**
             ```bash
-            # Instalar pip-tools
+            # Install pip-tools
             pip install pip-tools
-            # Compilar el archivo de requerimientos
+            # Compile the requirements file
             pip-compile voice-gateway/requirements.in > voice-gateway/requirements.txt
             ```
-        3.  **Resultado:** El `requirements.txt` generado contendrá las versiones exactas de todas las dependencias y sus dependencias transitivas, con hashes para verificar la integridad.
+        3.  **Result:** The generated `requirements.txt` will contain exact versions of all dependencies and their transitive dependencies, with hashes to verify integrity.
             ```
             # via -r requirements.in
             fastapi==0.109.2
-            # ... (todas las demás dependencias con versiones exactas y hashes)
+            # ... (all other dependencies with exact versions and hashes)
             ```
 
-2.  **Para DEP-02 (Fijar Versiones en `package.json`):**
+2.  **For DEP-02 (Pin Versions in `package.json`):**
     *   **Solution:**
-        1.  **Eliminar los `^`:** Reemplazar `^x.y.z` con `x.y.z` para todas las dependencias en `package.json`.
-        2.  **Generar y Commitear el Lock File:** Ejecutar `npm install` localmente y añadir el archivo `package-lock.json` resultante al repositorio. Esto garantizará que siempre se instalen las mismas versiones exactas de todas las dependencias.
+        1.  **Remove the `^`:** Replace `^x.y.z` with `x.y.z` for all dependencies in `package.json`.
+        2.  **Generate and Commit the Lock File:** Run `npm install` locally and add the resulting `package-lock.json` file to the repository. This will ensure that the exact same versions of all dependencies are always installed.
 
-3.  **Para DEP-03 (Eliminar Dependencias "Nightly"):**
-    *   **Solution:** Modificar `Dockerfile.comfyui` para que utilice la última **versión estable** de PyTorch que sea compatible con el hardware de destino.
+3.  **For DEP-03 (Remove "Nightly" Dependencies):**
+    *   **Solution:** Modify `Dockerfile.comfyui` to use the latest **stable version** of PyTorch that is compatible with the target hardware.
         ```diff
-        # En Dockerfile.comfyui
+        # In Dockerfile.comfyui
         -      --index-url https://download.pytorch.org/whl/nightly/cu128
         +      --index-url https://download.pytorch.org/whl/cu128
         ```
-    *   Fijar la versión de PyTorch a un número específico es aún mejor.
+    *   Pinning the PyTorch version to a specific number is even better.
 
-4.  **Implementar Escaneo de Vulnerabilidades:**
-    *   **Solution:** Integrar herramientas de escaneo en el proceso de CI/CD.
-        *   **Para Python:** Añadir un paso que ejecute `pip-audit`.
-        *   **Para Node.js:** Añadir un paso que ejecute `npm audit --audit-level=high`.
-        *   **Para Imágenes Docker:** Utilizar una herramienta como `Trivy` o `Grype` para escanear las imágenes construidas en busca de vulnerabilidades tanto en las dependencias del SO como en las de la aplicación.
+4.  **Implement Vulnerability Scanning:**
+    *   **Solution:** Integrate scanning tools into the CI/CD process.
+        *   **For Python:** Add a step that runs `pip-audit`.
+        *   **For Node.js:** Add a step that runs `npm audit --audit-level=high`.
+        *   **For Docker Images:** Use a tool like `Trivy` or `Grype` to scan built images for vulnerabilities in both OS and application dependencies.

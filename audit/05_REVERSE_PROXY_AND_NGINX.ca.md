@@ -1,96 +1,96 @@
-# AUDIT 05: REVERSE PROXY Y NGINX
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.zh-cn.md)
+# AUDIT 05: REVERSE PROXY I NGINX
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/05_REVERSE_PROXY_AND_NGINX.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Integración con Authelia** | La configuración de `forward auth` para la integración con Authelia es **correcta y segura**. El uso de un bloque `internal` y la correcta transmisión de headers (`X-Forwarded-*`) siguen las mejores prácticas. |
-| ✓ | **Estructura de Configuración** | La estructura de configuración que utiliza `vhost.d` para aplicar la protección por servicio es **modular y escalable**, permitiendo un control granular sobre qué endpoints están protegidos. |
-| ✗ | **Falta de Security Headers** | La configuración de Nginx **carece por completo de headers de seguridad explícitos**. No se está configurando HSTS, CSP, X-Frame-Options, Permissions-Policy, ni otros headers esenciales para el "hardening" del proxy. |
-| ✗ | **Configuración de SSL/TLS Débil** | No se especifica una política de SSL/TLS. Esto significa que se depende de los valores por defecto de `nginx-proxy`, que pueden permitir el uso de ciphers débiles o versiones de TLS obsoletas, exponiendo la comunicación a posibles ataques de downgrade. |
-| ⚠️ | **Sin Rate Limiting** | No hay ninguna configuración de `rate limiting` a nivel del reverse proxy. Esto deja a los servicios backend vulnerables a ataques de denegación de servicio (DoS) o a intentos de fuerza bruta que podrían agotar los recursos. |
+| ✓ | **Integració amb Authelia** | La configuració de `forward auth` per a la integració amb Authelia és **correcta i segura**. L'ús d'un bloc `internal` i la correcta transmissió de headers (`X-Forwarded-*`) segueixen les millors pràctiques. |
+| ✓ | **Estructura de Configuració** | L'estructura de configuració que utilitza `vhost.d` per aplicar la protecció per servei és **modular i escalable**, permetent un control granular sobre quins endpoints estan protegits. |
+| ✗ | **Falta de Security Headers** | La configuració de Nginx **manca completament de headers de seguretat explícits**. No s'està configurant HSTS, CSP, X-Frame-Options, Permissions-Policy, ni altres headers essencials per a l'"enduriment" (hardening) del proxy. |
+| ✗ | **Configuració de SSL/TLS Feble** | No s'especifica una política de SSL/TLS. Això significa que es depèn dels valors per defecte de `nginx-proxy`, que poden permetre l'ús de xifrats (ciphers) febles o versions de TLS obsoletes, exposant la comunicació a possibles atacs de downgrade. |
+| ⚠️ | **Sense Rate Limiting** | No hi ha cap configuració de `rate limiting` a nivell del reverse proxy. Això deixa els serveis backend vulnerables a atacs de denegació de servei (DoS) o a intents de força bruta que podrien esgotar els recursos. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Implementación de Forward Auth:**
-    *   El archivo `nginx-proxy/authelia-location.conf` está perfectamente configurado. Utiliza la directiva `internal` para prevenir el acceso externo al endpoint de verificación y pasa correctamente todos los headers necesarios para que Authelia pueda tomar decisiones de autorización.
-    *   Los archivos en `vhost.d` (ej. `n8n.localhost`) incluyen este bloque y configuran la directiva `auth_request` de forma correcta, asegurando que las peticiones no autenticadas sean interceptadas.
+1.  **Implementació de Forward Auth:**
+    *   El fitxer `nginx-proxy/authelia-location.conf` està perfectament configurat. Utilitza la directiva `internal` per prevenir l'accés extern a l'endpoint de verificació i passa correctament tots els headers necessaris perquè Authelia pugui prendre decisions d'autorització.
+    *   Els fitxers a `vhost.d` (ex. `n8n.localhost`) inclouen aquest bloc i configuren la directiva `auth_request` de forma correcta, assegurant que les peticions no autenticades siguin interceptades.
 
-2.  **Modularidad de la Configuración:**
-    *   El sistema de `vhost.d` permite aplicar la autenticación de forma selectiva. Esto es flexible y permite, por ejemplo, que ciertos endpoints (como webhooks) puedan quedar desprotegidos si fuera necesario, sin comprometer la seguridad del resto de la aplicación.
+2.  **Modularitat de la Configuració:**
+    *   El sistema de `vhost.d` permet aplicar l'autenticació de forma selectiva. Això és flexible i permet, per exemple, que certs endpoints (com webhooks) puguin quedar desprotegits si fos necessari, sense comprometre la seguretat de la resta de l'aplicació.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **RP-01** | **ALTO** | **Ausencia de Headers de Seguridad Críticos** | Sin HSTS (`Strict-Transport-Security`), los navegadores no son forzados a usar HTTPS, abriendo la puerta a ataques `sslstrip`. Sin `X-Frame-Options` o `Content-Security-Policy: frame-ancestors`, el sitio es vulnerable a ataques de *Clickjacking*. La falta de una CSP robusta permite ataques de Cross-Site Scripting (XSS). |
-| **RP-02** | **MEDIO** | **Dependencia de Configuraciones SSL/TLS por Defecto** | No definir explícitamente los protocolos y ciphers de TLS permitidos puede hacer que el servidor negocie conexiones con algoritmos débiles o inseguros si un cliente así lo solicita. |
-| **RP-03** | **MEDIO** | **Falta de Rate Limiting en el Edge** | Sin `rate limiting`, un atacante puede realizar un número ilimitado de peticiones a los servicios backend, ya sea para intentar adivinar credenciales, buscar vulnerabilidades o simplemente agotar los recursos del servidor (CPU, memoria, conexiones de base de datos). |
+| **RP-01** | **ALT** | **Absència de Headers de Seguretat Crítics** | Sense HSTS (`Strict-Transport-Security`), els navegadors no són forçats a utilitzar HTTPS, obrint la porta a atacs `sslstrip`. Sense `X-Frame-Options` o `Content-Security-Policy: frame-ancestors`, el lloc és vulnerable a atacs de *Clickjacking*. La falta d'una CSP robusta permet atacs de Cross-Site Scripting (XSS). |
+| **RP-02** | **MITJÀ** | **Dependència de Configuracions SSL/TLS per Defecte** | No definir explícitament els protocols i ciphers de TLS permesos pot fer que el servidor negociï connexions amb algoritmes febles o insegurs si un client així ho sol·licita. |
+| **RP-03** | **MITJÀ** | **Falta de Rate Limiting a l'Edge** | Sense `rate limiting`, un atacant pot realitzar un nombre il·limitat de peticions als serveis backend, ja sigui per intentar endevinar credencials, buscar vulnerabilitats o simplement esgotar els recursos del servidor (CPU, memòria, connexions de base de dades). |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ Avisos/Recomanacions
 
-1.  **Compresión:**
-    *   No se observa una configuración explícita de compresión (Gzip/Brotli). Activarla puede mejorar significativamente los tiempos de carga para los usuarios finales.
+1.  **Compressió:**
+    *   No s'observa una configuració explícita de compressió (Gzip/Brotli). Activar-la pot millorar significativament els temps de càrrega per als usuaris finals.
 
-2.  **Logging Personalizado:**
-    *   El formato de log de Nginx es el estándar. Se podría personalizar para incluir más información útil para la depuración y el análisis de seguridad, como los tiempos de respuesta del `upstream` o los `headers` de Authelia.
+2.  **Logging Personalitzat:**
+    *   El format de log de Nginx és l'estàndard. Es podria personalitzar per incloure més informació útil per a la depuració i l'anàlisi de seguretat, com els temps de resposta de l'`upstream` o els `headers` d'Authelia.
 
-### 🔧 Soluciones Sugeridas
+### 🔧 Solucions Suggerides
 
-1.  **Para RP-01 y RP-02 (Añadir Headers y Hardening de SSL/TLS):**
-    *   **Solució:** Crear un nuevo archivo de configuración global, por ejemplo `nginx-proxy/conf.d/hardening.conf`, y añadir las siguientes directivas. Esto aplicará una política de seguridad sólida a todos los servicios detrás del proxy.
+1.  **Per a RP-01 i RP-02 (Afegir Headers i Hardening de SSL/TLS):**
+    *   **Solució:** Crear un nou fitxer de configuració global, per exemple `nginx-proxy/conf.d/hardening.conf`, i afegir les següents directives. Això aplicarà una política de seguretat sòlida a tots els serveis darrere del proxy.
         ```nginx
         # /nginx-proxy/conf.d/hardening.conf
 
         # --- SSL/TLS Hardening ---
-        # Fuerza el uso de TLS 1.2 y 1.3, y ciphers modernos y seguros.
+        # Força l'ús de TLS 1.2 i 1.3, i ciphers moderns i segurs.
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
         ssl_prefer_server_ciphers off;
 
         # --- Security Headers ---
-        # Fuerza HTTPS por 1 año, incluyendo subdominios.
+        # Força HTTPS per 1 any, incloent subdominis.
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 
-        # Previene el Clickjacking.
+        # Prevé el Clickjacking.
         add_header X-Frame-Options "SAMEORIGIN" always;
 
-        # Previene que el navegador infiera el MIME type.
+        # Prevé que el navegador infereixi el MIME type.
         add_header X-Content-Type-Options "nosniff" always;
 
-        # Activa el filtro XSS de los navegadores.
+        # Activa el filtre XSS dels navegadors.
         add_header X-XSS-Protection "1; mode=block" always;
 
-        # Controla qué información se envía en el header Referer.
+        # Controla quina informació s'envia al header Referer.
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-        # (Opcional pero recomendado) Content Security Policy (CSP) - ¡Requiere ajuste fino!
-        # Esta es una política restrictiva, empezar con algo más permisivo si causa problemas.
+        # (Opcional però recomanat) Content Security Policy (CSP) - Requereix ajust fi!
+        # Aquesta és una política restrictiva, començar amb alguna cosa més permissiva si causa problemes.
         # add_header Content-Security-Policy "default-src 'self'; script-src 'self'; img-src 'self'; style-src 'self'; object-src 'none';" always;
         ```
 
-2.  **Para RP-03 (Implementar Rate Limiting):**
-    *   **Solució:** Añadir una configuración de `limit_req_zone` en el mismo archivo `hardening.conf` para establecer límites globales.
+2.  **Per a RP-03 (Implementar Rate Limiting):**
+    *   **Solució:** Afegir una configuració de `limit_req_zone` al mateix fitxer `hardening.conf` per establir límits globals.
         ```nginx
-        # /nginx-proxy/conf.d/hardening.conf (continuación)
+        # /nginx-proxy/conf.d/hardening.conf (continuació)
 
         # --- Rate Limiting ---
-        # Define una zona de memoria para rastrear IPs. 10m puede almacenar ~160,000 IPs.
+        # Defineix una zona de memòria per rastrejar IPs. 10m pot emmagatzemar ~160,000 IPs.
         limit_req_zone $binary_remote_addr zone=global_limit:10m rate=10r/s;
 
-        # Aplica el límite a todas las localizaciones.
+        # Aplica el límit a totes les localitzacions.
         limit_req zone=global_limit burst=20 nodelay;
         ```
-        *   **Nota:** Esta configuración limita a 10 peticiones por segundo por IP, con un "burst" de 20. Estos valores son un punto de partida y deben ser ajustados según el tráfico esperado de la aplicación.
+        *   **Nota:** Aquesta configuració limita a 10 peticions per segon per IP, amb un "burst" de 20. Aquests valors són un punt de partida i s'han d'ajustar segons el trànsit esperat de l'aplicació.
