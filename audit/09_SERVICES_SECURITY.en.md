@@ -1,106 +1,106 @@
-# AUDIT 09: SERVICIOS PRINCIPALES - REVISIÓN PROFUNDA
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/09_SERVICES_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/09_SERVICES_SECURITY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/09_SERVICES_SECURITY.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/09_SERVICES_SECURITY.zh-cn.md)
+# AUDIT 09: CORE SERVICES - DEEP REVIEW
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/09_SERVICES_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/09_SERVICES_SECURITY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/09_SERVICES_SECURITY.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/09_SERVICES_SECURITY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✗ | **n8n (Automatización)** | **CRÍTICO:** La configuración de los `task-runners` deshabilita completamente el sandboxing, permitiendo la **ejecución de código arbitrario** en el contenedor del runner por cualquier usuario que pueda crear un workflow. |
-| ✗ | **Ollama (LLMs)** | El `ollama-proxy` es un simple proxy de paso **sin ninguna capa de seguridad**. No implementa rate limiting, control de acceso por API key, ni logging de peticiones, dependiendo exclusivamente de Authelia para su protección. |
-| ⚠️ | **ComfyUI (Imágenes)** | La autenticación nativa está deshabilitada (`WEB_ENABLE_AUTH=false`), creando una **dependencia total en Authelia**. Si Authelia fuera bypassado, el servicio de generación de imágenes quedaría completamente expuesto y vulnerable a abuso de recursos. |
-| ✗ | **Matrix (Mensajería)** | **CRÍTICO:** El script de entrypoint del contenedor de Matrix **expone secretos críticos en los logs** durante la primera ejecución. Además, la configuración de registro de usuarios está habilitada por defecto en el `.env.staging`, lo que podría permitir registros no deseados. |
-| ⚠️ | **Qdrant (Vector DB)** | El servicio no tiene configurada ninguna clave de API para el acceso, lo que significa que cualquier servicio dentro de la misma red de Docker (`ai`) puede leer y escribir en la base de datos vectorial sin autenticación. |
+| ✗ | **n8n (Automation)** | **CRITICAL:** The `task-runners` configuration completely disables sandboxing, allowing **arbitrary code execution** in the runner container by any user who can create a workflow. |
+| ✗ | **Ollama (LLMs)** | The `ollama-proxy` is a simple pass-through proxy **without any security layer**. It does not implement rate limiting, API key access control, or request logging, relying exclusively on Authelia for protection. |
+| ⚠️ | **ComfyUI (Images)** | Native authentication is disabled (`WEB_ENABLE_AUTH=false`), creating a **total dependency on Authelia**. If Authelia were bypassed, the image generation service would be completely exposed and vulnerable to resource abuse. |
+| ✗ | **Matrix (Messaging)** | **CRITICAL:** The Matrix container entrypoint script **exposes critical secrets in the logs** during the first execution. Additionally, user registration is enabled by default in `.env.staging`, which could allow unwanted signups. |
+| ⚠️ | **Qdrant (Vector DB)** | The service has no API key configured for access, meaning any service within the same Docker network (`ai`) can read and write to the vector database without authentication. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### a) N8N (Workflow Automation)
+### a) n8n (Workflow Automation)
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-n8n-01** | **CRÍTICO** | **Sandboxing Deshabilitado en Runners** | El archivo `n8n-task-runners.json` configura `NODE_FUNCTION_ALLOW_BUILTIN` y `N8N_RUNNERS_STDLIB_ALLOW` con `*`. Esto permite a un usuario con acceso a n8n usar módulos como `child_process` o `fs` en un nodo de "Code", dándole un shell completo dentro del contenedor del runner. Podría exfiltrar datos, atacar otros servicios en la red interna o instalar malware. |
+| **S-n8n-01** | **CRITICAL** | **Sandboxing Disabled in Runners** | The `n8n-task-runners.json` file configures `NODE_FUNCTION_ALLOW_BUILTIN` and `N8N_RUNNERS_STDLIB_ALLOW` with `*`. This allows a user with n8n access to use modules like `child_process` or `fs` in a "Code" node, giving them a full shell inside the runner container. They could exfiltrate data, attack other services in the internal network, or install malware. |
 
-#### 🔧 Solution Sugerida (n8n)
+#### 🔧 Suggested Solution (n8n)
 
-*   **Solution Inmediata:** Modificar `n8n-task-runners.json` para implementar una política de "deny-list" o "allow-list" estricta. Denegar explícitamente el acceso a módulos peligrosos del sistema.
+*   **Immediate Solution:** Modify `n8n-task-runners.json` to implement a strict "deny-list" or "allow-list" policy. Explicitly deny access to dangerous system modules.
     ```json
-    // En n8n-task-runners.json, para el runner de javascript
+    // In n8n-task-runners.json, for the javascript runner
     "env-overrides": {
         "NODE_FUNCTION_DENY_BUILTIN": "fs,os,child_process,worker_threads,vm",
-        "NODE_FUNCTION_ALLOW_EXTERNAL": "axios,moment" // Permitir solo módulos específicos
+        "NODE_FUNCTION_ALLOW_EXTERNAL": "axios,moment" // Allow only specific modules
     }
     ```
 
-### b) OLLAMA (LLMs Locales)
+### b) Ollama (Local LLMs)
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-ollama-01** | **ALTO** | **Proxy sin Seguridad Adicional** | El `ollama-proxy` es un proxy de reenvío simple. No añade valor de seguridad. Si Authelia falla o es mal configurado, no hay una segunda capa de defensa. Un atacante podría abusar de los modelos de LLM, consumiendo recursos de GPU/CPU de forma masiva y sin control. |
+| **S-ollama-01** | **HIGH** | **Proxy without Additional Security** | The `ollama-proxy` is a simple forwarding proxy. It adds no security value. If Authelia fails or is misconfigured, there is no second layer of defense. An attacker could abuse LLM models, consuming GPU/CPU resources massively and without control. |
 
-#### 🔧 Solution Sugerida (Ollama)
+#### 🔧 Suggested Solution (Ollama)
 
-*   **Solution:** Mejorar el `ollama-proxy` para que actúe como un verdadero "API Gateway".
-    1.  **Añadir Rate Limiting:** Implementar un middleware en `server.js` (ej. `express-rate-limit`) para limitar el número de peticiones por IP.
-    2.  **Añadir Logging:** Registrar cada petición (IP, endpoint, timestamp) para poder detectar abusos.
-    3.  **(Opcional) Autenticación por API Key:** Implementar un sistema de API keys que los servicios internos (como n8n) deban usar para acceder a Ollama, proporcionando una capa de autenticación adicional.
+*   **Solution:** Improve `ollama-proxy` to act as a true "API Gateway".
+    1.  **Add Rate Limiting:** Implement middleware in `server.js` (e.g., `express-rate-limit`) to limit the number of requests per IP.
+    2.  **Add Logging:** Record each request (IP, endpoint, timestamp) to detect abuse.
+    3.  **(Optional) API Key Authentication:** Implement an API key system that internal services (like n8n) must use to access Ollama, providing an additional layer of authentication.
 
-### c) COMFYUI (Generación de Imágenes)
+### c) ComfyUI (Image Generation)
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-comfy-01** | **MEDIO** | **Dependencia Única de Authelia** | Al deshabilitar la autenticación nativa de ComfyUI, toda la seguridad recae en la capa perimetral. Esto viola el principio de "defensa en profundidad". Un error de configuración en Nginx o Authelia dejaría el servicio totalmente desprotegido. |
+| **S-comfy-01** | **MEDIUM** | **Single Dependency on Authelia** | By disabling ComfyUI's native authentication, all security falls on the perimeter layer. This violates the "defense in depth" principle. A configuration error in Nginx or Authelia would leave the service totally unprotected. |
 
-#### 🔧 Solution Sugerida (ComfyUI)
+#### 🔧 Suggested Solution (ComfyUI)
 
-*   **Solution:** Habilitar la autenticación nativa de ComfyUI como segunda capa de defensa.
-    1.  **Modificar `docker-compose.yml`:**
+*   **Solution:** Enable ComfyUI native authentication as a second layer of defense.
+    1.  **Modify `docker-compose.yml`:**
         ```diff
         -      - WEB_ENABLE_AUTH=false
         +      - WEB_ENABLE_AUTH=true
         ```
-    2.  **Gestionar Credenciales:** Las credenciales de ComfyUI (usuario/contraseña) deberían ser gestionadas a través de Docker Secrets, de la misma manera que se sugiere para otros servicios.
+    2.  **Manage Credentials:** ComfyUI credentials (user/password) should be managed via Docker Secrets, in the same way suggested for other services.
 
-### d) MATRIX (Mensajería)
+### d) Matrix (Messaging)
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-matrix-01** | **CRÍTICO** | **Exposición de Secretos en Logs** | Como se detalla en el **AUDIT 04 (DS-02)**, el entrypoint del contenedor de Matrix imprime secretos de servidor en los logs de Docker en el primer arranque. |
-| **S-matrix-02** | **ALTO** | **Registro de Usuarios Abierto por Defecto** | La variable `MATRIX_ENABLE_REGISTRATION` está configurada como `true` en el archivo `.env.staging`. Si esta configuración llega a producción, permitiría que cualquiera se registre en el servidor de mensajería, abriendo la puerta a spam, abuso y consumo de recursos. |
+| **S-matrix-01** | **CRITICAL** | **Secrets Exposed in Logs** | As detailed in **AUDIT 04 (DS-02)**, the Matrix container entrypoint prints server secrets in Docker logs on the first boot. |
+| **S-matrix-02** | **HIGH** | **User Registration Open by Default** | The `MATRIX_ENABLE_REGISTRATION` variable is set to `true` in the `.env.staging` file. If this configuration reaches production, it would allow anyone to register on the messaging server, opening the door to spam, abuse, and resource consumption. |
 
-#### 🔧 Solution Sugerida (Matrix)
+#### 🔧 Suggested Solution (Matrix)
 
-*   **Para S-matrix-01:** Ver la solución detallada en `04_DOCKER_SECURITY.md`.
-*   **Para S-matrix-02:**
-    *   **Solution:** Cambiar el valor por defecto en `.env.example` y `.env.staging` a `false`. El registro de usuarios debe ser una acción explícita y controlada por el administrador.
+*   **For S-matrix-01:** See the detailed solution in `04_DOCKER_SECURITY.md`.
+*   **For S-matrix-02:**
+    *   **Solution:** Change the default value in `.env.example` and `.env.staging` to `false`. User registration should be an explicit and administrator-controlled action.
         ```diff
-        # En .env.example y .env.staging
+        # In .env.example and .env.staging
         - MATRIX_ENABLE_REGISTRATION=true
         + MATRIX_ENABLE_REGISTRATION=false
         ```
 
-### e) QDRANT (Vector Database)
+### e) Qdrant (Vector Database)
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-qdrant-01** | **MEDIO** | **Acceso sin Autenticación en la Red Interna** | Qdrant soporta la autenticación mediante API key, pero esta no está configurada. Cualquier contenedor en la red `ai` (comprometido o legítimo) puede acceder, modificar y eliminar datos de la base de datos vectorial. |
+| **S-qdrant-01** | **MEDIUM** | **Unauthenticated Access on Internal Network** | Qdrant supports API key authentication, but it is not configured. Any container on the `ai` network (compromised or legitimate) can access, modify, and delete data from the vector database. |
 
-#### 🔧 Solution Sugerida (Qdrant)
+#### 🔧 Suggested Solution (Qdrant)
 
-*   **Solution:** Habilitar la autenticación por API key.
-    1.  **Generar una API Key:** Usar `openssl rand -hex 32` y guardarla como un Docker Secret.
-    2.  **Modificar `docker-compose.yml` para Qdrant:**
+*   **Solution:** Enable API key authentication.
+    1.  **Generate an API Key:** Use `openssl rand -hex 32` and save it as a Docker Secret.
+    2.  **Modify `docker-compose.yml` for Qdrant:**
         ```yaml
-        # En el servicio qdrant
+        # In the qdrant service
         secrets:
           - qdrant_api_key
         command: ["./qdrant", "--api-key-file", "/run/secrets/qdrant_api_key"]
         ```
-    3.  **Actualizar Clientes:** Configurar los servicios que usan Qdrant (como n8n) para que envíen la API key en sus peticiones.
+    3.  **Update Clients:** Configure services using Qdrant (like n8n) to send the API key in their requests.

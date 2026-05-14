@@ -1,74 +1,74 @@
-# AUDIT 01: ESTRUCTURA Y CONFIGURACIÓN GENERAL
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
+# AUDIT 01: ESTRUCTURA I CONFIGURACIÓ GENERAL
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Estructura General** | La estructura del repositorio es **lógica, limpia y sigue convenciones bien establecidas**. La separación de configuraciones por servicio en directorios dedicados es una excelente práctica. |
-| ✓ | **Consistencia** | Se observa una **alta consistencia** en el nombrado de archivos y directorios, lo que facilita enormemente la navegación y comprensión del proyecto. |
-| ⚠️ | **Documentación** | Aunque existe una cantidad significativa de documentación, su **dispersión en múltiples archivos** (`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`) puede dificultar la obtención de una visión unificada. |
-| ✗ | **Archivos de Configuración** | El archivo `.gitignore` es robusto, pero la presencia de archivos de configuración específicos del entorno (`.env.staging`) junto a los ejemplos (`.env.example`) aumenta el riesgo de commits accidentales si `.gitignore` fallara o fuera modificado. |
+| ✓ | **Estructura General** | L'estructura del repositori és **lògica, neta i segueix convencions ben establertes**. La separació de configuracions per servei en directoris dedicats és una pràctica excel·lent. |
+| ✓ | **Consistència** | S'observa una **alta consistència** en el nomenat de fitxers i directoris, cosa que facilita enormement la navegació i comprensió del projecte. |
+| ⚠️ | **Documentació** | Tot i que existeix una quantitat significativa de documentació, la seva **dispersió en múltiples fitxers** (`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`) pot dificultar l'obtenció d'una visió unificada. |
+| ✗ | **Fitxers de Configuració** | El fitxer `.gitignore` és robust, però la presència de fitxers de configuració específics de l'entorn (`.env.staging`) juntament amb els exemples (`.env.example`) augmenta el risc de commits accidentals si `.gitignore` fallés o fos modificat. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Organización por Servei:**
-    *   La decisión de crear un directorio raíz para cada servicio principal (ej. `/authelia`, `/n8n`, `/prometheus`) es una práctica recomendada. Centraliza la configuración, los volúmenes persistentes y los scripts relacionados con cada componente, facilitando el mantenimiento y la depuración.
-    *   **Ejemplo:** El directorio `/fail2ban` contiene de forma clara su `jail.local` y los filtros (`filter.d`), haciendo que su configuración sea modular y fácil de auditar.
+1.  **Organització per Servei:**
+    *   La decisió de crear un directori arrel per a cada servei principal (ex. `/authelia`, `/n8n`, `/prometheus`) és una pràctica recomanada. Centralitza la configuració, els volums persistents i els scripts relacionats amb cada component, facilitant el manteniment i la depuració.
+    *   **Exemple:** El directori `/fail2ban` conté de forma clara el seu `jail.local` i els filtres (`filter.d`), fent que la seva configuració sigui modular i fàcil d'auditar.
 
-2.  **Separación de Lógica y Datos:**
-    *   El proyecto distingue claramente entre el código fuente/configuración (versionado en Git) y los datos de tiempo de ejecución (que se montarían en directorios como `/data`, `/logs`, etc., y que están correctamente ignorados por Git).
-    *   El uso de un directorio `/scripts` para la automatización general es limpio y centralizado.
+2.  **Separació de Lògica i Dades:**
+    *   El projecte distingeix clarament entre el codi font/configuració (versionat a Git) i les dades de temps d'execució (que es muntarien en directoris com `/data`, `/logs`, etc., i que estan correctament ignorats per Git).
+    *   L'ús d'un directori `/scripts` per a l'automatització general és net i centralitzat.
 
-3.  **Consistencia de Nombrado:**
-    *   Los Dockerfiles personalizados siguen una convención clara (`Dockerfile.*`), lo que permite identificar rápidamente qué imágenes son construidas a medida.
-    *   Los scripts de shell tienen nombres descriptivos que reflejan su propósito (ej. `setup-permissions.sh`, `download_models.sh`).
+3.  **Consistència de Nomenat:**
+    *   Els Dockerfiles personalitzats segueixen una convenció clara (`Dockerfile.*`), cosa que permet identificar ràpidament quines imatges són construïdes a mida.
+    *   Els scripts de shell tenen noms descriptius que reflecteixen el seu propòsit (ex. `setup-permissions.sh`, `download_models.sh`).
 
-4.  **Archivo `.gitignore` Completo:**
-    *   El archivo `.gitignore` es exhaustivo y cubre dependencias de Python, archivos de IDE, datos de Jupyter Notebooks y, crucialmente, los directorios de `logs`, `secrets` y los archivos `.env`.
+4.  **Fitxer `.gitignore` Complet:**
+    *   El fitxer `.gitignore` és exhaustiu i cobreix dependències de Python, fitxers d'IDE, dades de Jupyter Notebooks i, crucialment, els directoris de `logs`, `secrets` i els fitxers `.env`.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **S-01** | **BAJO** | **Archivos de entorno en la raíz** | Aunque `.env.staging` está correctamente en `.gitignore`, tener archivos de entorno reales (incluso de staging) en el directorio raíz puede llevar a errores humanos, como arrastrarlos accidentalmente a un commit si `.gitignore` se modifica temporalmente. |
+| **S-01** | **BAIXA** | **Fitxers d'entorn a l'arrel** | Tot i que `.env.staging` està correctament a `.gitignore`, tenir fitxers d'entorn reals (fins i tot de staging) al directori arrel pot portar a errors humans, com arrossegar-los accidentalment a un commit si `.gitignore` es modifica temporalment. |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ Avisos/Recomanacions
 
-1.  **Consolidación de la Documentación:**
-    *   **Recomendación:** Considerar la creación de un directorio `/docs` más formal o un sistema de documentación (como MkDocs o Docusaurus) que unifique las guías. El `README.md` principal debería servir como un punto de entrada de alto nivel con enlaces claros a la documentación más detallada. Actualmente, la información crítica está dispersa entre el `README.md`, varios `AUTHELIA_*.md`, `DESIGN_TRUTH_*.md` y `ENV_MANAGEMENT.md`.
+1.  **Consolidació de la Documentació:**
+    *   **Recomanació:** Considerar la creació d'un directori `/docs` més formal o un sistema de documentació (com MkDocs o Docusaurus) que unifiqui les guies. El `README.md` principal hauria de servir com un punt d'entrada d'alt nivell amb enllaços clars a la documentació més detallada. Actualment, la informació crítica està dispersa entre el `README.md`, diversos `AUTHELIA_*.md`, `DESIGN_TRUTH_*.md` i `ENV_MANAGEMENT.md`.
 
-2.  **Claridad en los Dockerfiles:**
-    *   **Recomendación:** Aunque los nombres de los Dockerfiles son claros, no hay un `README.md` en la raíz que explique brevemente el propósito de cada imagen personalizada. Un desarrollador nuevo tendría que leer cada Dockerfile para entender su función.
+2.  **Claredat en els Dockerfiles:**
+    *   **Recomanació:** Tot i que els noms dels Dockerfiles són clars, no hi ha un `README.md` a l'arrel que expliqui breument el propòsit de cada imatge personalitzada. Un desenvolupador nou hauria de llegir cada Dockerfile per entendre la seva funció.
 
-### 🔧 Soluciones Sugeridas
+### 🔧 Solucions Suggerides
 
-1.  **Para el Problema S-01 (Archivos de Entorno):**
-    *   **Solució Simple:** Mantener la estructura actual pero reforzar en la documentación la importancia de no modificar el `.gitignore` y de manejar los archivos `.env` con extremo cuidado.
-    *   **Solució Robusta (Recomendada):** Crear un directorio `/environments` que contenga todos los archivos de configuración de entorno (ej. `/environments/staging.env`, `/environments/production.env`). Luego, los scripts de inicialización (`init_env.sh`) podrían copiar el archivo apropiado a un `.env` en la raíz, que sigue estando ignorado por Git. Esto organiza mejor los entornos y reduce el desorden en la raíz.
+1.  **Per al Problema S-01 (Fitxers d'Entorn):**
+    *   **Solució Simple:** Mantenir l'estructura actual però reforçar en la documentació la importància de no modificar el `.gitignore` i de manejar els fitxers `.env` amb molta cura.
+    *   **Solució Robusta (Recomanada):** Crear un directori `/environments` que contingui tots els fitxers de configuració d'entorn (ex. `/environments/staging.env`, `/environments/production.env`). Després, els scripts d'inicialització (`init_env.sh`) podrien copiar el fitxer apropiat a un `.env` a l'arrel, que continua estant ignorat per Git. Això organitza millor els entorns i redueix el desordre a l'arrel.
         ```bash
-        # Ejemplo en init_env.sh
+        # Exemple a init_env.sh
         ENV_FILE="environments/${1:-staging}.env"
         if [ -f "$ENV_FILE" ]; then
           cp "$ENV_FILE" ".env"
-          echo "Entorno '$1' inicializado."
+          echo "Entorn '$1' inicialitzat."
         else
-          echo "Error: El archivo de entorno '$ENV_FILE' no existe."
+          echo "Error: El fitxer d'entorn '$ENV_FILE' no existeix."
           exit 1
         fi
         ```
 
-2.  **Para la Consolidación de la Documentación:**
-    *   **Acción Inmediata:** Modificar el `README.md` principal para añadir una sección de "Índice de Documentación" que enlace a todos los demás archivos `.md` relevantes, explicando brevemente qué contiene cada uno.
-    *   **Acción a Largo Plazo:** Evaluar la implementación de una herramienta de documentación estática para centralizar y mejorar la navegabilidad de la documentación del proyecto.
+2.  **Per a la Consolidació de la Documentació:**
+    *   **Acció Immediata:** Modificar el `README.md` principal per afegir una secció d'"Índex de Documentació" que enllaci a tots els altres fitxers `.md` rellevants, explicant breument què conté cadascun.
+    *   **Acció a Llarg Termini:** Avaluar la implementació d'una eina de documentació estàtica per centralitzar i millorar la navegabilitat de la documentació del projecte.

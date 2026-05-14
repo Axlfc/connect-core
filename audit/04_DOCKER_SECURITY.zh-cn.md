@@ -1,65 +1,69 @@
-# AUDIT 04: SEGURIDAD DE DOCKER
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
+# 审计 04：Docker 安全性
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**日期：** 2024-07-25
+**分析师：** Jules
 
-## 1. Resumen de Hallazgos
+## 1. 发现摘要
 
-| Estado | Área | Resumen de Hallazgos |
+| 状态 | 领域 | 发现摘要 |
 | :--- | :--- | :--- |
-| ✓ | **Aislamiento de Red** | El uso de redes de Docker personalizadas (`frontend`, `backend`, `ai`, `monitoring`) con la mayoría configuradas como `internal: true` es una **excelente práctica de seguridad** que limita la comunicación entre servicios. |
-| ✓ | **最低要求s Privilegios (Parcial)** | La mayoría de los servicios utilizan `cap_drop: - ALL` y `security_opt: - no-new-privileges:true`, lo que demuestra una sólida comprensión de los principios de seguridad de contenedores. |
-| ✗ | **Ejecución como Root** | Varios contenedores críticos, incluyendo `ollama` y los basados en imágenes de NVIDIA (`whisper-stt`), se ejecutan con el **usuario `root`**. Una vulnerabilidad en cualquiera de estas aplicaciones otorgaría privilegios de administrador dentro del contenedor. |
-| ✗ | **Capacidades de Linux Peligrosas** | Múltiples servicios (`postgres`, `forgejo`, `duplicati`) tienen la capacidad `DAC_OVERRIDE` añadida. Esta capacidad permite a un proceso eludir las comprobaciones de permisos de lectura, escritura y ejecución de archivos, socavando la seguridad del sistema de archivos. |
-| ✗ | **Exposición de la Red del Host** | El servicio `fail2ban` está configurado con `network_mode: host`. Esto **rompe completamente el aislamiento de red del contenedor**, dándole acceso directo a las interfaces de red del host. Esto es extremadamente peligroso y anula muchos de los beneficios de seguridad de la contenedorización. |
-| ✗ | **Secretos en Logs** | El `Dockerfile.matrix` contiene un script de entrypoint que **imprime los secretos generados (macaroon key, form secret, etc.) en los logs del contenedor** en el primer inicio. Esto expone credenciales críticas a cualquiera que tenga acceso a los logs de Docker. |
+| ✓ | **网络隔离** | 使用自定义 Docker 网络 (`frontend`, `backend`, `ai`, `monitoring`) 且大多数配置为 `internal: true` 是**极好的安全实践**，限制了服务间的通信。 |
+| ✓ | **最小权限 (部分)** | 大多数服务使用 `cap_drop: - ALL` 和 `security_opt: - no-new-privileges:true`，展示了对容器安全原则的扎实理解。 |
+| ✗ | **以 Root 身份运行** | 几个关键容器，包括 `ollama` 和基于 NVIDIA 镜像的容器 (`whisper-stt`)，以 **`root` 用户** 身份运行。任何这些应用中的漏洞都会赋予攻击者容器内的管理员权限。 |
+| ✗ | **危险的 Linux 能力 (Capabilities)** | 多个服务 (`postgres`, `forgejo`, `duplicati`) 添加了 `DAC_OVERRIDE` 能力。此能力允许进程绕过文件读取、写入和执行权限检查，破坏了文件系统的安全性。 |
+| ✗ | **宿主机网络暴露** | `fail2ban` 服务配置了 `network_mode: host`。这**完全破坏了容器的网络隔离**，使其能够直接访问宿主机的网络接口。这是极其危险的，抵消了容器化带来的诸多安全益处。 |
+| ✗ | **日志中的机密信息** | `Dockerfile.matrix` 包含一个入口点脚本，该脚本在首次启动时**将生成的机密（macaroon key, form secret 等）打印到容器日志中**。这使得任何有权访问 Docker 日志的人都能获取关键凭据。 |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. 详细发现
 
-### ✓ Lo que está bien
+### ✓ 优点
 
-1.  **Principio de 最低要求s Privilegios Aplicado (en parte):**
-    *   La mayoría de los servicios están configurados con `security_opt: [no-new-privileges:true]`, lo que impide que los procesos obtengan privilegios adicionales.
-    *   El uso de `cap_drop: [ALL]` como configuración por defecto, y luego añadir solo las capacidades necesarias (`cap_add`), es la estrategia correcta a seguir.
+1.  **应用最小权限原则 (部分)：**
+    *   大多数服务配置了 `security_opt: [no-new-privileges:true]`，防止进程获取额外权限。
+    *   将 `cap_drop: [ALL]` 作为默认配置，然后仅添加必要的能力 (`cap_add`)，是应当遵循的正确策略。
 
-2.  **Aislamiento de Red Robusto:**
-    *   La arquitectura de red está muy bien diseñada. Los servicios de backend no son accesibles desde el exterior, y la comunicación está segmentada por función, lo que limita el movimiento lateral de un atacante.
+2.  **稳健的网络隔离：**
+    *   网络架构设计得非常好。后端服务无法从外部访问，且通信按功能分段，限制了攻击者的横向移动。
 
-3.  **使用 de Usuarios No-Root (en parte):**
-    *   服务s como `redis` (`user: "999:999"`), `authelia`, y `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) se ejecutan correctamente con usuarios no privilegiados, reduciendo significativamente su riesgo.
+3.  **使用非 Root 用户 (部分)：**
+    *   `redis` (`user: "999:999"`)、`authelia` 和 `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) 等服务以非特权用户身份正确运行，显著降低了风险。
 
-### ✗ Problemas Encontrados
+### ✗ 发现的问题
 
-| ID | Severidad | Problema | Impacto |
+| ID | 严重程度 | 问题 | 影响 |
 | :- | :--- | :--- | :--- |
-| **DS-01** | **CRÍTICO** | **`fail2ban` con `network_mode: host`** | El contenedor tiene acceso completo a la pila de red del host. Puede sniffear todo el tráfico, conectarse a cualquier servicio en `localhost` en el host, e interferir con las reglas de firewall del host. Un compromiso de este contenedor es equivalente a un compromiso del host a nivel de red. |
-| **DS-02** | **CRÍTICO** | **Secretos Expuestos en Logs de `matrix-synapse`** | El script de entrypoint en `Dockerfile.matrix` imprime un bloque de "GENERATED SECRETS" en la salida estándar, que es capturada por los logs de Docker. Esto hace que secretos de sesión y de federación sean trivialmente accesibles. |
-| **DS-03** | **ALTO** | **Ejecución como `root` en Contenedores Clave** | Los servicios `ollama`, `whisper-stt`, y `kokoro-tts` se ejecutan como `root`. Una vulnerabilidad de ejecución remota de código en cualquiera de estos servicios daría a un atacante control total dentro del contenedor, con la capacidad de modificar archivos, instalar software malicioso y atacar otros servicios en la red. |
-| **DS-04** | **ALTO** | **使用 de la Capacidad `DAC_OVERRIDE`** | Esta capacidad, presente en `postgres`, `matrix-postgres`, `forgejo` y `duplicati`, permite a un proceso ignorar los permisos de archivos. Si un atacante compromete uno de estos contenedores, podría leer/escribir archivos a los que normalmente no tendría acceso, incluyendo potencialmente archivos de configuración sensibles o datos de otros usuarios. |
-| **DS-05** | **MEDIO** | **El socket de Docker montado de forma insegura** | El servicio `nginx-proxy` monta el socket de Docker (`/var/run/docker.sock`) como `read-only`. Esto es bueno, pero comprometer `nginx-proxy` aún permitiría a un atacante obtener información sensible sobre todos los demás contenedores y la configuración del host de Docker. |
+| **DS-01** | **关键** | **`fail2ban` 使用 `network_mode: host`** | 容器拥有对宿主机网络栈的完全访问权限。它可以嗅探所有流量，连接到宿主机上的任何 `localhost` 服务，并干扰宿主机的防火墙规则。该容器被攻破等同于宿主机在网络层面被攻破。 |
+| **DS-02** | **关键** | **`matrix-synapse` 日志中暴露机密** | `Dockerfile.matrix` 中的入口点脚本将“生成机密”块打印到标准输出，该输出被 Docker 日志捕获。这使得会话和联邦机密可以轻易被获取。 |
+| **DS-03** | **高** | **关键容器中以 `root` 身份运行** | `ollama`、`whisper-stt` 和 `kokoro-tts` 服务以 `root` 身份运行。任何这些服务中的远程代码执行漏洞都会使攻击者获得容器内的完全控制权，具备修改文件、安装恶意软件以及攻击网络上其他服务的能力。 |
+| **DS-04** | **高** | **使用 `DAC_OVERRIDE` 能力** | 该能力存在于 `postgres`、`matrix-postgres`、`forgejo` 和 `duplicati` 中，允许进程忽略文件权限。如果攻击者攻破其中一个容器，他们可以读取/写入通常无法访问的文件，可能包括敏感配置文件或其他用户的数据。 |
+| **DS-05** | **中** | **不安全地挂载 Docker Socket** | `nginx-proxy` 服务将 Docker socket (`/var/run/docker.sock`) 挂载为“只读”。虽然这很好，但攻破 `nginx-proxy` 仍会允许攻击者获取有关所有其他容器和 Docker 宿主机配置的敏感信息。 |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Filesystems Read-Only:**
-    *   **Recomendación:** Para contenedores que no necesitan escribir datos en su propio sistema de archivos (aparte de en los volúmenes montados), considere añadir la opción `read_only: true`. Esto puede mitigar muchas clases de ataques que dependen de escribir archivos binarios o scripts maliciosos.
+### ⚠️ 警告/建议
 
-2.  **Perfiles de Seguridad (AppArmor/Seccomp):**
-    *   **Recomendación:** El uso de `apparmor=docker-default` es un buen punto de partida. Para una seguridad aún mayor, se podrían crear perfiles de AppArmor o Seccomp personalizados para cada servicio, restringiendo las llamadas al sistema que cada aplicación puede realizar.
+1.  **只读文件系统：**
+    *   **建议：** 对于不需要在其自身文件系统中写入数据（除了挂载卷之外）的容器，考虑添加 `read_only: true` 选项。这可以缓解许多依赖于编写二进制文件或恶意脚本的攻击。
 
-### 🔧 Soluciones Sugeridas
+2.  **安全配置文件 (AppArmor/Seccomp)：**
+    *   **建议：** 使用 `apparmor=docker-default` 是一个好的起点。为了获得更高的安全性，可以为每个服务创建自定义的 AppArmor 或 Seccomp 配置文件，限制每个应用可以进行的系统调用。
 
-1.  **Para DS-01 (`fail2ban` en `network_mode: host`):**
-    *   **解决方案:** Esta es una configuración difícil de cambiar, ya que `fail2ban` necesita modificar las `iptables` del host. La solución más segura es **ejecutar `fail2ban` directamente en el host**, fuera de Docker. Si debe permanecer en un contenedor, se debe investigar el uso de un contenedor más especializado y "Rooteado" con herramientas como `nsenter` para ejecutar comandos en el namespace del host de manera controlada, en lugar de exponer toda la pila de red.
+---
 
-2.  **Para DS-02 (Secretos en Logs de Matrix):**
-    *   **解决方案:** Modificar `/scripts/entrypoint.sh` dentro de `Dockerfile.matrix` para que los secretos se guarden en un archivo dentro del contenedor con permisos restringidos, en lugar de imprimirlos.
+### 🔧 建议的解决方案
+
+1.  **针对 DS-01 (`fail2ban` 使用 `network_mode: host`)：**
+    *   **解决方案：** 这是一个难以更改的配置，因为 `fail2ban` 需要修改宿主机的 `iptables`。最安全的方案是**直接在宿主机上运行 `fail2ban`**，而不是在 Docker 中。如果必须保留在容器中，应研究使用更专业、通过工具（如 `nsenter`）受控地在宿主机命名空间中执行命令的容器，而不是暴露整个网络栈。
+
+2.  **针对 DS-02 (Matrix 日志中的机密)：**
+    *   **解决方案：** 修改 `Dockerfile.matrix` 中的 `/scripts/entrypoint.sh`，使机密保存到容器内具有受限权限的文件中，而不是将其打印出来。
         ```diff
         --- a/Dockerfile.matrix
         +++ b/Dockerfile.matrix
@@ -84,22 +88,22 @@
          fi
          ```
 
-3.  **Para DS-03 (Ejecución como `root`):**
-    *   **解决方案 para `ollama`:** La imagen oficial de `ollama` ahora soporta la ejecución como no-root. Se debe crear un usuario `ollama` y asegurarse de que los permisos del volumen (`/root/.ollama` debe cambiar a `/home/ollama/.ollama`) sean correctos.
-    *   **解决方案 para Dockerfiles personalizados (e.g., `whisper-stt`):** Añadir los siguientes pasos al final del Dockerfile:
+3.  **针对 DS-03 (以 `root` 身份运行)：**
+    *   **针对 `ollama` 的方案：** `ollama` 官方镜像现在支持以非 root 身份运行。应创建一个 `ollama` 用户并确保卷权限（`/root/.ollama` 应改为 `/home/ollama/.ollama`）正确。
+    *   **针对自定义 Dockerfile 的方案 (例如 `whisper-stt`)：** 在 Dockerfile 末尾添加以下步骤：
         ```dockerfile
-        # Create a non-root user
+        # 创建非 root 用户
         RUN useradd -ms /bin/bash appuser
 
-        # Ensure correct permissions on the app directory
+        # 确保应用目录权限正确
         RUN chown -R appuser:appuser /app
 
-        # Switch to the non-root user
+        # 切换到非 root 用户
         USER appuser
 
-        # Adjust command/entrypoint if necessary
+        # 必要时调整命令/入口点
         CMD ["python", "/app/server.py"]
         ```
 
-4.  **Para DS-04 (`DAC_OVERRIDE`):**
-    *   **解决方案:** Investigar por qué cada servicio necesita esta capacidad. A menudo, se añade para solucionar problemas de permisos en los volúmenes montados. La solución correcta es **arreglar los permisos en el host** (usando el script `setup-permissions.sh` y asegurando que `PUID`/`PGID` coincidan) en lugar de otorgar capacidades peligrosas. Eliminar `DAC_OVERRIDE` de la sección `cap_add` de todos los servicios.
+4.  **针对 DS-04 (`DAC_OVERRIDE`)：**
+    *   **解决方案：** 调查每个服务为何需要此能力。通常，它是为了解决挂载卷上的权限问题而添加的。正确的做法是**修复宿主机上的权限**（使用 `setup-permissions.sh` 脚本并确保 `PUID`/`PGID` 匹配），而不是授予危险能力。从所有服务的 `cap_add` 部分删除 `DAC_OVERRIDE`。

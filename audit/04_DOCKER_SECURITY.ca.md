@@ -1,65 +1,69 @@
-# AUDIT 04: SEGURIDAD DE DOCKER
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
+# AUDIT 04: SEGURETAT DE DOCKER
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Aislamiento de Red** | El uso de redes de Docker personalizadas (`frontend`, `backend`, `ai`, `monitoring`) con la mayoría configuradas como `internal: true` es una **excelente práctica de seguridad** que limita la comunicación entre servicios. |
-| ✓ | **Mínims Privilegios (Parcial)** | La mayoría de los servicios utilizan `cap_drop: - ALL` y `security_opt: - no-new-privileges:true`, lo que demuestra una sólida comprensión de los principios de seguridad de contenedores. |
-| ✗ | **Ejecución como Root** | Varios contenedores críticos, incluyendo `ollama` y los basados en imágenes de NVIDIA (`whisper-stt`), se ejecutan con el **usuario `root`**. Una vulnerabilidad en cualquiera de estas aplicaciones otorgaría privilegios de administrador dentro del contenedor. |
-| ✗ | **Capacidades de Linux Peligrosas** | Múltiples servicios (`postgres`, `forgejo`, `duplicati`) tienen la capacidad `DAC_OVERRIDE` añadida. Esta capacidad permite a un proceso eludir las comprobaciones de permisos de lectura, escritura y ejecución de archivos, socavando la seguridad del sistema de archivos. |
-| ✗ | **Exposición de la Red del Host** | El servicio `fail2ban` está configurado con `network_mode: host`. Esto **rompe completamente el aislamiento de red del contenedor**, dándole acceso directo a las interfaces de red del host. Esto es extremadamente peligroso y anula muchos de los beneficios de seguridad de la contenedorización. |
-| ✗ | **Secretos en Logs** | El `Dockerfile.matrix` contiene un script de entrypoint que **imprime los secretos generados (macaroon key, form secret, etc.) en los logs del contenedor** en el primer inicio. Esto expone credenciales críticas a cualquiera que tenga acceso a los logs de Docker. |
+| ✓ | **Aïllament de Xarxa** | L'ús de xarxes de Docker personalitzades (`frontend`, `backend`, `ai`, `monitoring`) amb la majoria configurades com a `internal: true` és una **excel·lent pràctica de seguretat** que limita la comunicació entre serveis. |
+| ✓ | **Mínims Privilegis (Parcial)** | La majoria dels serveis utilitzen `cap_drop: - ALL` i `security_opt: - no-new-privileges:true`, cosa que demostra una sòlida comprensió dels principis de seguretat de contenidors. |
+| ✗ | **Execució com a Root** | Diversos contenidors crítics, incloent `ollama` i els basats en imatges de NVIDIA (`whisper-stt`), s'executen amb l'**usuari `root`**. Una vulnerabilitat en qualsevol d'aquestes aplicacions atorgaria privilegis d'administrador dins del contenidor. |
+| ✗ | **Capacitats de Linux Perilloses** | Múltiples serveis (`postgres`, `forgejo`, `duplicati`) tenen la capacitat `DAC_OVERRIDE` afegida. Aquesta capacitat permet a un procés eludir les comprovacions de permisos de lectura, escriptura i execució de fitxers, soscavant la seguretat del sistema de fitxers. |
+| ✗ | **Exposició de la Xarxa del Host** | El servei `fail2ban` està configurat amb `network_mode: host`. Això **trenca completament l'aïllament de xarxa del contenidor**, donant-li accés directe a les interfícies de xarxa del host. Això és extremadament perillós i anul·la molts dels beneficis de seguretat de la containerització. |
+| ✗ | **Secrets en Logs** | El `Dockerfile.matrix` conté un script d'entrypoint que **imprimeix els secrets generats (macaroon key, form secret, etc.) als logs del contenidor** en el primer inici. Això exposa credencials crítiques a qualsevol que tingui accés als logs de Docker. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Principio de Mínims Privilegios Aplicado (en parte):**
-    *   La mayoría de los servicios están configurados con `security_opt: [no-new-privileges:true]`, lo que impide que los procesos obtengan privilegios adicionales.
-    *   El uso de `cap_drop: [ALL]` como configuración por defecto, y luego añadir solo las capacidades necesarias (`cap_add`), es la estrategia correcta a seguir.
+1.  **Principi de Mínims Privilegis Aplicat (en part):**
+    *   La majoria dels serveis estan configurats amb `security_opt: [no-new-privileges:true]`, cosa que impedeix que els processos obtinguin privilegis addicionals.
+    *   L'ús de `cap_drop: [ALL]` com a configuració per defecte, i després afegir només les capacitats necessàries (`cap_add`), és l'estratègia correcta a seguir.
 
-2.  **Aislamiento de Red Robusto:**
-    *   La arquitectura de red está muy bien diseñada. Los servicios de backend no son accesibles desde el exterior, y la comunicación está segmentada por función, lo que limita el movimiento lateral de un atacante.
+2.  **Aïllament de Xarxa Robust:**
+    *   L'arquitectura de xarxa està molt ben dissenyada. Els serveis de backend no són accessibles des de l'exterior, i la comunicació està segmentada per funció, cosa que limita el moviment lateral d'un atacant.
 
-3.  **Ús de Usuarios No-Root (en parte):**
-    *   Serveis como `redis` (`user: "999:999"`), `authelia`, y `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) se ejecutan correctamente con usuarios no privilegiados, reduciendo significativamente su riesgo.
+3.  **Ús d'Usuaris No-Root (en part):**
+    *   Serveis com `redis` (`user: "999:999"`), `authelia`, i `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) s'executen correctament amb usuaris no privilegiats, reduint significativament el seu risc.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **DS-01** | **CRÍTICO** | **`fail2ban` con `network_mode: host`** | El contenedor tiene acceso completo a la pila de red del host. Puede sniffear todo el tráfico, conectarse a cualquier servicio en `localhost` en el host, e interferir con las reglas de firewall del host. Un compromiso de este contenedor es equivalente a un compromiso del host a nivel de red. |
-| **DS-02** | **CRÍTICO** | **Secretos Expuestos en Logs de `matrix-synapse`** | El script de entrypoint en `Dockerfile.matrix` imprime un bloque de "GENERATED SECRETS" en la salida estándar, que es capturada por los logs de Docker. Esto hace que secretos de sesión y de federación sean trivialmente accesibles. |
-| **DS-03** | **ALTO** | **Ejecución como `root` en Contenedores Clave** | Los servicios `ollama`, `whisper-stt`, y `kokoro-tts` se ejecutan como `root`. Una vulnerabilidad de ejecución remota de código en cualquiera de estos servicios daría a un atacante control total dentro del contenedor, con la capacidad de modificar archivos, instalar software malicioso y atacar otros servicios en la red. |
-| **DS-04** | **ALTO** | **Ús de la Capacidad `DAC_OVERRIDE`** | Esta capacidad, presente en `postgres`, `matrix-postgres`, `forgejo` y `duplicati`, permite a un proceso ignorar los permisos de archivos. Si un atacante compromete uno de estos contenedores, podría leer/escribir archivos a los que normalmente no tendría acceso, incluyendo potencialmente archivos de configuración sensibles o datos de otros usuarios. |
-| **DS-05** | **MEDIO** | **El socket de Docker montado de forma insegura** | El servicio `nginx-proxy` monta el socket de Docker (`/var/run/docker.sock`) como `read-only`. Esto es bueno, pero comprometer `nginx-proxy` aún permitiría a un atacante obtener información sensible sobre todos los demás contenedores y la configuración del host de Docker. |
+| **DS-01** | **CRÍTIC** | **`fail2ban` amb `network_mode: host`** | El contenidor té accés complet a la pila de xarxa del host. Pot sniffejar tot el trànsit, connectar-se a qualsevol servei en `localhost` al host, i interferir amb les regles de tallafoc (firewall) del host. Un compromís d'aquest contenidor és equivalent a un compromís del host a nivell de xarxa. |
+| **DS-02** | **CRÍTIC** | **Secrets Exposats als Logs de `matrix-synapse`** | L'script d'entrypoint a `Dockerfile.matrix` imprimeix un bloc de "GENERATED SECRETS" a la sortida estàndard, que és capturada pels logs de Docker. Això fa que secrets de sessió i de federació siguin trivialment accessibles. |
+| **DS-03** | **ALT** | **Execució com a `root` en Contenidors Clau** | Els serveis `ollama`, `whisper-stt`, i `kokoro-tts` s'executen com a `root`. Una vulnerabilitat d'execució remota de codi en qualsevol d'aquests serveis donaria a un atacant control total dins del contenidor, amb la capacitat de modificar fitxers, instal·lar programari maliciós i atacar altres serveis a la xarxa. |
+| **DS-04** | **ALT** | **Ús de la Capacitat `DAC_OVERRIDE`** | Aquesta capacitat, present a `postgres`, `matrix-postgres`, `forgejo` i `duplicati`, permet a un procés ignorar els permisos de fitxers. Si un atacant compromet un d'aquests contenidors, podria llegir/escriure fitxers als quals normalment no tindria accés, incloent potencialment fitxers de configuració sensibles o dades d'altres usuaris. |
+| **DS-05** | **MITJÀ** | **El sòcol (socket) de Docker muntat de forma insegura** | El servei `nginx-proxy` munta el sòcol de Docker (`/var/run/docker.sock`) com a `read-only`. Això és bo, però comprometre `nginx-proxy` encara permetria a un atacant obtenir informació sensible sobre tots els altres contenidors i la configuració del host de Docker. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Filesystems Read-Only:**
-    *   **Recomendación:** Para contenedores que no necesitan escribir datos en su propio sistema de archivos (aparte de en los volúmenes montados), considere añadir la opción `read_only: true`. Esto puede mitigar muchas clases de ataques que dependen de escribir archivos binarios o scripts maliciosos.
+### ⚠️ Avisos/Recomanacions
 
-2.  **Perfiles de Seguridad (AppArmor/Seccomp):**
-    *   **Recomendación:** El uso de `apparmor=docker-default` es un buen punto de partida. Para una seguridad aún mayor, se podrían crear perfiles de AppArmor o Seccomp personalizados para cada servicio, restringiendo las llamadas al sistema que cada aplicación puede realizar.
+1.  **Sistemes de fitxers Read-Only:**
+    *   **Recomanació:** Per a contenidors que no necessiten escriure dades en el seu propi sistema de fitxers (a part d'en els volums muntats), considereu afegir l'opció `read_only: true`. Això pot mitigar moltes classes d'atacs que depenen d'escriure fitxers binaris o scripts maliciosos.
 
-### 🔧 Soluciones Sugeridas
+2.  **Perfils de Seguretat (AppArmor/Seccomp):**
+    *   **Recomanació:** L'ús d' `apparmor=docker-default` és un bon punt de partida. Per a una seguretat encara major, es podrien crear perfils d'AppArmor o Seccomp personalitzats per a cada servei, restringint les crides al sistema que cada aplicació pot realitzar.
 
-1.  **Para DS-01 (`fail2ban` en `network_mode: host`):**
-    *   **Solució:** Esta es una configuración difícil de cambiar, ya que `fail2ban` necesita modificar las `iptables` del host. La solución más segura es **ejecutar `fail2ban` directamente en el host**, fuera de Docker. Si debe permanecer en un contenedor, se debe investigar el uso de un contenedor más especializado y "Rooteado" con herramientas como `nsenter` para ejecutar comandos en el namespace del host de manera controlada, en lugar de exponer toda la pila de red.
+---
 
-2.  **Para DS-02 (Secretos en Logs de Matrix):**
-    *   **Solució:** Modificar `/scripts/entrypoint.sh` dentro de `Dockerfile.matrix` para que los secretos se guarden en un archivo dentro del contenedor con permisos restringidos, en lugar de imprimirlos.
+### 🔧 Solucions Suggerides
+
+1.  **Per a DS-01 (`fail2ban` en `network_mode: host`):**
+    *   **Solució:** Aquesta és una configuració difícil de canviar, ja que `fail2ban` necessita modificar les `iptables` del host. La solució més segura és **executar `fail2ban` directament al host**, fora de Docker. Si ha de romandre en un contenidor, s'ha d'investigar l'ús d'un contenidor més especialitzat i "Arrelat" amb eines com `nsenter` per executar ordres en el namespace del host de manera controlada, en lloc d'exposar tota la pila de xarxa.
+
+2.  **Per a DS-02 (Secrets als Logs de Matrix):**
+    *   **Solució:** Modificar `/scripts/entrypoint.sh` dins de `Dockerfile.matrix` perquè els secrets es guardin en un fitxer dins del contenidor amb permisos restringits, en lloc d'imprimir-los.
         ```diff
         --- a/Dockerfile.matrix
         +++ b/Dockerfile.matrix
@@ -84,9 +88,9 @@
          fi
          ```
 
-3.  **Para DS-03 (Ejecución como `root`):**
-    *   **Solució para `ollama`:** La imagen oficial de `ollama` ahora soporta la ejecución como no-root. Se debe crear un usuario `ollama` y asegurarse de que los permisos del volumen (`/root/.ollama` debe cambiar a `/home/ollama/.ollama`) sean correctos.
-    *   **Solució para Dockerfiles personalizados (e.g., `whisper-stt`):** Añadir los siguientes pasos al final del Dockerfile:
+3.  **Per a DS-03 (Execució com a `root`):**
+    *   **Solució per a `ollama`:** La imatge oficial d' `ollama` ara suporta l'execució com a no-root. S'ha de crear un usuari `ollama` i assegurar-se que els permisos del volum (`/root/.ollama` ha de canviar a `/home/ollama/.ollama`) siguin correctes.
+    *   **Solució per a Dockerfiles personalitzats (p. ex., `whisper-stt`):** Afegir els següents passos al final del Dockerfile:
         ```dockerfile
         # Create a non-root user
         RUN useradd -ms /bin/bash appuser
@@ -101,5 +105,5 @@
         CMD ["python", "/app/server.py"]
         ```
 
-4.  **Para DS-04 (`DAC_OVERRIDE`):**
-    *   **Solució:** Investigar por qué cada servicio necesita esta capacidad. A menudo, se añade para solucionar problemas de permisos en los volúmenes montados. La solución correcta es **arreglar los permisos en el host** (usando el script `setup-permissions.sh` y asegurando que `PUID`/`PGID` coincidan) en lugar de otorgar capacidades peligrosas. Eliminar `DAC_OVERRIDE` de la sección `cap_add` de todos los servicios.
+4.  **Per a DS-04 (`DAC_OVERRIDE`):**
+    *   **Solució:** Investigar per què cada servei necessita aquesta capacitat. Sovint, s'afegeix per solucionar problemes de permisos en els volums muntats. La solució correcta és **arreglar els permisos al host** (utilitzant l'script `setup-permissions.sh` i assegurant que `PUID`/`PGID` coincideixin) en lloc d'atorgar capacitats perilloses. Eliminar `DAC_OVERRIDE` de la secció `cap_add` de tots els serveis.

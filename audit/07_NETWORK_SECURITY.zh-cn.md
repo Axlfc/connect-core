@@ -1,58 +1,58 @@
-# AUDIT 07: SEGURIDAD DE RED Y FIREWALL
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/07_NETWORK_SECURITY.ca.md)
+# 审计 07：网络安全与防火墙
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/07_NETWORK_SECURITY.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**日期：** 2024-07-25
+**分析师：** Jules
 
-## 1. Resumen de Hallazgos
+## 1. 发现摘要
 
-| Estado | Área | Resumen de Hallazgos |
+| 状态 | 领域 | 发现摘要 |
 | :--- | :--- | :--- |
-| ✓ | **Segmentación de Red Interna** | La arquitectura de red de Docker Compose está **excelentemente diseñada**, utilizando redes `internal` para aislar los servicios de backend y limitar la superficie de ataque interna. |
-| ⚠️ | **Configuración de `fail2ban`** | El servicio `fail2ban` está implementado, lo que demuestra una intención de proteger contra ataques de fuerza bruta. Sin embargo, su configuración es **demasiado simplista** y solo monitorea los intentos de login fallidos a través del log de Nginx. |
-| ✗ | **`fail2ban` en `network_mode: host`** | Este es un **defecto de diseño de seguridad crítico**. Ejecutar `fail2ban` en modo de red de host rompe el aislamiento del contenedor, otorgándole acceso sin restricciones a las interfaces de red del sistema anfitrión. Un compromiso de este contenedor podría comprometer toda la red del host. |
-| ✗ | **Falta de Egress Control** | No hay políticas de red que restrinjan el tráfico de salida de los contenedores. Si un contenedor es comprometido, podría ser utilizado para descargar malware, conectarse a servidores de comando y control (C2), o atacar otros sistemas en internet sin ninguna restricción. |
-| ✗ | **Exposición de 端口s Innecesaria** | Múltiples servicios exponen sus puertos directamente a las interfaces del host (ej. `postgres` en `127.0.0.1:5432`, `whisper-stt` en `0.0.0.0:9001`). En una arquitectura de microservicios, la comunicación debería ocurrir principalmente a través de la red interna de Docker, y solo el reverse proxy debería exponer puertos externamente. |
+| ✓ | **内部网络分段** | Docker Compose 网络架构**设计得非常出色**，使用 `internal` 网络隔离后端服务，限制了内部攻击面。 |
+| ⚠️ | **`fail2ban` 配置** | 已实施 `fail2ban` 服务，表明了防御暴力破解攻击的意图。然而，其配置**过于简单**，仅通过 Nginx 日志监控登录失败尝试。 |
+| ✗ | **`fail2ban` 使用 `network_mode: host`** | 这是一个**关键的安全设计缺陷**。在宿主机网络模式下运行 `fail2ban` 破坏了容器隔离，赋予了其对宿主机系统网络接口的无限制访问权限。该容器一旦被攻破，可能会危及整个宿主机网络。 |
+| ✗ | **缺少出口 (Egress) 控制** | 没有限制容器外发流量的网络策略。如果一个容器被攻破，它可能被用来下载恶意软件、连接到命令与控制 (C2) 服务器，或者不受限制地攻击互联网上的其他系统。 |
+| ✗ | **不必要的端口暴露** | 多个服务直接向宿主机接口暴露端口（例如：`postgres` 在 `127.0.0.1:5432`，`whisper-stt` 在 `0.0.0.0:9001`）。在微服务架构中，通信应主要通过 Docker 内部网络进行，只有反向代理才应向外暴露端口。 |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. 详细发现
 
-### ✓ Lo que está bien
+### ✓ 优点
 
-1.  **Aislamiento de 服务s por Red:**
-    *   La creación de redes separadas (`frontend`, `backend`, `ai`, `monitoring`) y el uso de `internal: true` para las redes que no necesitan acceso externo es la implementación correcta del principio de mínimo privilegio a nivel de red. Esto previene que un servicio comprometido en el backend (ej. una base de datos) pueda ser accedido directamente desde el exterior.
+1.  **按网络进行服务隔离：**
+    *   创建独立的网络（`frontend`, `backend`, `ai`, `monitoring`）并对不需要外部访问的网络使用 `internal: true`，这是在网络层面正确实现最小权限原则。这防止了后端被攻破的服务（如数据库）被外部直接访问。
 
-### ✗ Problemas Encontrados
+### ✗ 发现的问题
 
-| ID | Severidad | Problema | Impacto |
+| ID | 严重程度 | 问题 | 影响 |
 | :- | :--- | :--- | :--- |
-| **N-01** | **CRÍTICO** | **`fail2ban` con `network_mode: host`** | El contenedor `fail2ban` anula el aislamiento de red de Docker. Puede monitorear, interferir y manipular el tráfico de red del host. Un atacante que comprometa este contenedor podría evadir el firewall principal, atacar servicios del host que no están expuestos públicamente, y obtener un punto de apoyo persistente en la red del host. |
-| **N-02** | **ALTO** | **Filtros de `fail2ban` Insuficientes** | La configuración actual solo bloquea IPs que generan errores 401 en endpoints de login específicos. No protege contra una amplia gama de ataques comunes, como escaneo de directorios, inyección de SQL, XSS, o ataques de denegación de servicio a nivel de aplicación (capa 7). Proporciona una falsa sensación de seguridad. |
-| **N-03** | **MEDIO** | **Exposición Directa de 端口s de Backend** | 服务s como `postgres` y `redis` exponen sus puertos a `127.0.0.1` en el host. Aunque esto no es públicamente accesible, permite que cualquier otro proceso que se ejecute en el mismo host (incluyendo otros contenedores mal configurados) pueda intentar conectarse directamente a la base de datos o al caché, eludiendo las capas de aplicación. |
-| **N-04** | **MEDIO** | **Falta de Control de Tráfico de Salida (Egress)** | Los contenedores pueden iniciar conexiones salientes a cualquier destino en internet. Si un atacante logra ejecutar código en un contenedor (ej. `ollama`), podría usarlo para descargar herramientas de hacking, exfiltrar datos a un servidor externo, o participar en una botnet. |
+| **N-01** | **关键** | **`fail2ban` 使用 `network_mode: host`** | `fail2ban` 容器使 Docker 网络隔离失效。它可以监控、干扰和操纵宿主机网络流量。攻破此容器的攻击者可以绕过主防火墙，攻击未公开暴露的宿主机服务，并在宿主机网络中获得持久立足点。 |
+| **N-02** | **高** | **`fail2ban` 过滤器不足** | 当前配置仅封禁在特定登录端点产生 401 错误的 IP。它无法防御广泛的常见攻击，如目录扫描、SQL 注入、XSS 或应用层（第 7 层）拒绝服务攻击。这提供了一种虚假的安全感。 |
+| **N-03** | **中** | **后端端口直接暴露** | `postgres` 和 `redis` 等服务向宿主机的 `127.0.0.1` 暴露端口。虽然这无法从公网访问，但允许运行在同一宿主机上的任何其他进程（包括其他配置错误的容器）尝试直接连接数据库或缓存，绕过应用层。 |
+| **N-04** | **中** | **缺少出口流量控制 (Egress)** | 容器可以发起指向互联网任何目的地的外发连接。如果攻击者成功在容器（如 `ollama`）中执行代码，他们可以利用它下载黑客工具、将数据外传到外部服务器或加入僵尸网络。 |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ 警告/建议
 
-1.  **Visibilidad del Tráfico Interno:**
-    *   El tráfico entre contenedores en la misma red de Docker no está cifrado (TLS). Para entornos de muy alta seguridad (ej. cumplimiento de PCI DSS), se podría considerar implementar una malla de servicios (service mesh) como Istio o Linkerd para forzar el cifrado de todo el tráfico interno (mTLS).
+1.  **内部流量可见性：**
+    *   同一 Docker 网络中容器间的流量未加密 (TLS)。对于极高安全要求的环境（如 PCI DSS 合规性），可以考虑实施服务网格 (Service Mesh，如 Istio 或 Linkerd) 以强制对所有内部流量进行加密 (mTLS)。
 
-### 🔧 Soluciones Sugeridas
+### 🔧 建议的解决方案
 
-1.  **Para N-01 y N-02 (Rediseñar la Estrategia de `fail2ban`):**
-    *   **解决方案 Ideal (Recomendada):** Eliminar el contenedor de `fail2ban`. Instalar y configurar `fail2ban` **directamente en el sistema operativo del host**. Esto le da acceso legítimo y seguro a los logs y a las `iptables` del host sin romper el modelo de seguridad de Docker.
-    *   **解决方案 Alternativa (Si debe ser en contenedor):**
-        1.  Eliminar `network_mode: host`.
-        2.  Añadir las capacidades `NET_ADMIN` y `NET_RAW` para permitir la manipulación de `iptables`.
-        3.  Montar el archivo de log de `iptables` del host dentro del contenedor para que pueda ver sus propias acciones.
-        4.  Expandir masivamente los filtros en `filter.d` para incluir reglas de `nginx-badbots`, `nginx-noscript`, `nginx-http-auth`, y otras reglas predefinidas de `fail2ban` para una protección más completa.
+1.  **针对 N-01 和 N-02（重新设计 `fail2ban` 策略）：**
+    *   **理想方案（推荐）：** 移除 `fail2ban` 容器。**直接在宿主机操作系统上**安装并配置 `fail2ban`。这使其能够在不破坏 Docker 安全模型的情况下，合法且安全地访问宿主机日志和 `iptables`。
+    *   **替代方案（如果必须留在容器中）：**
+        1.  移除 `network_mode: host`。
+        2.  添加 `NET_ADMIN` 和 `NET_RAW` 能力以允许操纵 `iptables`。
+        3.  将宿主机的 `iptables` 日志文件挂载到容器内，以便其查看自身行为。
+        4.  大规模扩展 `filter.d` 中的过滤器，包含 `nginx-badbots`, `nginx-noscript`, `nginx-http-auth` 以及其他预定义的 `fail2ban` 规则，以提供更全面的保护。
 
-2.  **Para N-03 (Limitar Exposición de 端口s):**
-    *   **解决方案:** Revisar cada servicio en `docker-compose.yml` y eliminar cualquier mapeo de `ports` que no sea estrictamente necesario para el acceso externo (gestionado por `nginx-proxy`) o para la depuración local. La comunicación entre servicios debe realizarse a través de la red de Docker utilizando los nombres de servicio como DNS (ej. `postgres:5432`).
+2.  **针对 N-03（限制端口暴露）：**
+    *   **解决方案：** 审查 `docker-compose.yml` 中的每个服务，移除任何非外部访问（由 `nginx-proxy` 管理）或本地调试所必需的 `ports` 映射。服务间通信应通过 Docker 网络，使用服务名称作为 DNS（例如：`postgres:5432`）进行。
         ```diff
         --- a/docker-compose.yml
         +++ b/docker-compose.yml
@@ -69,19 +69,19 @@
            - postgres_user
         ```
 
-3.  **Para N-04 (Control de Egress):**
-    *   **解决方案:** Crear una red de Docker dedicada para el acceso a internet y adjuntar solo a los contenedores que lo necesiten explícitamente.
-        1.  **Definir una red de salida en `docker-compose.yml`:**
+3.  **针对 N-04（出口控制）：**
+    *   **解决方案：** 创建一个专门用于访问互联网的 Docker 网络，并仅连接到显式需要该功能的容器。
+        1.  **在 `docker-compose.yml` 中定义出口网络：**
             ```yaml
             networks:
               egress_allowed:
                 driver: bridge
             ```
-        2.  **Modificar el firewall del host (iptables):** Añadir reglas para permitir el tráfico `FORWARD` solo desde la subred de la red `egress_allowed` hacia el exterior, y denegar el `FORWARD` del resto de redes de Docker.
+        2.  **修改宿主机防火墙 (iptables)：** 添加规则，仅允许来自 `egress_allowed` 网络子网的 `FORWARD` 流量出站，并拒绝来自其他 Docker 网络的 `FORWARD` 流量。
             ```bash
-            # Ejemplo de regla de iptables (requiere la subred correcta)
-            DOCKER_EGRESS_NW="172.x.y.0/24" # Subred de la red egress_allowed
+            # iptables 规则示例（需要正确的子网）
+            DOCKER_EGRESS_NW="172.x.y.0/24" # egress_allowed 网络的子网
             iptables -A FORWARD -i br-$(docker network ls | grep egress_allowed | awk '{print $1}') -o <external_iface> -j ACCEPT
             iptables -A FORWARD -i docker0 -o <external_iface> -j DROP
             ```
-        3.  **Adjuntar contenedores a la red:** Solo los contenedores que necesiten acceder a internet (ej. `n8n` para webhooks) se añadirían a la red `egress_allowed`.
+        3.  **将容器连接到该网络：** 仅将需要访问互联网的容器（如用于 webhooks 的 `n8n`）添加到 `egress_allowed` 网络中。

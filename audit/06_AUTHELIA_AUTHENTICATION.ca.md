@@ -1,59 +1,63 @@
-# AUDIT 06: AUTHELIA - AUTENTICACIÓN Y AUTORIZACIÓN
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.zh-cn.md)
+# AUDIT 06: AUTHELIA - AUTENTICACIÓ I AUTORITZACIÓ
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/06_AUTHELIA_AUTHENTICATION.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Integración y SSO** | La configuración de Authelia como un proveedor de `forward auth` para Nginx está **correctamente implementada**. El flujo de Single Sign-On (SSO) es conceptualmente sólido. |
-| ✓ | **Política de Acceso** | La política de `default_policy: deny` es la **mejor práctica de seguridad**, forzando a que cada servicio deba ser explícitamente autorizado. Las reglas por dominio son claras y fáciles de gestionar. |
-| ✗ | **Política de Contraseñas (Hashing)** | La configuración del algoritmo de hash `argon2id` es **críticamente débil**, utilizando solo `iterations: 1`. Esto hace que los hashes de contraseña almacenados sean vulnerables a ataques de cracking offline a alta velocidad. |
-| ✗ | **Seguridad de la Sesión** | La cookie de sesión está configurada con `secure: false`, un parámetro **solo para desarrollo**. En producción, esto permitiría que la cookie de sesión se transmita sin cifrar sobre HTTP, exponiéndola a ataques de secuestro de sesión (session hijacking). |
-| ⚠️ | **Backend de Almacenamiento** | El sistema utiliza una base de datos SQLite local para el almacenamiento. Aunque es funcional, no se recomienda para entornos de producción con alta concurrencia o que requieran alta disponibilidad. |
-| ⚠️ | **Gestión de Secretos** | El password del usuario `admin` se carga desde una variable de entorno (`AUTHELIA_ADMIN_PASSWORD`), lo que perpetúa la estrategia de gestión de secretos inconsistente y menos segura identificada en el **AUDIT 02**. |
+| ✓ | **Integració i SSO** | La configuració d'Authelia com un proveïdor de `forward auth` per a Nginx està **correctament implementada**. El flux de Single Sign-On (SSO) és conceptualment sòlid. |
+| ✓ | **Política d'Accés** | La política de `default_policy: deny` és la **millor pràctica de seguretat**, forçant que cada servei hagi de ser explícitament autoritzat. Les regles per domini són clares i fàcils de gestionar. |
+| ✗ | **Política de Contrasenyes (Hashing)** | La configuració de l'algoritme de hash `argon2id` és **críticament feble**, utilitzant només `iterations: 1`. Això fa que els hashes de contrasenya emmagatzemats siguin vulnerables a atacs de cracking offline a alta velocitat. |
+| ✗ | **Seguretat de la Sessió** | La cookie de sessió està configurada amb `secure: false`, un paràmetre **només per a desenvolupament**. En producció, això permetria que la cookie de sessió es transmetés sense xifrar sobre HTTP, exposant-la a atacs de segrest de sessió (session hijacking). |
+| ⚠️ | **Backend d'Emmagatzematge** | El sistema utilitza una base de dades SQLite local per a l'emmagatzematge. Tot i que és funcional, no es recomana per a entorns de producció amb alta concurrència o que requereixin alta disponibilitat. |
+| ⚠️ | **Gestió de Secrets** | El password de l'usuari `admin` es carrega des d'una variable d'entorn (`AUTHELIA_ADMIN_PASSWORD`), cosa que perpetua l'estratègia de gestió de secrets inconsistent i menys segura identificada a l'**AUDIT 02**. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Modelo de Confianza Cero (Zero Trust):**
-    *   La política de `access_control.default_policy: deny` es excelente. Asegura que ningún servicio nuevo sea expuesto accidentalmente sin una regla de autorización explícita.
+1.  **Model de Confiança Zero (Zero Trust):**
+    *   La política d' `access_control.default_policy: deny` és excel·lent. Assegura que cap servei nou sigui exposat accidentalment sense una regla d'autorització explícita.
 
-2.  **Protección Anti-Fuerza Bruta:**
-    *   La sección `regulation` está configurada con valores razonables (`max_retries: 3`, `ban_time: 15m`). Esto proporciona una primera línea de defensa efectiva contra ataques de adivinación de contraseñas en línea.
+2.  **Protecció Anti-Força Bruta:**
+    *   La secció `regulation` està configurada amb valors raonables (`max_retries: 3`, `ban_time: 15m`). Això proporciona una primera línia de defensa efectiva contra atacs d'endevinació de contrasenyes en línia.
 
-3.  **Gestión de Secretos de Sesión:**
-    *   Los secretos de sesión y JWT de Authelia se gestionan correctamente a través de Docker Secrets (`AUTHELIA_SESSION_SECRET_FILE`, `AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE`), la forma más segura de manejar este tipo de credenciales.
+3.  **Gestió de Secrets de Sessió:**
+    *   Els secrets de sessió i JWT d'Authelia es gestionen correctament a través de Docker Secrets (`AUTHELIA_SESSION_SECRET_FILE`, `AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE`), la forma més segura de manejar aquest tipus de credencials.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **A-01** | **CRÍTICO** | **Hashing de Contraseñas Débil** | La configuración `password.iterations: 1` para `argon2id` es peligrosamente baja. Argon2id está diseñado para ser computacionalmente intensivo. Con 1 iteración, un atacante que obtenga el archivo `users_database.yml` podría crackear las contraseñas miles de veces más rápido de lo esperado, haciendo trivial la recuperación de contraseñas débiles. |
-| **A-02** | **CRÍTICO** | **Cookie de Sesión Insegura** | La configuración `cookies.secure: false` indica al navegador que puede enviar la cookie de sesión sobre conexiones HTTP no cifradas. Si por alguna razón (ej. un ataque de `sslstrip`) un usuario se conecta por HTTP, su cookie de sesión sería interceptada, permitiendo a un atacante tomar control total de su cuenta. |
-| **A-03** | **MEDIO** | **Duración Excesiva de "Recordarme"** | La sesión de `remember_me_duration` está configurada en `1y` (un año). Si la sesión de un usuario es comprometida, el atacante tendría acceso potencial durante un año completo, incluso si el usuario no inicia sesión activamente. |
+| **A-01** | **CRÍTIC** | **Hashing de Contrasenyes Feble** | La configuració `password.iterations: 1` per a `argon2id` és perillosament baixa. Argon2id està dissenyat per ser computacionalment intensiu. Amb 1 iteració, un atacant que obtingui el fitxer `users_database.yml` podria crackejar les contrasenyes milers de vegades més ràpid del que s'esperava, fent trivial la recuperació de contrasenyes febles. |
+| **A-02** | **CRÍTIC** | **Cookie de Sessió Insegura** | La configuració `cookies.secure: false` indica al navegador que pot enviar la cookie de sessió sobre connexions HTTP no xifrades. Si per alguna raó (ex. un atac de `sslstrip`) un usuari es connecta per HTTP, la seva cookie de sessió seria interceptada, permetent a un atacant prendre el control total del seu compte. |
+| **A-03** | **MITJÀ** | **Durada Excessiva de "Recorda'm"** | La sessió de `remember_me_duration` està configurada en `1y` (un any). Si la sessió d'un usuari és compromesa, l'atacant tindria accés potencial durant un any sencer, fins i tot si l'usuari no inicia sessió activament. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Backend de Producción:**
-    *   **Recomendación:** Para un entorno de producción, migrar el `storage` de Authelia de SQLite a una base de datos más robusta como PostgreSQL. Esto mejora el rendimiento, la concurrencia y la fiabilidad. Authelia puede usar la misma instancia de Postgres que ya está en el stack (con una base de datos separada).
+### ⚠️ Avisos/Recomanacions
 
-2.  **Documentación de Authelia:**
-    *   El proyecto contiene múltiples archivos `AUTHELIA_*.md`. Sería beneficioso consolidarlos en una única guía dentro del directorio `/docs` o `/audit` para clarificar la arquitectura de autenticación y las decisiones de diseño.
+1.  **Backend de Producció:**
+    *   **Recomanació:** Per a un entorn de producció, migrar l'`storage` d'Authelia de SQLite a una base de dades més robusta com PostgreSQL. Això millora el rendiment, la concurrència i la fiabilitat. Authelia pot usar la mateixa instància de Postgres que ja està a l'stack (amb una base de dades separada).
 
-### 🔧 Soluciones Sugeridas
+2.  **Documentació d'Authelia:**
+    *   El projecte conté múltiples fitxers `AUTHELIA_*.md`. Seria beneficiós consolidar-los en una única guia dins del directori `/docs` o `/audit` per aclarir l'arquitectura d'autenticació i les decisions de disseny.
 
-1.  **Para A-01 (Fortalecer Hashing - CRÍTICO):**
-    *   **Solució:** Incrementar el número de iteraciones en `authelia/configuration.yml` a un valor seguro. El valor recomendado por Authelia es `2`, pero `3` o `4` ofrecen un balance aún mejor entre seguridad y rendimiento.
+---
+
+### 🔧 Solucions Suggerides
+
+1.  **Per a A-01 (Enfortir Hashing - CRÍTIC):**
+    *   **Solució:** Incrementar el nombre d'iteracions a `authelia/configuration.yml` a un valor segur. El valor recomanat per Authelia és `2`, però `3` o `4` ofereixen un balanç encara millor entre seguretat i rendiment.
         ```diff
         --- a/authelia/configuration.yml
         +++ b/authelia/configuration.yml
@@ -67,10 +71,10 @@
        parallelism: 8
        memory: 64
         ```
-    *   **Importante:** Después de aplicar este cambio, todas las contraseñas de usuario existentes deberán ser reseteadas para que se vuelvan a hashear con la nueva configuración.
+    *   **Important:** Després d'aplicar aquest canvi, totes les contrasenyes d'usuari existents hauran de ser resetejades perquè es tornin a hashejar amb la nova configuració.
 
-2.  **Para A-02 (Asegurar Cookie de Sesión - CRÍTICO):**
-    *   **Solució:** Cambiar el valor de `secure` a `true` en la configuración de la cookie. Esto debe hacerse antes de cualquier despliegue en un entorno que utilice HTTPS.
+2.  **Per a A-02 (Assegurar Cookie de Sessió - CRÍTIC):**
+    *   **Solució:** Canviar el valor de `secure` a `true` en la configuració de la cookie. Això s'ha de fer abans de qualsevol desplegament en un entorn que utilitzi HTTPS.
         ```diff
         --- a/authelia/configuration.yml
         +++ b/authelia/configuration.yml
@@ -82,8 +86,8 @@
 +      secure: true
         ```
 
-3.  **Para A-03 (Reducir Duración de Sesión):**
-    *   **Solució:** Reducir el valor de `remember_me_duration` a un periodo más conservador, como `1M` (un mes) o `14d` (dos semanas), para limitar la ventana de exposición en caso de compromiso de la sesión.
+3.  **Per a A-03 (Reduir Durada de Sessió):**
+    *   **Solució:** Reduir el valor de `remember_me_duration` a un període més conservador, com `1M` (un mes) o `14d` (dues setmanes), per limitar la finestra d'exposició en cas de compromís de la sessió.
         ```diff
         --- a/authelia/configuration.yml
         +++ b/authelia/configuration.yml

@@ -1,69 +1,73 @@
-# AUDIT 12: VOICE GATEWAY Y SERVICIOS ESPECIALIZADOS
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/12_VOICE_GATEWAY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/12_VOICE_GATEWAY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/12_VOICE_GATEWAY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/12_VOICE_GATEWAY.zh-cn.md)
+# AUDIT 12: VOICE GATEWAY I SERVEIS ESPECIALITZATS
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/12_VOICE_GATEWAY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/12_VOICE_GATEWAY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/12_VOICE_GATEWAY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/12_VOICE_GATEWAY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
+**Data:** 2024-07-25
 **Analista:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Resum de Troballes
 
-| Estado | Área | Resumen de Hallazgos |
+| Estat | Àrea | Resum de Troballes |
 | :--- | :--- | :--- |
-| ✓ | **Arquitectura Limpia** | El Voice Gateway es un microservicio bien diseñado que sigue las mejores prácticas de FastAPI. Actúa como un orquestador desacoplado para los servicios de STT, LLM y TTS. |
-| ✓ | **Configuración Segura** | Toda la configuración, incluyendo URLs de servicios y la contraseña de Redis, se gestiona correctamente a través de variables de entorno, evitando credenciales hardcodeadas. |
-| ✓ | **Manejo de Errores** | El código maneja adecuadamente los errores de red y de estado HTTP de los servicios downstream, devolviendo códigos de estado HTTP apropiados (503 Service Unavailable, etc.). |
-| ✗ | **Falta de Validación de Entradas** | **CRÍTICO:** El endpoint de transcripción (`/v1/audio/transcriptions`) **no valida el tamaño del archivo de audio subido**. Un atacante podría subir un archivo de audio maliciosamente grande, agotando la memoria y los recursos de CPU del gateway y del servicio Whisper, provocando una denegación de servicio. |
-| ⚠️ | **Sin Timeouts Agresivos** | Aunque el cliente HTTP tiene un timeout general de 120 segundos, las peticiones individuales a los servicios de IA (que pueden tardar mucho) no tienen timeouts más cortos y específicos, lo que podría dejar conexiones abiertas durante mucho tiempo. |
-| ⚠️ | **CORS Demasiado Permisivo** | La política de CORS está configurada para `allow_origins=["*"]`, lo que permite que cualquier sitio web en internet realice peticiones al gateway. Aunque el gateway está protegido por Authelia, esta es una configuración demasiado permisiva para producción. |
+| ✓ | **Arquitectura Neta** | El Voice Gateway és un microservei ben dissenyat que segueix les millors pràctiques de FastAPI. Actua com un orquestrador desacoblat per als serveis de STT, LLM i TTS. |
+| ✓ | **Configuració Segura** | Tota la configuració, incloent URLs de serveis i la contrasenya de Redis, es gestiona correctament a través de variables d'entorn, evitant credencials hardcodejades. |
+| ✓ | **Gestió d'Errors** | El codi gestiona adequadament els errors de xarxa i d'estat HTTP dels serveis downstream, retornant codis d'estat HTTP apropiats (503 Service Unavailable, etc.). |
+| ✗ | **Falta de Validació d'Entrades** | **CRÍTIC:** L'endpoint de transcripció (`/v1/audio/transcriptions`) **no valida la mida del fitxer d'àudio pujat**. Un atacant podria pujar un fitxer d'àudio maliciosament gran, esgotant la memòria i els recursos de CPU del gateway i del servei Whisper, provocant una denegació de servei. |
+| ⚠️ | **Sense Timeouts Agressius** | Tot i que el client HTTP té un timeout general de 120 segons, les peticions individuals als serveis d'IA (que poden trigar molt) no tenen timeouts més curts i específics, cosa que podria deixar connexions obertes durant molt de temps. |
+| ⚠️ | **CORS Massa Permissiu** | La política de CORS està configurada per a `allow_origins=["*"]`, cosa que permet que qualsevol lloc web a internet realitzi peticions al gateway. Tot i que el gateway està protegit per Authelia, aquesta és una configuració massa permissiva per a producció. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Troballes Detallades
 
-### ✓ Lo que está bien
+### ✓ El que està bé
 
-1.  **Código Asíncrono y Eficiente:**
-    *   El uso de `FastAPI` junto con `httpx.AsyncClient` asegura que el gateway sea no bloqueante y pueda manejar múltiples peticiones concurrentes de manera eficiente.
+1.  **Codi Asíncron i Eficient:**
+    *   L'ús de `FastAPI` juntament amb `httpx.AsyncClient` assegura que el gateway sigui no bloquejant i pugui gestionar múltiples peticions concurrents de manera eficient.
 
 2.  **Capa de Caching:**
-    *   La implementación de un caché en Redis para las peticiones de Text-to-Speech (TTS) es una excelente optimización. Reduce la carga en el servicio Kokoro (que consume mucha GPU) y mejora drásticamente los tiempos de respuesta para frases comunes.
+    *   La implementació d'un memòria cau (cache) a Redis per a les peticions de Text-to-Speech (TTS) és una excel·lent optimització. Redueix la càrrega al servei Kokoro (que consumeix molta GPU) i millora dràsticament els temps de resposta per a frases comunes.
 
-3.  **Compatibilidad con API de OpenAI:**
-    *   Los endpoints (`/v1/audio/transcriptions`, `/v1/audio/speech`) imitan la estructura de la API de OpenAI, lo que facilita la integración con clientes y herramientas existentes.
+3.  **Compatibilitat amb API d'OpenAI:**
+    *   Els endpoints (`/v1/audio/transcriptions`, `/v1/audio/speech`) imiten l'estructura de l'API d'OpenAI, cosa que facilita la integració amb clients i eines existents.
 
-### ✗ Problemas Encontrados
+### ✗ Problemes Trobats
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severitat | Problema | Impacte |
 | :- | :--- | :--- | :--- |
-| **VG-01** | **CRÍTICO** | **Subida de Archivos Sin Límite de Tamaño** | El endpoint `create_transcription` lee el archivo de audio completamente en memoria (`await file.read()`) sin verificar su tamaño primero. Un atacante puede enviar un archivo de varios gigabytes, lo que causará un error de `MemoryError` y bloqueará el proceso del servidor, haciéndolo inaccesible para otros usuarios (Denegación de Servei). |
-| **VG-02** | **MEDIO** | **CORS Abierto (`*`)** | Permitir orígenes `*` es una mala práctica en producción. Aunque Authelia bloquea el acceso no autenticado, esto aún podría permitir ciertos tipos de ataques (como CSRF en navegadores antiguos) y no sigue el principio de mínimo privilegio. |
+| **VG-01** | **CRÍTIC** | **Pujada de Fitxers Sense Límit de Mida** | L'endpoint `create_transcription` llegeix el fitxer d'àudio completament en memòria (`await file.read()`) sense verificar-ne la mida primer. Un atacant pot enviar un fitxer de diversos gigabytes, cosa que causarà un error de `MemoryError` i bloquejarà el procés del servidor, fent-lo inaccessible per a altres usuaris (Denegació de Servei). |
+| **VG-02** | **MITJÀ** | **CORS Obert (`*`)** | Permetre orígens `*` és una mala pràctica en producció. Tot i que Authelia bloqueja l'accés no autenticat, això encara podria permetre certs tipus d'atacs (com CSRF en navegadors antics) i no segueix el principi de mínim privilegi. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Seguridad de WebSockets:**
-    *   El servicio actual no utiliza WebSockets, pero si se añadieran en el futuro para streaming en tiempo real, sería crucial implementar una validación del origen (`Origin`) y rate limiting en los mensajes para prevenir abusos.
+### ⚠️ Avisos/Recomanacions
 
-2.  **Manejo de Datos de Audio:**
-    *   Los datos de audio se procesan en memoria y en archivos temporales. Aunque esto es funcional, no hay una política explícita de limpieza o retención. Se debe asegurar que los archivos temporales se eliminen siempre, incluso en caso de error. El código actual (`os.unlink(tmp_path)`) es bueno, pero podría ser más robusto si estuviera en un bloque `finally`.
+1.  **Seguretat de WebSockets:**
+    *   El servei actual no utilitza WebSockets, però si s'afegissin en el futur per a streaming en temps real, seria crucial implementar una validació de l'origen (`Origin`) i rate limiting als missatges per prevenir abusos.
 
-3.  **Información en Logs:**
-    *   El `config.py` imprime las URLs de los servicios internos en los logs al iniciar. Aunque útil para la depuración, en un entorno de producción, esto podría ser considerado una fuga de información menor sobre la arquitectura interna.
+2.  **Gestió de Dades d'Àudio:**
+    *   Les dades d'àudio es processen en memòria i en fitxers temporals. Tot i que això és funcional, no hi ha una política explícita de neteja o retenció. S'ha d'assegurar que els fitxers temporals s'eliminin sempre, fins i tot en cas d'error. El codi actual (`os.unlink(tmp_path)`) és bo, però podria ser més robust si estigués en un bloc `finally`.
 
-### 🔧 Soluciones Sugeridas
+3.  **Informació als Logs:**
+    *   El `config.py` imprimeix les URLs dels serveis interns als logs en iniciar. Tot i que útil per a la depuració, en un entorn de producció, això podria ser considerat una fuga d'informació menor sobre l'arquitectura interna.
 
-1.  **Para VG-01 (Validar Tamaño de Subida - CRÍTICO):**
-    *   **Solució:** Modificar el endpoint `create_transcription` para validar el tamaño del archivo antes de leerlo en memoria.
+---
+
+### 🔧 Solucions Suggerides
+
+1.  **Per a VG-01 (Validar Mida de Pujada - CRÍTIC):**
+    *   **Solució:** Modificar l'endpoint `create_transcription` per validar la mida del fitxer abans de llegir-lo en memòria.
         ```python
-        # En main.py, dentro de create_transcription
+        # A main.py, dins de create_transcription
         import config
 
         # ...
 
-        # Leer el contenido del archivo en trozos para verificar el tamaño
-        # sin cargarlo todo en memoria de una vez.
+        # Llegir el contingut del fitxer a trossos per verificar la mida
+        # sense carregar-ho tot en memòria de cop.
         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
         size = 0
@@ -78,30 +82,30 @@
 
         content = b"".join(chunks)
 
-        # Ahora el 'content' es seguro de usar
+        # Ara el 'content' és segur d'utilitzar
         files = {"audio_file": (file.filename, content, file.content_type)}
         response = await client.post(
             f"{config.WHISPER_URL}/asr",
             files=files,
             params={"output": "json"}
         )
-        # ... resto de la función
+        # ... resta de la funció
         ```
-    *   El `MAX_FILE_SIZE` debería ser configurable a través de `config.py`.
+    *   El `MAX_FILE_SIZE` hauria de ser configurable a través de `config.py`.
 
-2.  **Para VG-02 (Restringir CORS):**
-    *   **Solució:** Modificar la configuración de CORS en `main.py` para que solo permita los dominios de las aplicaciones frontend que necesitan acceder al gateway.
+2.  **Per a VG-02 (Restringir CORS):**
+    *   **Solució:** Modificar la configuració de CORS a `main.py` perquè només permeti els dominis de les aplicacions frontend que necessiten accedir al gateway.
         ```python
-        # En main.py
+        # A main.py
 
-        # Leer los orígenes permitidos desde una variable de entorno
+        # Llegir els orígens permesos des d'una variable d'entorn
         ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
         app.add_middleware(
             CORSMiddleware,
             allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS else ["https://n8n.localhost", "https://app.localhost"],
             allow_credentials=True,
-            allow_methods=["GET", "POST"], # Ser explícito
-            allow_headers=["Authorization", "Content-Type"], # Ser explícito
+            allow_methods=["GET", "POST"], # Ser explícit
+            allow_headers=["Authorization", "Content-Type"], # Ser explícit
         )
         ```

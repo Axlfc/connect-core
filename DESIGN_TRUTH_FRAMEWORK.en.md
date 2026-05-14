@@ -1,11 +1,11 @@
 # 📊 Design Truth Contract Testing Framework
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_FRAMEWORK.zh-cn.md)
 
 
-## Complete Notebook Suite Blueprint for cognito-stack
+## Complete Notebook Suite Blueprint for connect-core
 
 ---
 
@@ -82,7 +82,7 @@
 **Purpose:** Validate individual agent component contracts
 **Tests:** AgentRouter, TaskDecomposer, ParallelTaskExecutor, ResultSynthesizer, OutputValidator, MemoryManager
 **Impact:** Unblocks all other component testing
-**Location:** `/workspaces/cognito-stack/test_agent_components.ipynb`
+**Location:** `/workspaces/connect-core/test_agent_components.ipynb`
 
 #### 2. test_integration_n8n_agents.ipynb ⏳ PLANNED
 **Purpose:** Validate n8n ↔ Agent communication
@@ -369,7 +369,7 @@ print(f"ComponentName Test: {result['status'].upper()}")
 
 ### Files Location
 ```
-/workspaces/cognito-stack/
+/workspaces/connect-core/
 ├── DESIGN_TRUTH_CONTRACT.md          (What to build)
 ├── NOTEBOOK_SUITE_ROADMAP.md         (How to build)
 ├── VALIDATION_REPORT.md              (Is it working?)
@@ -438,6 +438,6 @@ Then follow the roadmap to complete Phase 2 and Phase 3 notebooks.
 
 ---
 
-*Design Truth Contract Testing Framework for cognito-stack
+*Design Truth Contract Testing Framework for connect-core
 Version 1.0
 Ready for Implementation*

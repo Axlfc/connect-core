@@ -1,21 +1,21 @@
-# Contributing to cognito-stack 🤝
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
+# Contributing to connect-core 🤝
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
 
 
-¡Gracias por tu interés en contribuir a cognito-stack! Este documento proporciona las pautas para contribuir al proyecto.
+Thank you for your interest in contributing to connect-core! This document provides the guidelines for contributing to the project.
 
 ## Table of Contents
 
-- [Code of Conduct](#código-de-conducta)
-- [How to contribute?](#cómo-contribuir)
-- [Report bugs](#reportar-bugs)
-- [Suggest improvements](#sugerir-mejoras)
+- [Code of Conduct](#code-of-conduct)
+- [How to contribute?](#how-to-contribute)
+- [Report bugs](#report-bugs)
+- [Suggest improvements](#suggest-improvements)
 - [Pull Requests](#pull-requests)
-- [Code standards](#estándares-de-código)
-- [Local validation](#validación-local)
+- [Code standards](#code-standards)
+- [Local validation](#local-validation)
 - [Commit conventions](#commit-conventions)
 
 ---
@@ -24,27 +24,27 @@
 
 ### Our promise
 
-Nos comprometemos a proporcionar un entorno abierto y acogedor para todos, independientemente de:
-- Edad, tamaño corporal, capacidad/discapacidad
-- Etnia, identidad y expresión de género
-- Nivel de experiencia, educación
-- Situación socioeconómica
+We are committed to providing an open and welcoming environment for everyone, regardless of:
+- Age, body size, disability
+- Ethnicity, gender identity and expression
+- Level of experience, education
+- Socioeconomic status
 
 ### Our standards
 
-Comportamientos que contribuyen a crear un entorno positivo:
-- ✅ Usar lenguaje inclusivo y acogedor
-- ✅ Ser respetuoso con los puntos de vista diferentes
-- ✅ Aceptar críticas constructivas
-- ✅ Enfocarse en lo mejor para la comunidad
-- ✅ Mostrar empatía hacia otros miembros
+Behaviors that contribute to creating a positive environment:
+- ✅ Use inclusive and welcoming language
+- ✅ Be respectful of different viewpoints
+- ✅ Accept constructive criticism
+- ✅ Focus on what is best for the community
+- ✅ Show empathy towards other members
 
-Comportamientos inaceptables:
-- ❌ Lenguaje o imágenes sexuales
-- ❌ Trolling, comentarios insultantes o ataques personales
-- ❌ Acoso público o privado
-- ❌ Publicar información privada sin consentimiento
-- ❌ Otra conducta inapropiada
+Unacceptable behaviors:
+- ❌ Sexual language or imagery
+- ❌ Trolling, insulting comments, or personal attacks
+- ❌ Public or private harassment
+- ❌ Publishing private information without consent
+- ❌ Other inappropriate conduct
 
 ---
 
@@ -52,61 +52,61 @@ Comportamientos inaceptables:
 
 ### Prerequisites
 
-- Git instalado (`git --version`)
+- Git installed (`git --version`)
 - Docker & Docker Compose (`docker --version`, `docker compose version`)
 - Bash 4.0+ (`bash --version`)
-- Cuenta GitHub
+- GitHub account
 
-### Workflow de contribución
+### Contribution Workflow
 
-1. **Fork el repositorio**
+1. **Fork the repository**
    ```bash
-   # En GitHub, haz clic en "Fork"
-   # Luego clona tu fork
-   git clone https://github.com/TU_USUARIO/cognito-stack.git
-   cd cognito-stack
+   # On GitHub, click "Fork"
+   # Then clone your fork
+   git clone https://github.com/[YOUR_USER]/connect-core.git
+   cd connect-core
    ```
 
-2. **Crea una rama para tu feature**
+2. **Create a branch for your feature**
    ```bash
-   git checkout -b feature/descripcion-clara
-   # o para bugs:
-   git checkout -b fix/descripcion-del-bug
+   git checkout -b feature/clear-description
+   # or for bugs:
+   git checkout -b fix/bug-description
    ```
 
-3. **Realiza cambios**
-   - Edita archivos necesarios
-   - Mantén commits atómicos y con mensajes claros
-   - Valida localmente (ver [Local validation](#validación-local))
+3. **Make changes**
+   - Edit necessary files
+   - Keep commits atomic and with clear messages
+   - Validate locally (see [Local validation](#local-validation))
 
-4. **Push a tu fork**
+4. **Push to your fork**
    ```bash
-   git push origin feature/descripcion-clara
+   git push origin feature/clear-description
    ```
 
-5. **Abre un Pull Request**
-   - Haz clic en "New Pull Request" en GitHub
-   - Completa el template de PR
-   - Espera review
+5. **Open a Pull Request**
+   - Click "New Pull Request" on GitHub
+   - Complete the PR template
+   - Wait for review
 
 ---
 
 ## Report bugs
 
-### Antes de reportar
+### Before reporting
 
-- ✅ Verifica que no exista un issue similar
-- ✅ Actualiza al código más reciente (`git pull origin master`)
-- ✅ Reproduce el bug con el código actual
-- ✅ Recopila información de debugging
+- ✅ Verify that a similar issue does not exist
+- ✅ Update to the latest code (`git pull origin master`)
+- ✅ Reproduce the bug with the current code
+- ✅ Gather debugging information
 
-### Cómo reportar
+### How to report
 
-**Abre un issue** con los siguientes detalles:
+**Open an issue** with the following details:
 
 ```markdown
-## Descripción
-Breve descripción del bug
+## Description
+Brief description of the bug
 
 ## Steps to reproduce
 1. ...
@@ -114,120 +114,120 @@ Breve descripción del bug
 3. ...
 
 ## Current behavior
-¿Qué sucedió?
+What happened?
 
 ## Expected behavior
-¿Qué debería suceder?
+What should happen?
 
 ## System information
-- OS: [ej: Ubuntu 22.04]
-- Docker version: [ej: 24.0.0]
+- OS: [e.g.: Ubuntu 22.04]
+- Docker version: [e.g.: 24.0.0]
 - Profile: [cpu/gpu-nvidia/gpu-amd]
 
 ## Logs
 ```
-<logs relevantes aquí>
+<relevant logs here>
 ```
 
 ## Additional information
-Cualquier contexto adicional
+Any additional context
 ```
 
 ---
 
 ## Suggest improvements
 
-### Antes de sugerir
+### Before suggesting
 
-- ✅ Lee la documentación
-- ✅ Busca sugerencias similares
-- ✅ Considera el alcance del proyecto
+- ✅ Read the documentation
+- ✅ Search for similar suggestions
+- ✅ Consider the scope of the project
 
-### Template de sugerencia
+### Suggestion template
 
 ```markdown
-## Descripción breve
-Una línea describiendo la mejora
+## Brief description
+One line describing the improvement
 
-## Problema que resuelve
-¿Qué problema de usuario resuelve esto?
+## Problem it solves
+What user problem does this solve?
 
-## Solution propuesta
-Descripción de la mejora
+## Proposed solution
+Description of the improvement
 
-## Beneficios
-- Beneficio 1
-- Beneficio 2
+## Benefits
+- Benefit 1
+- Benefit 2
 
-## Ejemplos de implementación
-Pseudocódigo o ejemplos si aplica
+## Implementation examples
+Pseudocode or examples if applicable
 
-## Alternativas consideradas
-Otras soluciones evaluadas
+## Alternatives considered
+Other evaluated solutions
 ```
 
 ---
 
 ## Pull Requests
 
-### Checklist antes de abrir PR
+### Checklist before opening PR
 
-- [ ] Mi código sigue los estándares de código del proyecto
-- [ ] He actualizado la documentación
-- [ ] Mis commits tienen mensajes claros y descriptivos
-- [ ] He validado localmente con `scripts/validate.sh`
-- [ ] He testeado con `scripts/smoke-test.sh`
-- [ ] No contiene código "en construcción" o temporal
-- [ ] No añade dependencias innecesarias
+- [ ] My code follows the project's code standards
+- [ ] I have updated the documentation
+- [ ] My commits have clear and descriptive messages
+- [ ] I have validated locally with `scripts/validate.sh`
+- [ ] I have tested with `scripts/smoke-test.sh`
+- [ ] It does not contain "under construction" or temporary code
+- [ ] It does not add unnecessary dependencies
 
-### Proceso de review
+### Review process
 
-1. **Validación automática** (GitHub Actions)
+1. **Automatic validation** (GitHub Actions)
    - YAML validation
    - Shell linting
    - Dockerfile linting
    - Docker Compose validation
    - Security checks
 
-2. **Review manual**
-   - Revisión de código
-   - Evaluación de cambios
-   - Solicitud de cambios si es necesario
+2. **Manual review**
+   - Code review
+   - Evaluation of changes
+   - Request for changes if necessary
 
 3. **Merge**
-   - Aprobación del maintainer
-   - Squash & merge a master
-   - CI/CD deploys cambios
+   - Maintainer approval
+   - Squash & merge to master
+   - CI/CD deploys changes
 
-### Template de PR
+### PR Template
 
 ```markdown
-## Descripción
-Breve descripción de los cambios
+## Description
+Brief description of the changes
 
-## Relacionado con
+## Related to
 - Closes #123
 - Fixes #456
 
 ## Type of change
 - [ ] Bug fix
-- [ ] Nueva feature
-- [ ] Cambio de documentación
+- [ ] New feature
+- [ ] Documentation change
 - [ ] Refactoring
 
 ## Changes made
-- Cambio 1
-- Cambio 2
-- Cambio 3
+- Change 1
+- Change 2
+- Change 3
 
 ## Testing performed
-Describe cómo testeaste los cambios
+Describe how you tested the changes
 
-## Screenshots (si aplica)
-Añade screenshots si hay cambios visuales
+## Screenshots (if applicable)
+Add screenshots if there are visual changes
 
 ## Additional notes
-Cualquier información adicional para los reviewers
+Any additional information for the reviewers
 ```
 
 ---
@@ -240,26 +240,26 @@ Cualquier información adicional para los reviewers
 #!/bin/bash
 set -e  # Exit on error
 
-# Usar comentarios descriptivos
-# Variables en MAYUSCULAS
+# Use descriptive comments
+# Variables in UPPERCASE
 CONFIG_FILE="/path/to/file"
 
-# Funciones con nombres descriptivos
+# Functions with descriptive names
 print_info() {
     echo "ℹ️ $1"
 }
 
-# Validación de entrada
+# Input validation
 if [ -z "$1" ]; then
-    echo "Error: Falta parametro"
+    echo "Error: Missing parameter"
     exit 1
 fi
 
-# Usar comillas para variables
-echo "Mensaje: $CONFIG_FILE"
+# Use quotes for variables
+echo "Message: $CONFIG_FILE"
 ```
 
-**Herramienta:** `shellcheck`
+**Tool:** `shellcheck`
 ```bash
 shellcheck script.sh
 ```
@@ -272,30 +272,30 @@ FROM base-image:version
 LABEL maintainer="maintainer@example.com"
 LABEL description="Clear description"
 
-# Usar comentarios para secciones
+# Use comments for sections
 USER root
 
-# Combinar RUN cuando sea posible
+# Combine RUN when possible
 RUN apt-get update && \
     apt-get install -y \
     package1 \
     package2 && \
     rm -rf /var/lib/apt/lists/*
 
-# Exponer puertos explícitamente
+# Explicitly expose ports
 EXPOSE 5678
 
-# Definir volúmenes
+# Define volumes
 VOLUME ["/data"]
 
-# Usuario no-root
+# Non-root user
 USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["start"]
 ```
 
-**Herramienta:** `hadolint`
+**Tool:** `hadolint`
 ```bash
 hadolint Dockerfile
 ```
@@ -303,18 +303,18 @@ hadolint Dockerfile
 ### YAML (docker-compose.yml)
 
 ```yaml
-# Indentación de 2 espacios
+# 2-space indentation
 version: "3.8"
 
 services:
   service-name:
     image: image:version
 
-    # Organización lógica
+    # Logical organization
     container_name: service-name
     restart: unless-stopped
 
-    # Variables de entorno primero
+    # Environment variables first
     environment:
       - VAR_NAME=value
 
@@ -322,7 +322,7 @@ services:
     ports:
       - "5678:5678"
 
-    # Volúmenes
+    # Volumes
     volumes:
       - volume-name:/path
 
@@ -353,70 +353,70 @@ networks:
 }
 ```
 
-**Validar con:** `python -m json.tool n8n-task-runners.json`
+**Validate with:** `python -m json.tool n8n-task-runners.json`
 
-### Documentación (Markdown)
+### Documentation (Markdown)
 
-- ✅ Títulos jerárquicos claros
-- ✅ Ejemplos de código en bloques
-- ✅ Enlaces internos a archivos
-- ✅ Table of Contents para documentos largos
-- ✅ Notas destacadas con blockquotes
-- ✅ Listas estructuradas
+- ✅ Clear hierarchical titles
+- ✅ Code examples in blocks
+- ✅ Internal links to files
+- ✅ Table of Contents for long documents
+- ✅ Highlighted notes with blockquotes
+- ✅ Structured lists
 
 ```markdown
-# Título Principal
+# Main Title
 
-## Subtítulo
+## Subtitle
 
-### Subsubtítulo
+### Subsubtitle
 
-**Texto en negrita** y *en itálica*
+**Bold text** and *italicized*
 
-> Nota o cita importante
+> Important note or quote
 
-### Ejemplo de código
+### Code example
 \`\`\`bash
 # Bash code
 echo "Hello"
 \`\`\`
 
-- Punto 1
-- Punto 2
-  - Subpunto 2a
+- Point 1
+- Point 2
+  - Subpoint 2a
 ```
 
 ---
 
 ## Local validation
 
-### 1. Script de validación general
+### 1. General validation script
 
 ```bash
-# Ejecuta todas las comprobaciones
+# Run all checks
 ./scripts/validate.sh
 
-# Salida esperada:
-# ✓ Validaciones pasadas
-# ⚠ Warnings (no bloquea)
-# ✗ Errores (bloquea)
+# Expected output:
+# ✓ Validations passed
+# ⚠ Warnings (does not block)
+# ✗ Errors (blocks)
 ```
 
 ### 2. Smoke test
 
 ```bash
-# Prueba rápida del stack (requiere Docker)
-./scripts/smoke-test.sh          # Usa profile CPU
-./scripts/smoke-test.sh gpu-nvidia  # Usa GPU NVIDIA
-./scripts/smoke-test.sh gpu-amd     # Usa GPU AMD
+# Quick stack test (requires Docker)
+./scripts/smoke-test.sh          # Uses CPU profile
+./scripts/smoke-test.sh gpu-nvidia  # Uses NVIDIA GPU
+./scripts/smoke-test.sh gpu-amd     # Uses AMD GPU
 
-# Comprueba:
-# - Inicio de servicios
+# Checks:
+# - Service start
 # - Health checks
-# - Disponibilidad de APIs
+# - API availability
 ```
 
-### 3. Linting manual
+### 3. Manual linting
 
 ```bash
 # Shell
@@ -435,16 +435,16 @@ python3 -m json.tool n8n-task-runners.json
 markdownlint *.md
 ```
 
-### 4. Validación de Docker Compose
+### 4. Docker Compose Validation
 
 ```bash
-# Verificar sintaxis
+# Verify syntax
 docker compose config --quiet
 
-# Listar servicios
+# List services
 docker compose config | grep "^  [a-z]"
 
-# Simular inicio (sin pull)
+# Simulate start (without pull)
 docker compose --profile cpu config --quiet
 ```
 
@@ -452,45 +452,45 @@ docker compose --profile cpu config --quiet
 
 ## Commit conventions
 
-### Formato de mensaje
+### Message format
 
 ```
-<tipo>(<alcance>): <asunto>
+<type>(<scope>): <subject>
 
-<descripción>
+<description>
 
 <footer>
 ```
 
-### Tipos de commit
+### Commit types
 
-- `feat:` Nueva funcionalidad
-- `fix:` Corrección de bug
-- `docs:` Cambios de documentación
-- `style:` Cambios de formato (no lógica)
-- `refactor:` Refactorización sin cambio funcional
-- `test:` Cambios en tests/validación
-- `ci:` Cambios en CI/CD
-- `chore:` Cambios de build, dependencias, etc
+- `feat:` New functionality
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `style:` Formatting changes (no logic)
+- `refactor:` Refactoring without functional change
+- `test:` Changes in tests/validation
+- `ci:` Changes in CI/CD
+- `chore:` Changes to build, dependencies, etc.
 
-### Ejemplos
+### Examples
 
 ```bash
 # Feature
-git commit -m "feat(n8n): agregar soporte para runners paralelos"
+git commit -m "feat(n8n): add support for parallel runners"
 
 # Bug fix
-git commit -m "fix(docker-compose): corregir puerto de Ollama"
+git commit -m "fix(docker-compose): correct Ollama port"
 
 # Documentation
-git commit -m "docs: actualizar guía de instalación"
+git commit -m "docs: update installation guide"
 
-# Con descripción
-git commit -m "feat(comfyui): agregar soporte para custom nodes
+# With description
+git commit -m "feat(comfyui): add support for custom nodes
 
-- Instala git durante build
-- Clona repositorio de custom nodes
-- Configura rutas correctas
+- Install git during build
+- Clone custom nodes repository
+- Configure correct paths
 
 Closes #42"
 ```
@@ -499,33 +499,33 @@ Closes #42"
 
 ## FAQ
 
-### ¿Cuál es el proceso de release?
+### What is the release process?
 
-1. Cambios en master van a production
-2. GitHub Actions valida y construye imágenes
-3. Imágenes se publican en GHCR
-4. Tags semánticos para releases
+1. Changes in master go to production
+2. GitHub Actions validates and builds images
+3. Images are published to GHCR
+4. Semantic tags for releases
 
-### ¿Cómo reporto un vulnerability?
+### How do I report a vulnerability?
 
-**NO** abras un issue público. Contáctanos privadamente:
-- Email: [maintainer email si disponible]
-- GitHub Security Advisory: Usa la opción "Report a vulnerability"
+**DO NOT** open a public issue. Contact us privately:
+- Email: [MAINTAINER_EMAIL]
+- GitHub Security Advisory: Use the "Report a vulnerability" option
 
-### ¿Cuánto tiempo tarda el review?
+### How long does the review take?
 
-- Bugs críticos: 24-48 horas
-- Features: 3-7 días
-- Documentación: 1-3 días
-- Depende de complejidad y disponibilidad
+- Critical bugs: 24-48 hours
+- Features: 3-7 days
+- Documentation: 1-3 days
+- Depends on complexity and availability
 
-### ¿Puedo sugerir nuevas dependencias?
+### Can I suggest new dependencies?
 
-Sí, pero:
-- Justifica por qué es necesaria
-- Considera alternativas ligeras
-- Actualiza Dockerfiles correspondientes
-- Añade a documentación
+Yes, but:
+- Justify why it is necessary
+- Consider lightweight alternatives
+- Update corresponding Dockerfiles
+- Add to documentation
 
 ---
 
@@ -541,14 +541,14 @@ Sí, pero:
 
 ## Acknowledgment
 
-¡Gracias por contribuir a cognito-stack! Cada contribución, sin importar su tamaño, ayuda a mejorar el proyecto.
+Thank you for contributing to connect-core! Every contribution, regardless of size, helps improve the project.
 
-Si tienes preguntas, no dudes en abrir un issue de discussion o contactar a los maintainers.
+If you have questions, feel free to open a discussion issue or contact the maintainers.
 
 ---
 
 <div align="center">
 
-**¡Esperamos tu contribución! ❤️**
+**We look forward to your contribution! ❤️**
 
 </div>

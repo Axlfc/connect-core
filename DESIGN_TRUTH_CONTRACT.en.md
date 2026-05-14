@@ -1,183 +1,183 @@
-# 📋 Design Truth Contract - Testing Framework de cognito-stack
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.zh-cn.md)
+# 📋 Design Truth Contract - connect-core Testing Framework
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DESIGN_TRUTH_CONTRACT.zh-cn.md)
 
 
-**Versión:** 1.0
+**Version:** 1.0
 **Date:** 2025-12-20
-**Estado:** Activo
-**Última actualización:** 2025-12-20
+**Status:** Active
+**Last updated:** 2025-12-20
 
 ---
 
-## 1. Requisitos de la Arquitectura Core
+## 1. Core Architecture Requirements
 
-### 1.1 Orquestación Multi-Agente ✅
-**Must Have:** Los agentes trabajan juntos en armonía
-- [x] Enrutamiento de agentes basado en el tipo de tarea
-- [x] Comunicación entre agentes
-- [x] Distribución de tareas
-- [x] Síntesis de resultados
-- [ ] Priorización de agentes
-- [ ] Balanceo de carga
-- [ ] Tolerancia a fallos
+### 1.1 Multi-Agent Orchestration ✅
+**Must Have:** Agents work together in harmony
+- [x] Agent routing based on task type
+- [x] Inter-agent communication
+- [x] Task distribution
+- [x] Results synthesis
+- [ ] Agent prioritization
+- [ ] Load balancing
+- [ ] Fault tolerance
 
-### 1.2 Integración con LLM ✅
-**Must Have:** Ollama funciona de forma fiable
-- [x] Comprobación de disponibilidad del modelo
-- [x] Generación de texto
-- [x] Gestión de prompts
-- [x] Validación de respuestas
-- [ ] Conteo de tokens
-- [ ] Gestión de contexto
-- [ ] Capacidad de fine-tuning
+### 1.2 LLM Integration ✅
+**Must Have:** Ollama works reliably
+- [x] Model availability check
+- [x] Text generation
+- [x] Prompt management
+- [x] Response validation
+- [ ] Token counting
+- [ ] Context management
+- [ ] Fine-tuning capability
 
-### 1.3 Base de Datos Vectorial ✅
-**Must Have:** Qdrant para embeddings
-- [x] Gestión de colecciones
-- [x] Almacenamiento de vectores
-- [x] Búsqueda por similitud
-- [x] Recuperación de datos
-- [ ] Optimización de índices
-- [ ] Operaciones de borrado
-- [ ] Operaciones por lote (batch)
+### 1.3 Vector Database ✅
+**Must Have:** Qdrant for embeddings
+- [x] Collection management
+- [x] Vector storage
+- [x] Similarity search
+- [x] Data retrieval
+- [ ] Index optimization
+- [ ] Delete operations
+- [ ] Batch operations
 
-### 1.4 Orquestación de Workflows ✅
-**Must Have:** Integración con n8n
-- [x] Comunicación vía Webhook
-- [x] Disparo (triggering) de tareas
-- [x] Gestión de resultados
-- [x] Gestión de errores
-- [ ] Programación de workflows (scheduling)
-- [ ] Lógica condicional
-- [ ] Gestión de bucles (loops)
+### 1.4 Workflow Orchestration ✅
+**Must Have:** n8n integration
+- [x] Webhook communication
+- [x] Task triggering
+- [x] Results management
+- [x] Error handling
+- [ ] Workflow scheduling
+- [ ] Conditional logic
+- [ ] Loop management
 
 ---
 
-## 2. Testing de Componentes de Agentes
+## 2. Agent Component Testing
 
-### 2.1 Agentes Críticos
+### 2.1 Critical Agents
 
 #### AgentRouter 🔀
-**Estado:** Necesita testing exhaustivo
+**Status:** Needs exhaustive testing
 ```
-Propósito: Enrutar tareas a los agentes apropiados
-Tests Necesarios:
-  □ Enrutar tareas de análisis
-  □ Enrutar tareas de generación
-  □ Enrutar tareas de procesamiento
-  □ Gestionar tipos de tareas desconocidos
-  □ Rendimiento bajo carga
+Purpose: Route tasks to appropriate agents
+Necessary Tests:
+  □ Route analysis tasks
+  □ Route generation tasks
+  □ Route processing tasks
+  □ Handle unknown task types
+  □ Performance under load
 ```
 
 #### ChainOfThoughtAgent 🧠
-**Estado:** Necesita testing
+**Status:** Needs testing
 ```
-Propósito: Raonamiento estratégico
-Tests Necesarios:
-  □ Generar cadenas de razonamiento
-  □ Validar flujo lógico
-  □ Métricas de rendimiento
-  □ Gestión de errores
+Purpose: Strategic reasoning
+Necessary Tests:
+  □ Generate reasoning chains
+  □ Validate logical flow
+  □ Performance metrics
+  □ Error handling
 ```
 
 #### IterativeAgent 🔄
-**Estado:** Necesita testing
+**Status:** Needs testing
 ```
-Propósito: Refinamiento iterativo
-Tests Necesarios:
-  □ Ejecución multi-paso
-  □ Seguimiento de mejoras
-  □ Detección de convergencia
-  □ Uso de recursos
+Purpose: Iterative refinement
+Necessary Tests:
+  □ Multi-step execution
+  □ Improvement tracking
+  □ Convergence detection
+  □ Resource usage
 ```
 
 #### ResultSynthesizer 🔗
-**Estado:** Testeado parcialmente
+**Status:** Partially tested
 ```
-Propósito: Combinar salidas de agentes
-Tests Necesarios:
-  □ Combinar resultados heterogéneos
-  □ Gestionar datos faltantes
-  □ Estandarización de formato
-  □ Métricas de calidad
+Purpose: Combine agent outputs
+Necessary Tests:
+  □ Combine heterogeneous results
+  □ Handle missing data
+  □ Format standardization
+  □ Quality metrics
 ```
 
 #### OutputValidator ✅
-**Estado:** Necesita testing
+**Status:** Needs testing
 ```
-Propósito: Validar salidas
-Tests Necesarios:
-  □ Validación de esquema
-  □ Validación de contenido
-  □ Comprobación de formato
-  □ Verificación de consistencia
+Purpose: Validate outputs
+Necessary Tests:
+  □ Schema validation
+  □ Content validation
+  □ Format check
+  □ Consistency verification
 ```
 
-### 2.2 Agentes de Soporte
+### 2.2 Support Agents
 
 #### TaskDecomposer 📦
-- [x] Desglosar tareas complejas
-- [ ] Análisis de dependencias
-- [ ] Optimización
-- [ ] Asignación de recursos
+- [x] Break down complex tasks
+- [ ] Dependency analysis
+- [ ] Optimization
+- [ ] Resource allocation
 
 #### ParallelTaskExecutor ⚡
-- [ ] Ejecución concurrente
-- [ ] Gestión de dependencias
-- [ ] Recuperación de errores
-- [ ] Optimización del rendimiento
+- [ ] Concurrent execution
+- [ ] Dependency management
+- [ ] Error recovery
+- [ ] Performance optimization
 
 #### MemoryManager 🧠
-- [ ] Almacenamiento de contexto
-- [ ] Eficiencia en la recuperación
-- [ ] Gestión de tamaño
-- [ ] Limpieza de caché
+- [ ] Context storage
+- [ ] Retrieval efficiency
+- [ ] Size management
+- [ ] Cache cleanup
 
 #### ModelRouter 🛣️
-- [ ] Selección de modelo
-- [ ] Comparación de rendimiento
-- [ ] Optimización de costes
-- [ ] Emparejamiento de capacidades
+- [ ] Model selection
+- [ ] Performance comparison
+- [ ] Cost optimization
+- [ ] Capability matching
 
 ---
 
-## 3. Requisitos de Integration Testing
+## 3. Integration Testing Requirements
 
-### 3.1 n8n ↔ Agentes
-**DEBE TESTEARSE:**
+### 3.1 n8n ↔ Agents
+**MUST BE TESTED:**
 ```
-□ Webhook → Enrutamiento de agentes
-□ Parámetros de tarea → Entrada del agente
-□ Salida del agente → Formateo de respuesta
-□ Gestión de errores
-□ Gestión de timeouts
-```
-
-### 3.2 Agentes ↔ Ollama
-**DEBE TESTEARSE:**
-```
-□ Carga de modelos
-□ Formateo de prompts
-□ Parseo de respuestas
-□ Gestión de tokens
-□ Modelos de respaldo (fallback)
+□ Webhook → Agent routing
+□ Task parameters → Agent input
+□ Agent output → Response formatting
+□ Error handling
+□ Timeout management
 ```
 
-### 3.3 Agentes ↔ Qdrant
-**DEBE TESTEARSE:**
+### 3.2 Agents ↔ Ollama
+**MUST BE TESTED:**
 ```
-□ Generación de embeddings
-□ Almacenamiento de vectores
-□ Búsqueda por similitud
-□ Gestión de colecciones
-□ Persistencia de datos
+□ Model loading
+□ Prompt formatting
+□ Response parsing
+□ Token management
+□ Fallback models
 ```
 
-### 3.4 Pipeline Completo
-**DEBE TESTEARSE:**
+### 3.3 Agents ↔ Qdrant
+**MUST BE TESTED:**
+```
+□ Embedding generation
+□ Vector storage
+□ Similarity search
+□ Collection management
+□ Data persistence
+```
+
+### 3.4 Complete Pipeline
+**MUST BE TESTED:**
 ```
 n8n Webhook
     ↓
@@ -185,273 +185,273 @@ AgentRouter
     ↓
 TaskDecomposer
     ↓
-Ejecución Paralela
+Parallel Execution
     ↓
-Ollama (llamadas LLM)
+Ollama (LLM calls)
     ↓
-Qdrant (Almacenamiento)
+Qdrant (Storage)
     ↓
 ResultSynthesizer
     ↓
 OutputValidator
     ↓
-Respuesta n8n
+n8n Response
 ```
 
 ---
 
-## 4. Estado Actual de los Notebooks
+## 4. Current State of Notebooks
 
-### ✅ Lo que tenemos
+### ✅ What we have
 1. **test_agent_router.ipynb**
-   - Tests básicos de enrutamiento
-   - Asignación de tareas
-   - Detección de agentes
+   - Basic routing tests
+   - Task assignment
+   - Agent detection
 
 2. **test_communication.ipynb**
-   - Health checks de servicios
-   - Integración con Ollama
-   - Operaciones básicas de Qdrant
-   - Resumen del pipeline
+   - Service health checks
+   - Ollama integration
+   - Basic Qdrant operations
+   - Pipeline summary
 
 3. **test_task_decomposition.ipynb**
-   - Desglose de tareas
-   - Ejecución paralela
-   - Resolución de dependencias
+   - Task breakdown
+   - Parallel execution
+   - Dependency resolution
 
 4. **test_end_to_end.ipynb**
-   - Workflow de análisis de documentos
-   - Colaboración multi-agente
-   - Patrón RAG
+   - Document analysis workflow
+   - Multi-agent collaboration
+   - RAG pattern
 
-### ❌ Lo que necesitamos (Must Have)
+### ❌ What we need (Must Have)
 
 1. **test_agent_components.ipynb** ⭐ CRITICAL
-   - Testear cada agente individualmente
-   - Verificar contratos de componentes
-   - Medir rendimiento
+   - Test each agent individually
+   - Verify component contracts
+   - Measure performance
 
 2. **test_integration_n8n_agents.ipynb** ⭐ CRITICAL
-   - Comunicación n8n → Agente
-   - Flujo petición/respuesta
-   - Escenarios de error
+   - n8n → Agent communication
+   - Request/response flow
+   - Error scenarios
 
 3. **test_llm_pipeline.ipynb** ⭐ CRITICAL
-   - Integración con Ollama
-   - Gestión de prompts
-   - Validación de respuestas
-   - Gestión de tokens
+   - Ollama integration
+   - Prompt management
+   - Response validation
+   - Token management
 
 4. **test_rag_system.ipynb** ⭐ CRITICAL
-   - Workflow RAG de principio a fin
-   - Generación de embeddings
-   - Precisión en la recuperación
-   - Uso del contexto
+   - End-to-end RAG workflow
+   - Embedding generation
+   - Retrieval accuracy
+   - Context usage
 
 5. **test_agent_reliability.ipynb** ⭐ CRITICAL
-   - Recuperación de errores
-   - Gestión de timeouts
-   - Mecanismos de reintento
-   - Degradación controlada
+   - Error recovery
+   - Timeout management
+   - Retry mechanisms
+   - Graceful degradation
 
-6. **test_performance_benchmarks.ipynb** ⭐ IMPORTANTE
-   - Medición de rendimiento (throughput)
-   - Análisis de latencia
-   - Perfilado de recursos
-   - Tests de escalabilidad
+6. **test_performance_benchmarks.ipynb** ⭐ IMPORTANT
+   - Throughput measurement
+   - Latency analysis
+   - Resource profiling
+   - Scalability tests
 
-7. **test_concurrent_workflows.ipynb** ⭐ IMPORTANTE
-   - Ejecución de tareas en paralelo
-   - Contención de recursos
-   - Gestión de colas
-   - Balanceo de carga
+7. **test_concurrent_workflows.ipynb** ⭐ IMPORTANT
+   - Parallel task execution
+   - Resource contention
+   - Queue management
+   - Load balancing
 
-8. **test_data_persistence.ipynb** ⭐ IMPORTANTE
-   - Gestión de estado
-   - Recuperación de datos
-   - Comprobaciones de consistencia
-   - Procedimientos de recuperación
+8. **test_data_persistence.ipynb** ⭐ IMPORTANT
+   - State management
+   - Data recovery
+   - Consistency checks
+   - Recovery procedures
 
 ---
 
-## 5. Patrón de Diseño de Notebooks
+## 5. Notebook Design Pattern
 
-### Estructura de la Plantilla
+### Template Structure
 ```
-1. Configuración e Imports
-   └─ Inicializar servicios
-   └─ Configurar logging
-   └─ Cargar credenciales
+1. Setup and Imports
+   └─ Initialize services
+   └─ Configure logging
+   └─ Load credentials
 
-2. Comprobación de Prerrequisitos
-   └─ Salud de los servicios
-   └─ Dependencias listas
-   └─ Datos disponibles
+2. Prerequisite Checks
+   └─ Service health
+   └─ Dependencies ready
+   └─ Data available
 
-3. Suites de Test
+3. Test Suites
    └─ Unit tests
    └─ Integration tests
    └─ Stress tests
-   └─ Casos límite (edge cases)
+   └─ Edge cases
 
-4. Validación
-   └─ Condiciones de aserción (assert)
-   └─ Medición de métricas
-   └─ Documentación de resultados
+4. Validation
+   └─ Assertion conditions
+   └─ Metric measurement
+   └─ Results documentation
 
-5. Limpieza y Resumen
-   └─ Limpieza de recursos
-   └─ Generación de informes
-   └─ Siguientes pasos
+5. Cleanup and Summary
+   └─ Resource cleanup
+   └─ Report generation
+   └─ Next steps
 ```
 
 ---
 
-## 6. Estrategia de Ejecución de Tests
+## 6. Test Execution Strategy
 
-### Fase 1: Testing de Componentes (Semana 1)
+### Phase 1: Component Testing (Week 1)
 ```
 1. test_agent_components.ipynb
 2. test_llm_pipeline.ipynb
 3. test_integration_n8n_agents.ipynb
 ```
 
-### Fase 2: Integration Testing (Semana 2)
+### Phase 2: Integration Testing (Week 2)
 ```
 4. test_rag_system.ipynb
 5. test_agent_reliability.ipynb
 6. test_concurrent_workflows.ipynb
 ```
 
-### Fase 3: Rendimiento y Escala (Semana 3)
+### Phase 3: Performance and Scale (Week 3)
 ```
 7. test_performance_benchmarks.ipynb
 8. test_data_persistence.ipynb
-9. Validación end-to-end
+9. End-to-end validation
 ```
 
 ---
 
-## 7. Criterios de Éxito
+## 7. Success Criteria
 
-### Para cada Notebook
-- ✅ Todos los tests pasan
-- ✅ Sin excepciones no gestionadas
-- ✅ Rendimiento dentro de los objetivos
-- ✅ Resultados reproducibles
-- ✅ Documentación completa
+### For each Notebook
+- ✅ All tests pass
+- ✅ No unhandled exceptions
+- ✅ Performance within targets
+- ✅ Reproducible results
+- ✅ Complete documentation
 
-### Sistema Global
-- ✅ Los componentes funcionan individualmente
-- ✅ Los componentes se integran correctamente
-- ✅ El sistema escala de forma fiable
-- ✅ Rendimiento aceptable
-- ✅ Los mecanismos de recuperación funcionan
-
----
-
-## 8. Checklist de Validación
-
-### Antes de fusionar (merge) el código:
-- [ ] Pasan los tests de componentes
-- [ ] Pasan los tests de integración
-- [ ] Benchmarks de rendimiento aceptables
-- [ ] Sin fugas de memoria (memory leaks)
-- [ ] Gestión de errores testeada
-- [ ] Casos límite cubiertos
-- [ ] Documentación actualizada
-
-### Antes de producción:
-- [ ] Todos los tests de los notebooks pasan
-- [ ] Tests de carga exitosos
-- [ ] Escenarios de fallo gestionados
-- [ ] Seguridad revisada
-- [ ] Rendimiento optimizado
-- [ ] Monitorización en marcha
+### Global System
+- ✅ Components work individually
+- ✅ Components integrate correctly
+- ✅ System scales reliably
+- ✅ Acceptable performance
+- ✅ Recovery mechanisms work
 
 ---
 
-## 9. Métricas a Seguir
+## 8. Validation Checklist
 
-### Rendimiento
-- Tiempo de ejecución de tareas
-- Latencia de respuesta de los agentes
-- Uso de memoria
-- Utilización de CPU
-- I/O de red
+### Before merging code:
+- [ ] Component tests pass
+- [ ] Integration tests pass
+- [ ] Acceptable performance benchmarks
+- [ ] No memory leaks
+- [ ] Error handling tested
+- [ ] Edge cases covered
+- [ ] Documentation updated
 
-### Fiabilidad
-- Tasa de éxito por agente
-- Tiempo de recuperación de errores
-- Tiempo de actividad del sistema (uptime)
-- Consistencia de datos
-- Finalización de transacciones
-
-### Calidad
-- Cobertura de tests
-- Tasa de detección de bugs
-- Puntuación de calidad del código
-- Completitud de la documentación
-- Satisfacción del usuario
+### Before production:
+- [ ] All notebook tests pass
+- [ ] Successful load tests
+- [ ] Failure scenarios handled
+- [ ] Security reviewed
+- [ ] Performance optimized
+- [ ] Monitoring in place
 
 ---
 
-## 10. Hoja de Ruta (Roadmap)
+## 9. Metrics to Track
 
-### Estado Actual 📊
+### Performance
+- Task execution time
+- Agent response latency
+- Memory usage
+- CPU utilization
+- Network I/O
+
+### Reliability
+- Success rate per agent
+- Error recovery time
+- System uptime
+- Data consistency
+- Transaction completion
+
+### Quality
+- Test coverage
+- Bug detection rate
+- Code quality score
+- Documentation completeness
+- User satisfaction
+
+---
+
+## 10. Roadmap
+
+### Current Status 📊
 ```
-Completado: ████░░░░░░░░░░░░░░ 20%
-En Progreso: ░░░░░░░░░░░░░░░░░░ 0%
-Planificado: ██████████████░░░░ 80%
+Completed: ████░░░░░░░░░░░░░░ 20%
+In Progress: ░░░░░░░░░░░░░░░░░░ 0%
+Planned: ██████████████░░░░ 80%
 ```
 
-### Próximas Acciones
-1. **Crear test_agent_components.ipynb** ⭐
-2. **Crear test_integration_n8n_agents.ipynb** ⭐
-3. **Crear test_llm_pipeline.ipynb** ⭐
-4. **Crear test_rag_system.ipynb** ⭐
-5. **Crear test_agent_reliability.ipynb** ⭐
-6. **Crear test_performance_benchmarks.ipynb**
-7. **Crear test_concurrent_workflows.ipynb**
-8. **Crear test_data_persistence.ipynb**
-9. Ejecutar tests de la Fase 1
-10. Analizar y optimizar
+### Next Actions
+1. **Create test_agent_components.ipynb** ⭐
+2. **Create test_integration_n8n_agents.ipynb** ⭐
+3. **Create test_llm_pipeline.ipynb** ⭐
+4. **Create test_rag_system.ipynb** ⭐
+5. **Create test_agent_reliability.ipynb** ⭐
+6. **Create test_performance_benchmarks.ipynb**
+7. **Create test_concurrent_workflows.ipynb**
+8. **Create test_data_persistence.ipynb**
+9. Run Phase 1 tests
+10. Analyze and optimize
 
 ---
 
-## Resumen
+## Summary
 
-**Notebooks actuales (4):** ✅ Buena base
-- Proporcionan cobertura de testing básica
-- Validan los flujos de comunicación
-- Testean la descomposición y síntesis
+**Current Notebooks (4):** ✅ Good base
+- Provide basic testing coverage
+- Validate communication flows
+- Test decomposition and synthesis
 
-**Notebooks faltantes (5 Críticos + 3 Importantes):**
-- Necesitan testing detallado de componentes de agentes
-- Necesitan validación de integración con n8n
-- Necesitan verificación del pipeline de LLM
-- Necesitan validación del sistema RAG
-- Necesitan testing de fiabilidad
-- Necesitan benchmarks de rendimiento
+**Missing Notebooks (5 Critical + 3 Important):**
+- Need detailed testing of agent components
+- Need validation of n8n integration
+- Need verification of LLM pipeline
+- Need validation of RAG system
+- Need reliability testing
+- Need performance benchmarks
 
-**Evaluación Global:** 📊
-- **30% completado** - Testing de infraestructura básica terminado
-- **70% restante** - Crítico: testing de componentes e integración
-
----
-
-**Verdad de Diseño:** El sistema es arquitectónicamente sólido, pero necesitamos
-un testing exhaustivo de:
-1. Comportamiento individual de los agentes
-2. Comunicación entre agentes
-3. Fiabilidad de la integración con LLM
-4. Precisión del sistema RAG
-5. Tolerancia a fallos del sistema
-
-Una vez validados, podremos pasar a producción con confianza.
+**Global Evaluation:** 📊
+- **30% completed** - Basic infrastructure testing finished
+- **70% remaining** - Critical: component and integration testing
 
 ---
 
-**Creado por:** GitHub Copilot
-**Propósito:** Asegurar la calidad y fiabilidad del sistema
-**Válido hasta:** Cambios en la arquitectura del sistema
+**Design Truth:** The system is architecturally sound, but we need
+exhaustive testing of:
+1. Individual agent behavior
+2. Inter-agent communication
+3. LLM integration reliability
+4. RAG system accuracy
+5. System fault tolerance
+
+Once validated, we can move to production with confidence.
+
+---
+
+**Created by:** GitHub Copilot
+**Purpose:** Ensure system quality and reliability
+**Valid until:** System architecture changes

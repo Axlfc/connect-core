@@ -1,43 +1,43 @@
-# Jupyter Notebooks for Testing cognito-stack
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
+# Notebooks de Jupyter per a provar connect-core
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
 
 
-Este directorio contiene notebooks de Jupyter para probar la arquitectura de agentes y la orquestación de cognito-stack.
+Aquest directori conté notebooks de Jupyter per a provar l'arquitectura d'agents i l'orquestració de connect-core.
 
 ## Notebooks disponibles
 
 ### 1. `test_agent_router.ipynb` 🔀
-**Propòsit:** Pruebas del enrutador de agentes y orquestación multi-agente
+**Propòsit:** Proves de l'enrutador d'agents i orquestració multi-agent
 
-**Contenido:**
-- ✓ Pruebas de enrutamiento de tareas
-- ✓ Orquestación multi-agente
-- ✓ Descomposición de tareas
-- ✓ Comunicación entre agentes
+**Contingut:**
+- ✓ Proves d'enrutament de tasques
+- ✓ Orquestració multi-agent
+- ✓ Descomposició de tasques
+- ✓ Comunicació entre agents
 
-**Requerimientos:**
-- Módulos: `AgentRouter`, `MultiAgentOrchestrator`, `TaskDecomposer`
+**Requeriments:**
+- Mòduls: `AgentRouter`, `MultiAgentOrchestrator`, `TaskDecomposer`
 
 ---
 
 ### 2. `test_communication.ipynb` 📡
-**Propòsit:** Pruebas de comunicación entre n8n y servicios (Ollama, Qdrant)
+**Propòsit:** Proves de comunicació entre n8n i serveis (Ollama, Qdrant)
 
-**Contenido:**
-- ✓ Health checks de servicios
-- ✓ Integración con Ollama (LLM local)
-- ✓ Generación de texto
+**Contingut:**
+- ✓ Health checks de serveis
+- ✓ Integració amb Ollama (LLM local)
+- ✓ Generació de text
 - ✓ Qdrant Vector Database
-- ✓ Pipeline de comunicación completo
+- ✓ Pipeline de comunicació complet
 
-**Requerimientos:**
+**Requeriments:**
 - Docker services: n8n, Ollama, Qdrant
-- Librerías: `requests`
+- Llibreries: `requests`
 
-**URLs de servicios:**
+**URLs de serveis:**
 - n8n: `http://localhost:5678`
 - Ollama: `http://localhost:11434`
 - Qdrant: `http://localhost:6333`
@@ -45,115 +45,115 @@ Este directorio contiene notebooks de Jupyter para probar la arquitectura de age
 ---
 
 ### 3. `test_task_decomposition.ipynb` 🔧
-**Propòsit:** Pruebas de descomposición de tareas y ejecución paralela
+**Propòsit:** Proves de descomposició de tasques i execució paral·lela
 
-**Contenido:**
-- ✓ Descomposición de tareas complejas
-- ✓ Ejecución paralela de subtareas
-- ✓ Resolución de dependencias
-- ✓ Síntesis de resultados
-- ✓ Análisis de performance
+**Contingut:**
+- ✓ Descomposició de tasques complexes
+- ✓ Execució paral·lela de subtasques
+- ✓ Resolució de dependències
+- ✓ Síntesi de resultats
+- ✓ Anàlisi de rendiment
 
-**Requerimientos:**
-- Módulos: `TaskDecomposer`, `ParallelTaskExecutor`, `ResultSynthesizer`
-- Librerías: `concurrent.futures`, `time`
+**Requeriments:**
+- Mòduls: `TaskDecomposer`, `ParallelTaskExecutor`, `ResultSynthesizer`
+- Llibreries: `concurrent.futures`, `time`
 
 ---
 
 ### 4. `test_end_to_end.ipynb` 🚀
-**Propòsit:** Prueba completa de flujo de trabajo con integración Ollama + Qdrant
+**Propòsit:** Prova completa de flux de treball amb integració Ollama + Qdrant
 
-**Contenido:**
-- **Workflow 1:** Análisis de documentos con RAG (Retrieval Augmented Generation)
-  - Enrutamiento de tareas
-  - Descomposición de tareas
-  - Integración con Ollama
-  - Almacenamiento en Qdrant
-  - Síntesis de resultados
-  - Validación de salida
+**Contingut:**
+- **Workflow 1:** Anàlisi de documents amb RAG (Retrieval Augmented Generation)
+  - Enrutament de tasques
+  - Descomposició de tasques
+  - Integració amb Ollama
+  - Emmagatzematge a Qdrant
+  - Síntesi de resultats
+  - Validació de sortida
 
-- **Workflow 2:** Colaboración multi-agente
-  - Simulación de conversación entre agentes
-  - Flujo de mensajes
-  - Intercambio de información
+- **Workflow 2:** Col·laboració multi-agent
+  - Simulació de conversa entre agents
+  - Flux de missatges
+  - Intercanvi d'informació
 
-**Requerimientos:**
-- Todos los módulos de agentes
+**Requeriments:**
+- Tots els mòduls d'agents
 - Serveis: n8n, Ollama, Qdrant
-- Librerías: `requests`, `json`
+- Llibreries: `requests`, `json`
 
 ---
 
-## Cómo ejecutar los notebooks
+## Com executar els notebooks
 
-### Prerrequisitos
+### Prerequisits
 
-1. **Iniciar el stack de Docker:**
+1. **Iniciar l'stack de Docker:**
 ```bash
 ./start.sh
 ```
 
-2. **Instalar Jupyter (si no está instalado):**
+2. **Instal·lar Jupyter (si no està instal·lat):**
 ```bash
 pip install jupyter notebook
 ```
 
-3. **Navegar al directorio del proyecto:**
+3. **Navegar al directori del projecte:**
 ```bash
-cd /workspaces/cognito-stack
+cd /workspaces/connect-core
 ```
 
-### Ejecutar un notebook específico
+### Executar un notebook específic
 
 ```bash
 jupyter notebook test_agent_router.ipynb
 ```
 
-### Ejecutar todos los notebooks en secuencia
+### Executar tots els notebooks en seqüència
 
 ```bash
 jupyter notebook
-# Luego abre cada notebook y ejecuta las celdas
+# Després obre cada notebook i executa les cel·les
 ```
 
-### Ejecutar desde VS Code
+### Executar des de VS Code
 
-1. Abre VS Code en el directorio del proyecto
-2. Selecciona un archivo `.ipynb`
-3. VS Code detectará automáticamente los notebooks
-4. Haz clic en "Run All" para ejecutar todas las celdas
+1. Obre VS Code al directori del projecte
+2. Selecciona un fitxer `.ipynb`
+3. VS Code detectarà automàticament els notebooks
+4. Fes clic a "Run All" per executar totes les cel·les
 
 ---
 
-## Estructura de los notebooks
+## Estructura dels notebooks
 
-Cada notebook sigue una estructura estándar:
+Cada notebook segueix una estructura estàndard:
 
 ```
 1. Setup/Imports
-   └─ Importar módulos necesarios
-   └─ Configurar variables de entorno
+   └─ Importar mòduls necessaris
+   └─ Configurar variables d'entorn
 
 2. Test 1: Component 1
-   └─ Verificar funcionamiento del componente
-   └─ Mostrar resultados
+   └─ Verificar funcionament del component
+   └─ Mostrar resultats
 
 3. Test 2: Component 2
-   └─ Verificar funcionamiento del componente
-   └─ Mostrar resultados
+   └─ Verificar funcionament del component
+   └─ Mostrar resultats
 
-... (más tests)
+... (més tests)
 
 N. Summary
-   └─ Resumen de todos los tests
-   └─ Métricas finales
+   └─ Resum de tots els tests
+   └─ Mètriques finals
 ```
 
 ---
 
-## Variables de entorno
+## Variables d'entorn
 
-Los notebooks usan las siguientes variables de entorno (con valores por defecto):
+Els notebooks utilitzen les següents variables d'entorn (amb valors per defecte):
 
 ```bash
 # .env o en variables de sistema
@@ -164,108 +164,108 @@ QDRANT_BASE_URL=http://localhost:6333
 
 ---
 
-## Validaciones en cada notebook
+## Validacions a cada notebook
 
 ### `test_agent_router.ipynb`
-- ✓ Agentes detectados correctamente
-- ✓ Tareas enrutadas a agentes apropiados
-- ✓ Orquestación multi-agente funciona
-- ✓ Comunicación entre agentes establecida
+- ✓ Agents detectats correctament
+- ✓ Tasques enrutades als agents apropiats
+- ✓ L'orquestració multi-agent funciona
+- ✓ Comunicació entre agents establerta
 
 ### `test_communication.ipynb`
-- ✓ n8n responde a health checks
-- ✓ Ollama accesible y modelos disponibles
-- ✓ Qdrant conectado y funcional
-- ✓ Pipeline de comunicación completo
+- ✓ n8n respon als health checks
+- ✓ Ollama accessible i models disponibles
+- ✓ Qdrant connectat i funcional
+- ✓ Pipeline de comunicació complet
 
 ### `test_task_decomposition.ipynb`
-- ✓ Tareas complejas descompuestas correctamente
-- ✓ Ejecución paralela eficiente
-- ✓ Dependencias resueltas correctamente
-- ✓ Resultados sintetizados acertadamente
+- ✓ Tasques complexes descomposades correctament
+- ✓ Execució paral·lela eficient
+- ✓ Dependències resoltes correctament
+- ✓ Resultats sintetitzats encertadament
 
 ### `test_end_to_end.ipynb`
-- ✓ Flujo de routing → decomposición → ejecución
-- ✓ Ollama genera respuestas válidas
-- ✓ Qdrant almacena resultados
-- ✓ Síntesis de resultados correcta
-- ✓ Validación de salida exitosa
-- ✓ Multi-agentes colaboran correctamente
+- ✓ Flux de routing → descomposició → execució
+- ✓ Ollama genera respostes vàlides
+- ✓ Qdrant emmagatzema resultats
+- ✓ Síntesi de resultats correcta
+- ✓ Validació de sortida exitosa
+- ✓ Multi-agents col·laboren correctament
 
 ---
 
-## Troubleshooting
+## Resolució de problemes (Troubleshooting)
 
 ### Error: "Cannot connect to Docker services"
 **Solució:**
 ```bash
-# Verificar que los servicios estén corriendo
+# Verificar que els serveis estiguin corrent
 docker compose ps
 
-# Si no están corriendo, iniciar:
+# Si no estan corrent, iniciar:
 ./start.sh
 ```
 
 ### Error: "ModuleNotFoundError: No module named 'agents'"
 **Solució:**
 ```bash
-# Asegúrate de estar en el directorio correcto
-cd /workspaces/cognito-stack
+# Assegura't d'estar al directori correcte
+cd /workspaces/connect-core
 
-# Verifica que la ruta esté en sys.path
-# Debería incluirse en el notebook con: sys.path.insert(0, os.path.abspath('.'))
+# Verifica que la ruta estigui a sys.path
+# Hauria d'incloure's al notebook amb: sys.path.insert(0, os.path.abspath('.'))
 ```
 
 ### Ollama: "No models available"
 **Solució:**
 ```bash
-# Descargar modelos manualmente
+# Descarregar models manualment
 docker exec ollama ollama pull llama3.2
 
-# O esperar a que se descarguen automáticamente
+# O esperar que es descarreguin automàticament
 ```
 
 ### Timeout en requests
 **Solució:**
 ```bash
-# Aumentar timeout en los requests
-# En los notebooks, cambiar timeout=5 a timeout=30
+# Augmentar timeout als requests
+# Als notebooks, canviar timeout=5 a timeout=30
 ```
 
 ---
 
-## Próximos pasos
+## Propers passos
 
-1. **Ejecutar todos los notebooks en orden:**
-   - `test_agent_router.ipynb` (verifica enrutamiento)
-   - `test_communication.ipynb` (verifica comunicación)
-   - `test_task_decomposition.ipynb` (verifica paralelización)
-   - `test_end_to_end.ipynb` (verifica flujo completo)
+1. **Executar tots els notebooks en ordre:**
+   - `test_agent_router.ipynb` (verifica enrutament)
+   - `test_communication.ipynb` (verifica comunicació)
+   - `test_task_decomposition.ipynb` (verifica paral·lelització)
+   - `test_end_to_end.ipynb` (verifica flux complet)
 
-2. **Monitorear métricas:**
-   - Tiempo de ejecución
-   - Ús de recursos (CPU, memoria)
-   - Errores y advertencias
+2. **Monitorar mètriques:**
+   - Temps d'execució
+   - Ús de recursos (CPU, memòria)
+   - Errors i avisos
 
-3. **Documentar resultados:**
-   - Guardar outputs de los notebooks
-   - Crear reporte de pruebas
+3. **Documentar resultats:**
+   - Guardar outputs dels notebooks
+   - Crear informe de proves
 
-4. **Optimizar basado en resultados:**
-   - Ajustar timeouts si es necesario
-   - Optimizar descomposición de tareas
-   - Mejorar síntesis de resultados
-
----
-
-## Links útiles
-
-- [Jupyter Documentation](https://jupyter.readthedocs.io/)
-- [n8n Documentation](https://docs.n8n.io/)
-- [Ollama GitHub](https://github.com/ollama/ollama)
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
+4. **Optimitzar basat en resultats:**
+   - Ajustar timeouts si cal
+   - Optimitzar descomposició de tasques
+   - Millorar síntesi de resultats
 
 ---
 
-**Última actualización:** 2025-12-20
-**Versió de cognito-stack:** Latest
+## Enllaços útils
+
+- [Documentació de Jupyter](https://jupyter.readthedocs.io/)
+- [Documentació de n8n](https://docs.n8n.io/)
+- [GitHub d'Ollama](https://github.com/ollama/ollama)
+- [Documentació de Qdrant](https://qdrant.tech/documentation/)
+
+---
+
+**Última actualització:** 2025-12-20
+**Versió de connect-core:** Latest

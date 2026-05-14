@@ -1,178 +1,178 @@
-# Gestión de Variables de Entorno
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.zh-cn.md)
+# Gestió de Variables d'Entorn
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.zh-cn.md)
 
 
-Este proyecto incluye varios scripts para gestionar las variables de entorno de forma inteligente y segura.
+Aquest projecte inclou diversos scripts per gestionar les variables d'entorn de forma intel·ligent i segura.
 
-## 📁 Archivos
+## 📁 Fitxers
 
-- **`.env`** - Archivo real con tus valores (NO commitear a git)
-- **`.env.example`** - Plantilla con valores de ejemplo (SÍ commitear)
-- **`generate_env_example.sh`** - Genera .env.example desde .env
-- **`init_env.sh`** - Inicializa .env desde .env.example
+- **`.env`** - Fitxer real amb els teus valors (NO fer commit a git)
+- **`.env.example`** - Plantilla amb valors d'exemple (SÍ fer commit)
+- **`generate_env_example.sh`** - Genera .env.example des de .env
+- **`init_env.sh`** - Inicialitza .env des de .env.example
 
-## 🚀 Quick Start
+## 🚀 Inici Ràpid
 
-### Primera vez (nuevo usuario del proyecto)
+### Primera vegada (nou usuari del projecte)
 
 ```bash
-# 1. Inicializar archivo .env
+# 1. Inicialitzar el fitxer .env
 ./init_env.sh
 
-# 2. El script generará automáticamente valores seguros y te preguntará por opcionales
-# Sigue las instrucciones interactivas
+# 2. L'script generarà automàticament valors segurs i et preguntarà pels opcionals
+# Segueix les instruccions interactives
 
-# 3. Revisa y ajusta si es necesario
+# 3. Revisa i ajusta si cal
 nano .env
 
-# 4. Inicia los servicios
+# 4. Inicia els serveis
 ./start.sh --voice
 ```
 
-### Modo automático (CI/CD o scripting)
+### Mode automàtic (CI/CD o scripting)
 
 ```bash
-# Genera .env con valores seguros sin interacción
+# Genera .env amb valors segurs sense interacció
 ./init_env.sh --auto
 
-# Luego configura las variables opcionales manualmente
-echo "TELEGRAM_BOT_TOKEN=tu_token" >> .env
-echo "ZROK_AUTH_TOKEN=tu_token" >> .env
+# Després configura les variables opcionals manualment
+echo "TELEGRAM_BOT_TOKEN=el_teu_token" >> .env
+echo "ZROK_AUTH_TOKEN=el_teu_token" >> .env
 ```
 
-## 🔄 Workflow para Desarrolladores
+## 🔄 Flux de Treball per a Desenvolupadors
 
-### Actualizar .env.example después de cambiar .env
+### Actualitzar .env.example després de canviar .env
 
 ```bash
-# Genera .env.example preservando valores útiles
+# Genera .env.example preservant valors útils
 ./generate_env_example.sh
 
-# Revisa los cambios
+# Revisa els canvis
 git diff .env.example
 
-# Commitea si está bien
+# Fes commit si està bé
 git add .env.example
 git commit -m "Update .env.example with new variables"
 ```
 
-### Sincronizar tu .env con nuevas variables
+### Sincronitzar el teu .env amb noves variables
 
 ```bash
-# Si alguien agregó variables nuevas al proyecto
+# Si algú ha afegit variables noves al projecte
 git pull
 
-# Actualiza tu .env con las nuevas variables
+# Actualitza el teu .env amb les noves variables
 ./init_env.sh
-# Selecciona 'n' para no sobrescribir las existentes
-# O manualmente:
+# Selecciona 'n' per no sobreescriure les existents
+# O manualment:
 cat .env.example >> .env
-nano .env  # Elimina duplicados y configura las nuevas
+nano .env  # Elimina duplicats i configura les noves
 ```
 
-## 🎯 Comportamiento de generate_env_example.sh
+## 🎯 Comportament de generate_env_example.sh
 
-Este script es **inteligente** y preserva valores útiles:
+Aquest script és **intel·ligent** i preserva valors útils:
 
-### ✅ Variables que SE PRESERVAN:
+### ✅ Variables que ES PRESERVEN:
 
-1. **Valores predefinidos** (configuración técnica):
+1. **Valors predefinits** (configuració tècnica):
    ```bash
    WHISPER_MODEL=base.en
    REDIS_PORT=6379
    POSTGRES_USER_ID=999
    ```
 
-2. **Valores de ejemplo** del .env.example existente:
+2. **Valors d'exemple** del .env.example existent:
    ```bash
    WEBHOOK_URL=http://localhost:5678
    ZROK_API_ENDPOINT=https://api.zrok.io
    ```
 
-3. **Valores que parecen de documentación**:
+3. **Valors que semblen de documentació**:
    ```bash
-   EXAMPLE_KEY=your_key_here
-   TEST_VALUE=change_this
+   EXAMPLE_KEY=la_teva_clau_aqui
+   TEST_VALUE=canvia_aixo
    ```
 
-### 🔒 Variables que SE VACÍAN:
+### 🔒 Variables que ES BUIDEN:
 
-Variables sensibles (contienen estos patrones):
+Variables sensibles (contenen aquests patrons):
 - `*PASSWORD*`
 - `*SECRET*`
-- `*KEY*` (excepto predefinidas)
+- `*KEY*` (excepte predefinides)
 - `*TOKEN*`
 - `*AUTH*`
 - `*JWT*`
 
 ```bash
-# Antes en .env
-POSTGRES_PASSWORD=mi_super_secreto_123
+# Abans a .env
+POSTGRES_PASSWORD=el_meu_super_secret_123
 
-# Después en .env.example
+# Després a .env.example
 POSTGRES_PASSWORD=
 ```
 
-## 📋 Ejemplos de Ús
+## 📋 Exemples d'Ús
 
-### Ejemplo 1: Primer setup del proyecto
+### Exemple 1: Configuració inicial del projecte
 
 ```bash
-# Clonar repositorio
-git clone https://github.com/tu-org/ai-stack.git
-cd ai-stack
+# Clonar repositori
+git clone https://github.com/[EL_TEU_USUARI]/connect-core.git
+cd connect-core
 
-# Hacer ejecutables los scripts
+# Fer els scripts executables
 chmod +x *.sh
 
-# Inicializar entorno
+# Inicialitzar entorn
 ./init_env.sh
 
-# Output esperado:
-# ✅ Backup creado: .env.backup.20250101_120000
-# ℹ️  Archivo .env creado desde .env.example
+# Sortida esperada:
+# ✅ Còpia de seguretat creada: .env.backup.20250101_120000
+# ℹ️  Fitxer .env creat des de .env.example
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Variable: N8N_ENCRYPTION_KEY
-# Valor generado: 8f4e3c2b1a9d8e7f...
-# ¿Usar este valor? (S/n/personalizar): s
-# ✅ N8N_ENCRYPTION_KEY configurado
+# Valor generat: 8f4e3c2b1a9d8e7f...
+# Vols utilitzar aquest valor? (S/n/personalitzar): s
+# ✅ N8N_ENCRYPTION_KEY configurat
 ```
 
-### Ejemplo 2: Añadir nueva variable al proyecto
+### Exemple 2: Afegir una nova variable al projecte
 
 ```bash
-# 1. Editar .env para testing
+# 1. Editar .env per a proves
 echo "NEW_FEATURE_API_KEY=test_value_123" >> .env
 
-# 2. Testear que funciona
+# 2. Comprovar que funciona
 ./start.sh
 
-# 3. Generar .env.example actualizado
+# 3. Generar .env.example actualitzat
 ./generate_env_example.sh
 
-# Output:
-# 🔒 POSTGRES_PASSWORD (sensible - vaciado)
-# ✓ WHISPER_MODEL (preservado)
-# 🔒 NEW_FEATURE_API_KEY (sensible - vaciado)
+# Sortida:
+# 🔒 POSTGRES_PASSWORD (sensible - buidat)
+# ✓ WHISPER_MODEL (preservat)
+# 🔒 NEW_FEATURE_API_KEY (sensible - buidat)
 
-# 4. Verificar resultado
+# 4. Verificar el resultat
 cat .env.example | grep NEW_FEATURE
 # NEW_FEATURE_API_KEY=
 
-# 5. Commitear
+# 5. Fer commit
 git add .env.example
 git commit -m "Add NEW_FEATURE_API_KEY configuration"
 ```
 
-### Ejemplo 3: Agregar valor predefinido nuevo
+### Exemple 3: Afegir un nou valor predefinit
 
 ```bash
 # Editar generate_env_example.sh
-# Añadir a EXAMPLE_VALUES:
+# Afegir a EXAMPLE_VALUES:
 
 declare -A EXAMPLE_VALUES=(
     ...
@@ -183,19 +183,19 @@ declare -A EXAMPLE_VALUES=(
 # Regenerar
 ./generate_env_example.sh
 
-# Ahora estos valores se preservarán siempre
+# Ara aquests valors es preservaran sempre
 ```
 
-## 🔐 Generación de Valores Seguros
+## 🔐 Generació de Valors Segurs
 
-El script `init_env.sh` usa estos métodos (en orden de preferencia):
+L'script `init_env.sh` utilitza aquests mètodes (per ordre de preferència):
 
-1. **OpenSSL** (más común):
+1. **OpenSSL** (més comú):
    ```bash
    openssl rand -hex 32
    ```
 
-2. **Python** (si openssl no está disponible):
+2. **Python** (si openssl no està disponible):
    ```python
    python3 -c "import secrets; print(secrets.token_hex(32))"
    ```
@@ -205,63 +205,63 @@ El script `init_env.sh` usa estos métodos (en orden de preferencia):
    cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1
    ```
 
-### Generar manualmente
+### Generar manualment
 
 ```bash
-# Generar clave de 64 caracteres hex
+# Generar clau de 64 caràcters hex
 openssl rand -hex 32
 
-# Generar clave de 32 caracteres alfanuméricos
+# Generar clau de 32 caràcters alfanumèrics
 cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1
 ```
 
-## 🛡️ Seguridad
+## 🛡️ Seguretat
 
-### ✅ Buenas Prácticas
+### ✅ Bones Pràctiques
 
-1. **NUNCA** commitear `.env` a git:
+1. **MAI** facis commit del `.env` a git:
    ```bash
-   # Verificar que está en .gitignore
+   # Verificar que està al .gitignore
    cat .gitignore | grep ".env"
-   # Debería mostrar: .env
+   # Hauria de mostrar: .env
    ```
 
-2. **SIEMPRE** rotar secrets en producción:
+2. **SEMPRE** rota els secrets en producció:
    ```bash
-   # Antes de deploy
+   # Abans de fer deploy
    ./init_env.sh --auto
-   # Configura manualmente los servicios externos
+   # Configura manualment els serveis externs
    ```
 
-3. **Backup** antes de regenerar:
+3. **Còpia de seguretat** abans de regenerar:
    ```bash
-   # Los scripts hacen backup automático, pero por si acaso:
+   # Els scripts fan còpia de seguretat automàtica, però per si de cas:
    cp .env .env.backup.manual
    ```
 
-4. **Revisar** cambios antes de commitear .env.example:
+4. **Revisar** els canvis abans de fer commit del .env.example:
    ```bash
    git diff .env.example
    ```
 
-### ⚠️ Qué NO hacer
+### ⚠️ Què NO fer
 
-- ❌ Commitear `.env` con valores reales
-- ❌ Compartir `.env` por email/slack
-- ❌ Usar valores de ejemplo en producción
-- ❌ Reutilizar passwords entre servicios
-- ❌ Hardcodear secrets en el código
+- ❌ Fer commit del `.env` amb valors reals
+- ❌ Compartir el `.env` per correu/slack
+- ❌ Utilitzar valors d'exemple en producció
+- ❌ Reutilitzar contrasenyes entre serveis
+- ❌ Posar secrets directament al codi (hardcode)
 
-## 🔍 Troubleshooting
+## 🔍 Resolució de Problemes
 
-### Problema: "No se generan valores seguros"
+### Problema: "No es generen valors segurs"
 
 ```bash
-# Verificar que tienes las herramientas
+# Verificar que tens les eines
 which openssl
 which python3
 
-# Si no, instalar
+# Si no, instal·lar-les
 # Ubuntu/Debian
 sudo apt install openssl python3
 
@@ -269,61 +269,61 @@ sudo apt install openssl python3
 brew install openssl python3
 ```
 
-### Problema: "Variables no se preservan en .env.example"
+### Problema: "Les variables no es preserven al .env.example"
 
 ```bash
-# Ver qué variables se están procesando
+# Veure quines variables s'estan processant
 ./generate_env_example.sh 2>&1 | grep "🔒\|✓\|∅"
 
-# Si una variable debería preservarse pero se vacía:
-# 1. Verifica que no contiene patrones sensibles (PASSWORD, SECRET, etc.)
-# 2. O agrégala a EXAMPLE_VALUES en el script
+# Si una variable s'hauria de preservar però es buida:
+# 1. Verifica que no conté patrons sensibles (PASSWORD, SECRET, etc.)
+# 2. O afegeix-la a EXAMPLE_VALUES a l'script
 ```
 
-### Problema: ".env sobreescrito accidentalmente"
+### Problema: ".env sobreescrit accidentalment"
 
 ```bash
-# Restaurar desde backup automático
+# Restaurar des de la còpia de seguretat automàtica
 ls -la .env.backup.*
 cp .env.backup.YYYYMMDD_HHMMSS .env
 
-# O desde git si estaba commiteado (mal)
-git checkout .env  # ¡No hagas esto si .env está en .gitignore!
+# O des de git si s'havia fet commit (malament)
+git checkout .env  # No ho facis si el .env és al .gitignore!
 ```
 
-## 📚 Referencia Rápida
+## 📚 Referència Ràpida
 
-### Variables Requeridas (deben tener valor)
+### Variables Requerides (han de tenir valor)
 
 ```bash
-# Seguridad n8n
+# Seguretat n8n
 N8N_ENCRYPTION_KEY=
 N8N_USER_MANAGEMENT_JWT_SECRET=
 N8N_AUTH_JWT_SECRET=
 N8N_RUNNERS_AUTH_TOKEN=
 
-# Bases de datos
+# Bases de dades
 POSTGRES_PASSWORD=
 REDIS_PASSWORD=
 
-# Para Forgejo
+# Per a Forgejo
 FORGEJO_DB_PASSWORD=
 ```
 
-### Variables Opcionales
+### Variables Opcionals
 
 ```bash
 # Bot de Telegram
 TELEGRAM_BOT_TOKEN=
 
-# Túnel público
+# Túnel públic
 ZROK_AUTH_TOKEN=
 
-# Búsqueda web
+# Cerca web
 MCP_BRAVE_API_KEY=
 ```
 
-### Variables con Valores Predefinidos (no cambiar)
+### Variables amb Valors Predefinits (no canviar)
 
 ```bash
 WHISPER_MODEL=base.en
@@ -334,36 +334,36 @@ VOICE_GATEWAY_PORT=9000
 
 ## 🤝 Contribuir
 
-Al añadir nuevas variables:
+En afegir noves variables:
 
-1. Añádelas a `.env.example` con:
-   - Comentario descriptivo
-   - Valor de ejemplo o vacío según corresponda
-   - Sección apropiada
+1. Afegeix-les al `.env.example` amb:
+   - Comentari descriptiu
+   - Valor d'exemple o buit segons correspongui
+   - Secció apropiada
 
-2. Si es un valor técnico (puerto, versión, etc.):
+2. Si és un valor tècnic (port, versió, etc.):
    ```bash
-   # Añadir a EXAMPLE_VALUES en generate_env_example.sh
-   ["NUEVA_VARIABLE"]="valor_por_defecto"
+   # Afegir a EXAMPLE_VALUES a generate_env_example.sh
+   ["NOVA_VARIABLE"]="valor_per_defecte"
    ```
 
-3. Si es sensible:
+3. Si és sensible:
    ```bash
-   # No hace falta nada, se detecta automáticamente
-   # por los patrones: PASSWORD, SECRET, TOKEN, KEY, AUTH
+   # No cal fer res, es detecta automàticament
+   # pels patrons: PASSWORD, SECRET, TOKEN, KEY, AUTH
    ```
 
-4. Documentar en el README principal
+4. Documentar-ho al README principal
 
-## 📞 Soporte
+## 📞 Suport
 
-Si tienes problemas:
+Si tens problemes:
 
-1. Revisa los logs de los scripts
-2. Verifica que `.env.example` está actualizado
-3. Ejecuta `./debug_whisper.sh` para diagnóstico
-4. Abre un issue en GitHub
+1. Revisa els logs dels scripts
+2. Verifica que el `.env.example` està actualitzat
+3. Executa `./debug_whisper.sh` per al diagnòstic
+4. Obre un issue a GitHub
 
 ---
 
-**Última actualización**: 2025-01-01
+**Última actualització**: 2025-01-01

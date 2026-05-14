@@ -1,70 +1,70 @@
-# Informe de Auditoría Técnica - Proyecto Cognito-Stack
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.ca.md)
+# 技术审计报告 - connect-core 项目
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules, Ingeniero de 软件 Senior
+**日期：** 2024-07-25
+**分析师：** Jules, 高级软件工程师
 
-## Introducción
+## 引言
 
-Este directorio contiene los resultados de una auditoría técnica exhaustiva del proyecto `Axlfc/connect-core`. El propósito de esta auditoría fue realizar un análisis profundo de la arquitectura, seguridad, mantenibilidad y preparación para producción del sistema.
+本目录包含了对 `[ORGANIZATION]/connect-core` 项目进行的全面技术审计结果。本次审计的目的是对系统的架构、安全性、可维护性和生产就绪状态进行深入分析。
 
-El informe está dividido en varios documentos Markdown, cada uno cubriendo un área específica del análisis.
+报告分为几个 Markdown 文档，每个文档涵盖一个特定的分析领域。
 
 ---
 
-## 1. Documentos Principales (Entregables Clave)
+## 1. 主要文档（关键交付物）
 
-Estos documentos resumen los hallazgos y proporcionan una guía para la remediación. Se recomienda empezar por aquí.
+这些文档总结了审计结果并提供了修复指南。建议从这里开始阅读。
 
-| Documento | Descripción |
+| 文档 | 描述 |
 | :--- | :--- |
-| **[00_EXECUTIVE_SUMMARY.md](./00_EXECUTIVE_SUMMARY.md)** | **(Leer Primero)** Un resumen de alto nivel del estado general del proyecto, los hallazgos críticos y el veredicto final. |
-| **[RISK_MATRIX.md](./RISK_MATRIX.md)** | Una tabla consolidada de todos los riesgos identificados, clasificados por severidad e impacto. |
-| **[ACTION_PLAN.md](./ACTION_PLAN.md)** | Un plan de acción priorizado y por fases con los pasos concretos para remediar los problemas encontrados. |
+| **[00_EXECUTIVE_SUMMARY.md](./00_EXECUTIVE_SUMMARY.md)** | **（优先阅读）** 对项目整体状态、关键发现和最终结论的高层摘要。 |
+| **[RISK_MATRIX.md](./RISK_MATRIX.md)** | 确定的所有风险的汇总表，按严重程度和影响进行分类。 |
+| **[ACTION_PLAN.md](./ACTION_PLAN.md)** | 一个分阶段的优先行动计划，包含修复所发现问题的具体步骤。 |
 
 ---
 
-## 2. Hallazgos Detallados por Área
+## 2. 各领域的详细发现
 
-A continuación se presenta el desglose completo de los hallazgos en cada una de las 17 áreas auditadas.
+以下是 17 个审计领域中发现的具体故障细目。
 
-### Bloque 1: Estructura y Seguridad de Base
+### 第 1 部分：结构与基础安全
 
-| ID | Documento | Descripción |
+| ID | 文档 | 描述 |
 | :-- | :--- | :--- |
-| 01 | **[STRUCTURE_AND_ORGANIZATION.md](./01_STRUCTURE_AND_ORGANIZATION.md)** | Análisis de la estructura de directorios, convenciones de nombrado y organización general del proyecto. |
-| 02 | **[ENVIRONMENT_AND_CONFIGURATION.md](./02_ENVIRONMENT_AND_CONFIGURATION.md)** | Auditoría de la gestión de variables de entorno, archivos `.env` y manejo de secretos. |
-| 03 | **[DOCKER_CONTAINERIZATION.md](./03_DOCKER_CONTAINERIZATION.md)** | Revisión de los archivos `docker-compose.yml` y Dockerfiles, enfocada en mejores prácticas de containerización. |
-| 04 | **[DOCKER_SECURITY.md](./04_DOCKER_SECURITY.md)** | Análisis específico de la seguridad de los contenedores: privilegios, usuarios, `capabilities` y aislamiento. |
+| 01 | **[STRUCTURE_AND_ORGANIZATION.md](./01_STRUCTURE_AND_ORGANIZATION.md)** | 目录结构、命名规范和项目整体组织的分析。 |
+| 02 | **[ENVIRONMENT_AND_CONFIGURATION.md](./02_ENVIRONMENT_AND_CONFIGURATION.md)** | 环境变量管理、`.env` 文件和机密 (Secrets) 处理的审计。 |
+| 03 | **[DOCKER_CONTAINERIZATION.md](./03_DOCKER_CONTAINERIZATION.md)** | 对 `docker-compose.yml` 和 Dockerfile 的审查，侧重于容器化最佳实践。 |
+| 04 | **[DOCKER_SECURITY.md](./04_DOCKER_SECURITY.md)** | 容器安全性的具体分析：权限、用户、`capabilities` 和隔离。 |
 
-### Bloque 2: Seguridad Perimetral y Autenticación
+### 第 2 部分：边界安全与身份验证
 
-| ID | Documento | Descripción |
+| ID | 文档 | 描述 |
 | :-- | :--- | :--- |
-| 05 | **[REVERSE_PROXY_AND_NGINX.md](./05_REVERSE_PROXY_AND_NGINX.md)** | Auditoría del reverse proxy, configuración de SSL/TLS y `security headers`. |
-| 06 | **[AUTHELIA_AUTHENTICATION.md](./06_AUTHELIA_AUTHENTICATION.md)** | Análisis profundo de la configuración de Authelia, políticas de contraseña y seguridad de la sesión. |
-| 07 | **[NETWORK_SECURITY.md](./07_NETWORK_SECURITY.md)** | Revisión de las políticas de red de Docker, la configuración de `fail2ban` y el aislamiento de servicios. |
+| 05 | **[REVERSE_PROXY_AND_NGINX.md](./05_REVERSE_PROXY_AND_NGINX.md)** | 反向代理、SSL/TLS 配置和 `security headers` 的审计。 |
+| 06 | **[AUTHELIA_AUTHENTICATION.md](./06_AUTHELIA_AUTHENTICATION.md)** | 对 Authelia 配置、密码策略和会话安全的深入分析。 |
+| 07 | **[NETWORK_SECURITY.md](./07_NETWORK_SECURITY.md)** | Docker 网络策略、`fail2ban` 配置和服务隔离的审查。 |
 
-### Bloque 3: Operaciones y 服务s
+### 第 3 部分：运营与服务
 
-| ID | Documento | Descripción |
+| ID | 文档 | 描述 |
 | :-- | :--- | :--- |
-| 08 | **[MONITORING_AND_LOGGING.md](./08_MONITORING_AND_LOGGING.md)** | Evaluación del stack de monitoreo (Prometheus, Grafana) y de la estrategia de logging. |
-| 09 | **[SERVICES_SECURITY.md](./09_SERVICES_SECURITY.md)** | Revisión de la configuración de seguridad de los servicios principales (n8n, Ollama, ComfyUI, etc.). |
-| 10 | **[VOLUMES_AND_PERSISTENCE.md](./10_VOLUMES_AND_PERSISTENCE.md)** | Análisis de la estrategia de persistencia de datos, backups y planes de recuperación. |
-| 11 | **[AUTOMATION_SCRIPTS.md](./11_AUTOMATION_SCRIPTS.md)** | Auditoría de todos los scripts de shell (`.sh`) en busca de errores, vulnerabilidades y buenas prácticas. |
+| 08 | **[MONITORING_AND_LOGGING.md](./08_MONITORING_AND_LOGGING.md)** | 监控栈（Prometheus, Grafana）和日志策略的评估。 |
+| 09 | **[SERVICES_SECURITY.md](./09_SERVICES_SECURITY.md)** | 主要服务（n8n, Ollama, ComfyUI 等）安全性配置的审查。 |
+| 10 | **[VOLUMES_AND_PERSISTENCE.md](./10_VOLUMES_AND_PERSISTENCE.md)** | 数据持久化策略、备份和恢复计划的分析。 |
+| 11 | **[AUTOMATION_SCRIPTS.md](./11_AUTOMATION_SCRIPTS.md)** | 对所有 Shell 脚本 (`.sh`) 的错误、漏洞和最佳实践的审计。 |
 
-### Bloque 4: Capa de Aplicación y Gobernanza
+### 第 4 部分：应用层与治理
 
-| ID | Documento | Descripción |
+| ID | 文档 | 描述 |
 | :-- | :--- | :--- |
-| 12 | **[VOICE_GATEWAY.md](./12_VOICE_GATEWAY.md)** | Análisis del microservicio Voice Gateway, incluyendo seguridad de WebSockets y manejo de datos. |
-| 13 | **[DEPENDENCIES_AND_LIBRARIES.md](./13_DEPENDENCIES_AND_LIBRARIES.md)** | Revisión de los archivos de dependencias (`requirements.txt`, etc.) en busca de versiones no fijadas y vulnerabilidades. |
-| 14 | **[DOCUMENTATION.md](./14_DOCUMENTATION.md)** | Evaluación de la completitud, claridad y precisión de la documentación del proyecto. |
-| 15 | **[TESTING_AND_QUALITY.md](./15_TESTING_AND_QUALITY.md)** | Análisis de la estrategia de testing, cobertura de pruebas y configuración del pipeline de CI/CD. |
-| 16 | **[ISSUES_AND_ROADMAP.md](./16_ISSUES_AND_ROADMAP.md)** | Revisión de los issues abiertos y del roadmap del proyecto para evaluar la dirección y prioridades. |
-| 17 | **[COMPLIANCE_AND_AUDIT.md](./17_COMPLIANCE_AND_AUDIT.md)** | Verificación del cumplimiento del proyecto con su propio `DESIGN_TRUTH_CONTRACT`. |
+| 12 | **[VOICE_GATEWAY.md](./12_VOICE_GATEWAY.md)** | Voice Gateway 微服务分析，包括 WebSocket 安全和数据处理。 |
+| 13 | **[DEPENDENCIES_AND_LIBRARIES.md](./13_DEPENDENCIES_AND_LIBRARIES.md)** | 对依赖文件（`requirements.txt` 等）中未指定版本的库和漏洞的审查。 |
+| 14 | **[DOCUMENTATION.md](./14_DOCUMENTATION.md)** | 项目文档完整性、清晰度和准确性的评估。 |
+| 15 | **[TESTING_AND_QUALITY.md](./15_TESTING_AND_QUALITY.md)** | 测试策略、测试覆盖率和 CI/CD 流水线配置的分析。 |
+| 16 | **[ISSUES_AND_ROADMAP.md](./16_ISSUES_AND_ROADMAP.md)** | 对未解决的 issue 和项目路线图进行审查，以评估方向和优先级。 |
+| 17 | **[COMPLIANCE_AND_AUDIT.md](./17_COMPLIANCE_AND_AUDIT.md)** | 验证项目对其自身 `DESIGN_TRUTH_CONTRACT` 的遵守情况。 |

@@ -1,63 +1,63 @@
-# AUDIT 03: ANÁLISIS DE DOCKER Y CONTAINERIZACIÓN
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.zh-cn.md)
+# AUDIT 03: DOCKER AND CONTAINERIZATION ANALYSIS
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/03_DOCKER_CONTAINERIZATION.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Orquestación** | El archivo `docker-compose.yml` está **bien estructurado**, utilizando anclas de YAML, perfiles y redes segmentadas de manera efectiva. Demuestra un diseño de arquitectura sólido. |
-| ✓ | **Healthchecks** | La mayoría de los servicios críticos implementan `healthchecks`, una práctica excelente que asegura un orden de inicio correcto y mejora la resiliencia del stack. |
-| ⚠️ | **Optimización de Imágenes** | Los Dockerfiles personalizados son funcionales pero **carecen de optimizaciones clave**. No utilizan builds multi-etapa, lo que resulta en imágenes más grandes de lo necesario que contienen herramientas de compilación no requeridas en tiempo de ejecución. |
-| ✗ | **Dependencias No Fijadas** | El uso generalizado de la etiqueta `:latest` en `docker-compose.yml` y en los Dockerfiles es un **riesgo crítico para la estabilidad y la seguridad**. Esto conduce a builds no reproducibles y a la introducción inesperada de cambios disruptivos. |
-| ✗ | **Falta de Límites de Recursos** | La gran mayoría de los servicios no tienen límites de CPU o memoria definidos en la sección `deploy.resources`. Esto crea un riesgo de que un solo servicio consuma todos los recursos del host, provocando una denegación de servicio para todo el stack. |
-| ✗ | **Inconsistencias y Malas Prácticas** | Se observan varias malas prácticas, como la instalación de dependencias con `apt-get` sin limpiar la caché, y la clonación de repositorios `git` desde ramas `master` en lugar de etiquetas o commits específicos. |
+| ✓ | **Orchestration** | The `docker-compose.yml` file is **well-structured**, effectively using YAML anchors, profiles, and segmented networks. It demonstrates a solid architectural design. |
+| ✓ | **Healthchecks** | Most critical services implement `healthchecks`, an excellent practice that ensures correct startup order and improves stack resilience. |
+| ⚠️ | **Image Optimization** | Custom Dockerfiles are functional but **lack key optimizations**. They do not use multi-stage builds, resulting in larger than necessary images containing build tools not required at runtime. |
+| ✗ | **Unpinned Dependencies** | Widespread use of the `:latest` tag in `docker-compose.yml` and Dockerfiles is a **critical risk to stability and security**. This leads to non-reproducible builds and the unexpected introduction of breaking changes. |
+| ✗ | **Lack of Resource Limits** | The vast majority of services do not have CPU or memory limits defined in the `deploy.resources` section. This creates a risk of a single service consuming all host resources, causing a denial of service for the entire stack. |
+| ✗ | **Inconsistencies and Bad Practices** | Several bad practices are observed, such as installing dependencies with `apt-get` without clearing the cache, and cloning `git` repositories from `master` branches instead of specific tags or commits. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Estructura de `docker-compose.yml`:**
-    *   El uso de anclas de YAML (ej. `x-ollama: &service-ollama`) para definir servicios base es excelente para la mantenibilidad y reduce la duplicación de código.
-    *   La segmentación de la red en `frontend`, `backend`, `ai` y `monitoring` (con las últimas tres marcadas como `internal: true`) es una implementación de seguridad de red de libro de texto, aislando efectivamente los servicios.
-    *   El uso de perfiles (`cpu`, `gpu-nvidia`, `monitoring`, etc.) permite un control granular sobre qué servicios se inician, adaptando el stack a diferentes entornos de hardware.
+1.  **`docker-compose.yml` Structure:**
+    *   Using YAML anchors (e.g., `x-ollama: &service-ollama`) to define base services is excellent for maintainability and reduces code duplication.
+    *   Network segmentation into `frontend`, `backend`, `ai`, and `monitoring` (with the last three marked as `internal: true`) is a textbook network security implementation, effectively isolating services.
+    *   Using profiles (`cpu`, `gpu-nvidia`, `monitoring`, etc.) allows granular control over which services start, adapting the stack to different hardware environments.
 
-2.  **Definición de Healthchecks:**
-    *   Services como `postgres`, `redis`, `n8n`, y `authelia` tienen `healthchecks` bien definidos. Esto es crucial para la directiva `depends_on.condition: service_healthy`, que previene que los servicios dependientes se inicien antes de que sus dependencias estén listas.
+2.  **Healthcheck Definitions:**
+    *   Services like `postgres`, `redis`, `n8n`, and `authelia` have well-defined `healthchecks`. This is crucial for the `depends_on.condition: service_healthy` directive, which prevents dependent services from starting before their dependencies are ready.
 
-3.  **Manejo de Volúmenes:**
-    *   La estrategia de volúmenes es clara, utilizando volúmenes nombrados de Docker para la persistencia de datos (ej. `postgres_storage`) y montajes de tipo `bind` para la configuración (ej. `./authelia:/config`), lo cual es una práctica estándar y robusta.
+3.  **Volume Management:**
+    *   The volume strategy is clear, using Docker named volumes for data persistence (e.g., `postgres_storage`) and `bind` mounts for configuration (e.g., `./authelia:/config`), which is a standard and robust practice.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **D-01** | **CRÍTICO** | **Usage de la etiqueta `:latest`** | Múltiples servicios (`qdrant`, `ollama`, `authelia`, `libretranslate`, `languagetool`, etc.) y Dockerfiles (`Dockerfile.comfyui`) usan `:latest`. Esto rompe la reproducibilidad de los builds. Una actualización en la imagen remota puede romper la aplicación sin previo aviso o introducir una vulnerabilidad. |
-| **D-02** | **ALTO** | **Ausencia de Límites de Recursos** | La mayoría de los servicios no tienen una sección `deploy.resources` con `limits`. Un proceso con fugas de memoria o un pico de CPU en un servicio (ej. `ollama` procesando una solicitud compleja) podría derribar todo el servidor host. |
-| **D-03** | **ALTO** | **Builds No Reproducibles en Dockerfiles** | `Dockerfile.comfyui` instala dependencias de PyTorch desde una URL `nightly` y clona repositorios de git desde la rama `master`. Esto significa que construir la misma imagen en dos momentos diferentes puede resultar en dos imágenes completamente diferentes, con distintas versiones y funcionalidades. |
-| **D-04** | **MEDIO** | **Imágenes Infladas (Bloated Images)** | Dockerfiles como `Dockerfile.runners` instalan paquetes de compilación (`gcc`, `g++`, `build-base`) pero no los eliminan. Esto aumenta innecesariamente el tamaño de la imagen final y, por lo tanto, la superficie de ataque. |
-| **D-05** | **MEDIO** | **Falta de Limpieza de Caché de APT** | En varios Dockerfiles, se ejecutan comandos `apt-get install` sin `&& rm -rf /var/lib/apt/lists/*` en la misma capa `RUN`. Esto deja datos de caché innecesarios en una capa de la imagen, aumentando su tamaño. |
+| **D-01** | **CRITICAL** | **Use of the `:latest` tag** | Multiple services (`qdrant`, `ollama`, `authelia`, `libretranslate`, `languagetool`, etc.) and Dockerfiles (`Dockerfile.comfyui`) use `:latest`. This breaks build reproducibility. An update in the remote image can break the application without warning or introduce a vulnerability. |
+| **D-02** | **HIGH** | **Absence of Resource Limits** | Most services do not have a `deploy.resources` section with `limits`. A memory-leaking process or CPU spike in one service (e.g., `ollama` processing a complex request) could bring down the entire host server. |
+| **D-03** | **HIGH** | **Non-Reproducible Builds in Dockerfiles** | `Dockerfile.comfyui` installs PyTorch dependencies from a `nightly` URL and clones git repositories from the `master` branch. This means building the same image at two different times can result in two completely different images with different versions and features. |
+| **D-04** | **MEDIUM** | **Bloated Images** | Dockerfiles like `Dockerfile.runners` install build packages (`gcc`, `g++`, `build-base`) but do not remove them. This unnecessarily increases the final image size and, consequently, the attack surface. |
+| **D-05** | **MEDIUM** | **Lack of APT Cache Cleaning** | In several Dockerfiles, `apt-get install` commands are executed without `&& rm -rf /var/lib/apt/lists/*` in the same `RUN` layer. This leaves unnecessary cache data in an image layer, increasing its size. |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ Warnings/Recommendations
 
-1.  **Versionado de la Configuración de Compose:**
-    *   El `docker-compose.yml` es de versión "3.8". Aunque es funcional, considerar actualizar a la especificación más reciente de `compose` para aprovechar nuevas características en el futuro.
+1.  **Compose Configuration Versioning:**
+    *   `docker-compose.yml` is version "3.8". While functional, consider updating to the latest `compose` specification to leverage new features in the future.
 
-2.  **Claridad en los Ports Expuestos:**
-    *   Algunos servicios exponen puertos solo a `127.0.0.1` (ej. `postgres`), lo cual es una buena práctica de seguridad. Sin embargo, otros los exponen a `0.0.0.0` (ej. `whisper-stt`). Se recomienda añadir comentarios que justifiquen por qué un puerto necesita estar abierto a todas las interfaces para evitar confusiones.
+2.  **Exposed Port Clarity:**
+    *   Some services expose ports only to `127.0.0.1` (e.g., `postgres`), which is a good security practice. However, others expose them to `0.0.0.0` (e.g., `whisper-stt`). Adding comments to justify why a port needs to be open to all interfaces is recommended to avoid confusion.
 
-### 🔧 Soluciones Sugeridas
+### 🔧 Suggested Solutions
 
-1.  **Para D-01 (Fijar Versiones - CRÍTICO):**
-    *   **Solution:** Realizar una auditoría de cada servicio que usa `:latest` y reemplazarlo con una etiqueta de versión específica y estable.
+1.  **For D-01 (Pin Versions - CRITICAL):**
+    *   **Solution:** Perform an audit of each service using `:latest` and replace it with a specific and stable version tag.
         ```diff
         --- a/docker-compose.yml
         +++ b/docker-compose.yml
@@ -66,14 +66,14 @@
          # ========================================
          qdrant:
         -  image: qdrant/qdrant:latest
-        +  image: qdrant/qdrant:v1.9.0  # O la versión estable más reciente
+        +  image: qdrant/qdrant:v1.9.0  # Or the latest stable version
            hostname: qdrant
            container_name: qdrant
            networks:
         ```
 
-2.  **Para D-02 (Añadir Límites de Recursos):**
-    *   **Solution:** Añadir una sección `deploy.resources` a cada servicio, definiendo `limits` y `reservations` razonables. Estos valores deben ajustarse en función de pruebas de carga, pero un punto de partida es esencial.
+2.  **For D-02 (Add Resource Limits):**
+    *   **Solution:** Add a `deploy.resources` section to each service, defining reasonable `limits` and `reservations`. These values should be adjusted based on load testing, but a starting point is essential.
         ```diff
         --- a/docker-compose.yml
         +++ b/docker-compose.yml
@@ -91,31 +91,31 @@
         +        memory: 512M
          ```
 
-3.  **Para D-03 (Builds Reproducibles):**
-    *   **Solution para `Dockerfile.comfyui`:**
-        *   Fijar la versión de la imagen base (`ghcr.io/ai-dock/comfyui:v1.2.3`).
-        *   Descargar las dependencias de PyTorch, verificar sus checksums (SHA256), y luego instalarlas.
-        *   Al clonar repositorios de `git`, usar `git clone --branch v1.0.0` o `git checkout <commit-hash>` en lugar de clonar desde `master`.
+3.  **For D-03 (Reproducible Builds):**
+    *   **Solution for `Dockerfile.comfyui`:**
+        *   Pin the base image version (`ghcr.io/ai-dock/comfyui:v1.2.3`).
+        *   Download PyTorch dependencies, verify their checksums (SHA256), and then install them.
+        *   When cloning `git` repositories, use `git clone --branch v1.0.0` or `git checkout <commit-hash>` instead of cloning from `master`.
 
-4.  **Para D-04 y D-05 (Optimizar Imágenes):**
-    *   **Solution:** Utilizar builds multi-etapa y combinar comandos `RUN` para reducir el número de capas y limpiar artefactos de compilación.
+4.  **For D-04 and D-05 (Optimize Images):**
+    *   **Solution:** Use multi-stage builds and combine `RUN` commands to reduce the number of layers and clean up build artifacts.
         ```dockerfile
-        # Ejemplo para Dockerfile.runners
+        # Example for Dockerfile.runners
 
-        # Etapa 1: Build
+        # Stage 1: Build
         FROM n8nio/runners:1.121.0 as builder
         USER root
         RUN apk add --no-cache gcc g++ musl-dev python3-dev build-base
         RUN python3 -m venv /home/runner/custom-venv
-        # ... instalar todas las dependencias con pip ...
+        # ... install all dependencies with pip ...
 
-        # Etapa 2: Final
+        # Stage 2: Final
         FROM n8nio/runners:1.121.0
         USER root
-        # Copiar solo el venv de la etapa de build
+        # Copy only the venv from the build stage
         COPY --from=builder /home/runner/custom-venv /home/runner/custom-venv
         COPY n8n-task-runners.json /etc/n8n-task-runners.json
-        # Asegurar permisos y cambiar de usuario
+        # Ensure permissions and switch user
         RUN chown -R runner:runner /home/runner/custom-venv
         USER runner
         ENV PATH="/home/runner/custom-venv/bin:$PATH"

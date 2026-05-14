@@ -1,74 +1,74 @@
-# AUDIT 01: ESTRUCTURA Y CONFIGURACIÓN GENERAL
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
+# 审计 01：总体结构与配置
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**日期：** 2024-07-25
+**分析师：** Jules
 
-## 1. Resumen de Hallazgos
+## 1. 发现摘要
 
-| Estado | Área | Resumen de Hallazgos |
+| 状态 | 领域 | 发现摘要 |
 | :--- | :--- | :--- |
-| ✓ | **Estructura General** | La estructura del repositorio es **lógica, limpia y sigue convenciones bien establecidas**. La separación de configuraciones por servicio en directorios dedicados es una excelente práctica. |
-| ✓ | **Consistencia** | Se observa una **alta consistencia** en el nombrado de archivos y directorios, lo que facilita enormemente la navegación y comprensión del proyecto. |
-| ⚠️ | **Documentación** | Aunque existe una cantidad significativa de documentación, su **dispersión en múltiples archivos** (`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`) puede dificultar la obtención de una visión unificada. |
-| ✗ | **Archivos de Configuración** | El archivo `.gitignore` es robusto, pero la presencia de archivos de configuración específicos del entorno (`.env.staging`) junto a los ejemplos (`.env.example`) aumenta el riesgo de commits accidentales si `.gitignore` fallara o fuera modificado. |
+| ✓ | **总体结构** | 仓库结构**逻辑清晰、整洁，并遵循成熟的规范**。按服务将配置分隔到专用目录是一种极好的实践。 |
+| ✓ | **一致性** | 在文件和目录命名方面表现出**高度一致性**，这极大地便利了项目的导航和理解。 |
+| ⚠️ | **文档** | 虽然有大量的文档，但其**分散在多个文件中**（`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`），可能导致难以获得统一的视角。 |
+| ✗ | **配置文件** | `.gitignore` 文件很稳健，但环境特定配置文件 (`.env.staging`) 与示例文件 (`.env.example`) 同时存在于根目录，增加了在 `.gitignore` 失效或被修改时发生意外提交的风险。 |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. 详细发现
 
-### ✓ Lo que está bien
+### ✓ 优点
 
-1.  **Organización por 服务:**
-    *   La decisión de crear un directorio raíz para cada servicio principal (ej. `/authelia`, `/n8n`, `/prometheus`) es una práctica recomendada. Centraliza la configuración, los volúmenes persistentes y los scripts relacionados con cada componente, facilitando el mantenimiento y la depuración.
-    *   **Ejemplo:** El directorio `/fail2ban` contiene de forma clara su `jail.local` y los filtros (`filter.d`), haciendo que su configuración sea modular y fácil de auditar.
+1.  **按服务组织：**
+    *   为每个主要服务（如 `/authelia`, `/n8n`, `/prometheus`）创建一个根目录的决定是值得推荐的做法。它集中了与每个组件相关的配置、持久卷和脚本，便于维护和调试。
+    *   **示例：** `/fail2ban` 目录清晰地包含其 `jail.local` 和过滤器 (`filter.d`)，使其配置模块化且易于审计。
 
-2.  **Separación de Lógica y Datos:**
-    *   El proyecto distingue claramente entre el código fuente/configuración (versionado en Git) y los datos de tiempo de ejecución (que se montarían en directorios como `/data`, `/logs`, etc., y que están correctamente ignorados por Git).
-    *   El uso de un directorio `/scripts` para la automatización general es limpio y centralizado.
+2.  **逻辑与数据分离：**
+    *   项目清晰地划分了源代码/配置（由 Git 版本控制）和运行时数据（挂载到 `/data`, `/logs` 等目录中，且已被 Git 正确忽略）。
+    *   使用 `/scripts` 目录进行通用自动化处理，既整洁又集中。
 
-3.  **Consistencia de Nombrado:**
-    *   Los Dockerfiles personalizados siguen una convención clara (`Dockerfile.*`), lo que permite identificar rápidamente qué imágenes son construidas a medida.
-    *   Los scripts de shell tienen nombres descriptivos que reflejan su propósito (ej. `setup-permissions.sh`, `download_models.sh`).
+3.  **命名一致性：**
+    *   自定义 Dockerfile 遵循清晰的命名规范 (`Dockerfile.*`)，可以快速识别哪些镜像是定制构建的。
+    *   Shell 脚本具有描述性名称，反映了它们的用途（例如 `setup-permissions.sh`, `download_models.sh`）。
 
-4.  **Archivo `.gitignore` Completo:**
-    *   El archivo `.gitignore` es exhaustivo y cubre dependencias de Python, archivos de IDE, datos de Jupyter Notebooks y, crucialmente, los directorios de `logs`, `secrets` y los archivos `.env`.
+4.  **详尽的 `.gitignore` 文件：**
+    *   `.gitignore` 文件非常全面，涵盖了 Python 依赖项、IDE 文件、Jupyter Notebook 数据，以及至关重要的 `logs`、`secrets` 目录和 `.env` 文件。
 
-### ✗ Problemas Encontrados
+### ✗ 发现的问题
 
-| ID | Severidad | Problema | Impacto |
+| ID | 严重程度 | 问题 | 影响 |
 | :- | :--- | :--- | :--- |
-| **S-01** | **BAJO** | **Archivos de entorno en la raíz** | Aunque `.env.staging` está correctamente en `.gitignore`, tener archivos de entorno reales (incluso de staging) en el directorio raíz puede llevar a errores humanos, como arrastrarlos accidentalmente a un commit si `.gitignore` se modifica temporalmente. |
+| **S-01** | **低** | **根目录下的环境文件** | 虽然 `.env.staging` 已正确包含在 `.gitignore` 中，但在根目录下保留真实的环境文件（即使是用于测试环境的）可能会导致人为错误，例如在 `.gitignore` 被临时修改时意外将其提交。 |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ 警告/建议
 
-1.  **Consolidación de la Documentación:**
-    *   **Recomendación:** Considerar la creación de un directorio `/docs` más formal o un sistema de documentación (como MkDocs o Docusaurus) que unifique las guías. El `README.md` principal debería servir como un punto de entrada de alto nivel con enlaces claros a la documentación más detallada. Actualmente, la información crítica está dispersa entre el `README.md`, varios `AUTHELIA_*.md`, `DESIGN_TRUTH_*.md` y `ENV_MANAGEMENT.md`.
+1.  **整合文档：**
+    *   **建议：** 考虑创建一个更正式的 `/docs` 目录或文档系统（如 MkDocs 或 Docusaurus）来统一指南。主 `README.md` 应作为高层入口点，并提供指向更详细文档的清晰链接。目前，关键信息分散在 `README.md`、多个 `AUTHELIA_*.md`、`DESIGN_TRUTH_*.md` 和 `ENV_MANAGEMENT.md` 之中。
 
-2.  **Claridad en los Dockerfiles:**
-    *   **Recomendación:** Aunque los nombres de los Dockerfiles son claros, no hay un `README.md` en la raíz que explique brevemente el propósito de cada imagen personalizada. Un desarrollador nuevo tendría que leer cada Dockerfile para entender su función.
+2.  **Dockerfile 的清晰度：**
+    *   **建议：** 虽然 Dockerfile 的名称很清晰，但根目录下没有 `README.md` 简要说明每个自定义镜像的用途。新开发人员必须阅读每个 Dockerfile 才能理解其功能。
 
-### 🔧 Soluciones Sugeridas
+### 🔧 建议的解决方案
 
-1.  **Para el Problema S-01 (Archivos de Entorno):**
-    *   **解决方案 Simple:** Mantener la estructura actual pero reforzar en la documentación la importancia de no modificar el `.gitignore` y de manejar los archivos `.env` con extremo cuidado.
-    *   **解决方案 Robusta (Recomendada):** Crear un directorio `/environments` que contenga todos los archivos de configuración de entorno (ej. `/environments/staging.env`, `/environments/production.env`). Luego, los scripts de inicialización (`init_env.sh`) podrían copiar el archivo apropiado a un `.env` en la raíz, que sigue estando ignorado por Git. Esto organiza mejor los entornos y reduce el desorden en la raíz.
+1.  **针对问题 S-01（环境文件）：**
+    *   **简单方案：** 保持当前结构，但在文档中强调不要修改 `.gitignore` 以及极其谨慎地处理 `.env` 文件的重要性。
+    *   **稳健方案（推荐）：** 创建一个 `/environments` 目录，包含所有环境配置文件（如 `/environments/staging.env`, `/environments/production.env`）。然后，初始化脚本 (`init_env.sh`) 可以将相应文件复制到根目录下的 `.env`（该文件仍被 Git 忽略）。这能更好地组织不同环境并减少根目录的杂乱。
         ```bash
-        # Ejemplo en init_env.sh
+        # init_env.sh 中的示例
         ENV_FILE="environments/${1:-staging}.env"
         if [ -f "$ENV_FILE" ]; then
           cp "$ENV_FILE" ".env"
-          echo "Entorno '$1' inicializado."
+          echo "环境 '$1' 已初始化。"
         else
-          echo "Error: El archivo de entorno '$ENV_FILE' no existe."
+          echo "错误：环境文件 '$ENV_FILE' 不存在。"
           exit 1
         fi
         ```
 
-2.  **Para la Consolidación de la Documentación:**
-    *   **Acción Inmediata:** Modificar el `README.md` principal para añadir una sección de "Índice de Documentación" que enlace a todos los demás archivos `.md` relevantes, explicando brevemente qué contiene cada uno.
-    *   **Acción a Largo Plazo:** Evaluar la implementación de una herramienta de documentación estática para centralizar y mejorar la navegabilidad de la documentación del proyecto.
+2.  **针对文档整合：**
+    *   **即刻行动：** 修改主 `README.md`，添加“文档索引”章节，链接到所有其他相关的 `.md` 文件，并简要说明每个文件的内容。
+    *   **长期行动：** 评估实施静态文档工具，以集中管理并提高项目文档的可导航性。

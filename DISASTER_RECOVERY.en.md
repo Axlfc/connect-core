@@ -1,111 +1,111 @@
-# Guía de Recuperación ante Desastres (Disaster Recovery)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/DISASTER_RECOVERY.zh-cn.md)
+# Disaster Recovery Guide
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/DISASTER_RECOVERY.zh-cn.md)
 
 
-## 1. Introducción
+## 1. Introduction
 
-Este documento describe la estrategia de copias de seguridad y los procedimientos de restauración para el stack `Cognito-Stack`. El objetivo es asegurar la integridad y disponibilidad de los datos críticos en caso de un fallo del sistema, corrupción de datos o cualquier otro evento catastrófico.
+This document describes the backup strategy and restoration procedures for the `connect-core` stack. The goal is to ensure the integrity and availability of critical data in case of system failure, data corruption, or any other catastrophic event.
 
-La estrategia se basa en el uso de **Duplicati**, un cliente de copias de seguridad de código abierto que se ejecuta como un contenedor dentro del stack.
+The strategy is based on the use of **Duplicati**, an open-source backup client that runs as a container within the stack.
 
-## 2. Acceso a Duplicati
+## 2. Access to Duplicati
 
-La interfaz web de Duplicati está disponible en el siguiente `URL`:
+The Duplicati web interface is available at the following `URL`:
 
-- **URL:** `http://duplicati.localhost` (o el dominio que hayas configurado)
-- **Acceso:** Protegido por Authelia. Deberás iniciar sesión con tus credenciales.
+- **URL:** `http://duplicati.localhost` (or the domain you have configured)
+- **Access:** Protected by Authelia. You must log in with your credentials.
 
-## 3. Configuración de un Trabajo de Copia de Seguridad
+## 3. Configuring a Backup Job
 
-A continuación, se detalla el procedimiento para crear un trabajo de copia de seguridad para los datos más críticos del sistema.
+Below is the detailed procedure to create a backup job for the system's most critical data.
 
-### Paso 1: Añadir una nueva copia de seguridad
+### Step 1: Add a new backup
 
-1.  En la interfaz de Duplicati, haz clic en **"Add backup"**.
-2.  Selecciona **"Configure a new backup"** y haz clic en "Next".
+1.  In the Duplicati interface, click **"Add backup"**.
+2.  Select **"Configure a new backup"** and click "Next".
 
-### Paso 2: Configuración general
+### Step 2: General configuration
 
-1.  **Name:** Asigna un nombre descriptivo (ej. "Cognito-Stack Critical Data").
-2.  **Encryption:** Se recomienda encarecidamente **habilitar el cifrado**. Selecciona "AES-256 encryption, built-in" y genera una contraseña segura. **¡Guarda esta contraseña en un lugar seguro! Sin ella, no podrás restaurar tus datos.**
-3.  Haz clic en "Next".
+1.  **Name:** Assign a descriptive name (e.g., "connect-core Critical Data").
+2.  **Encryption:** It is strongly recommended to **enable encryption**. Select "AES-256 encryption, built-in" and generate a secure password. **Save this password in a safe place! Without it, you will not be able to restore your data.**
+3.  Click "Next".
 
-### Paso 3: Destino de la copia de seguridad
+### Step 3: Backup destination
 
-1.  **Storage Type:** Elige dónde quieres almacenar tus copias de seguridad. Duplicati soporta una gran variedad de destinos, como `SFTP`, `WebDAV`, `Google Drive`, `Amazon S3`, etc.
-2.  **Local folder or drive:** Para este ejemplo, usaremos un directorio local en el `host`. La ruta dentro del contenedor que apunta a un directorio en el `host` es `/backups`.
+1.  **Storage Type:** Choose where you want to store your backups. Duplicati supports a wide variety of destinations, such as `SFTP`, `WebDAV`, `Google Drive`, `Amazon S3`, etc.
+2.  **Local folder or drive:** For this example, we will use a local directory on the `host`. The path inside the container pointing to a directory on the `host` is `/backups`.
     - **Path:** `/backups`
-3.  Configura las credenciales o la información de conexión necesaria para tu destino elegido.
-4.  Haz clic en **"Test connection"** para verificar que Duplicati puede acceder al destino.
-5.  Haz clic en "Next".
+3.  Configure credentials or connection information needed for your chosen destination.
+4.  Click **"Test connection"** to verify that Duplicati can access the destination.
+5.  Click "Next".
 
-### Paso 4: Datos de origen
+### Step 4: Source data
 
-1.  Esta es la parte más importante. Aquí seleccionarás los directorios que quieres respaldar. Los datos de los servicios de Docker se encuentran en el directorio `/source` dentro del contenedor de Duplicati.
-2.  Expande el árbol de directorios y selecciona los siguientes volúmenes, que contienen los datos más críticos:
+1.  This is the most important part. Here you will select the directories you want to backup. Docker service data is located in the `/source` directory inside the Duplicati container.
+2.  Expand the directory tree and select the following volumes, which contain the most critical data:
     - `postgres_storage`
     - `n8n_storage`
     - `forgejo_data`
     - `redis_data`
     - `qdrant_storage`
     - `matrix_data`
-    - `authelia` (para la configuración de usuarios)
-3.  Haz clic en "Next".
+    - `authelia` (for user configuration)
+3.  Click "Next".
 
-### Paso 5: Programación
+### Step 5: Schedule
 
-1.  Define con qué frecuencia quieres que se ejecuten las copias de seguridad. Se recomienda una copia de seguridad **diaria**.
-2.  Selecciona una hora en la que el sistema tenga poca carga (ej. 3:00 AM).
-3.  Haz clic en "Next".
+1.  Define how often you want backups to run. A **daily** backup is recommended.
+2.  Select a time when the system has low load (e.g., 3:00 AM).
+3.  Click "Next".
 
-### Paso 6: Opciones de la copia de seguridad
+### Step 6: Backup options
 
-1.  **Remote volume size:** Ajusta el tamaño de los volúmenes de la copia de seguridad. Un valor de `50 MB` es un buen punto de partida.
-2.  **Backup retention:** Define cuánto tiempo quieres conservar las copias de seguridad. Se recomienda **"Keep a specific number of backups"** y establecer un valor como `14` para tener dos semanas de historial.
-3.  Haz clic en **"Save"**.
+1.  **Remote volume size:** Adjust the size of the backup volumes. A value of `50 MB` is a good starting point.
+2.  **Backup retention:** Define how long you want to keep backups. It is recommended to choose **"Keep a specific number of backups"** and set a value like `14` to have two weeks of history.
+3.  Click **"Save"**.
 
-## 4. Procedimiento de Restauración
+## 4. Restoration Procedure
 
-En caso de que necesites restaurar los datos, sigue estos pasos:
+In case you need to restore data, follow these steps:
 
-### Paso 1: Detener los servicios
+### Step 1: Stop services
 
-Antes de restaurar, es crucial detener todos los servicios para evitar inconsistencias en los datos.
+Before restoring, it is crucial to stop all services to avoid data inconsistencies.
 
 ```bash
 ./stop.sh
 ```
 
-### Paso 2: Acceder a la restauración en Duplicati
+### Step 2: Access restoration in Duplicati
 
-1.  Abre la interfaz de Duplicati.
-2.  Haz clic en el trabajo de copia de seguridad que quieres restaurar.
-3.  Haz clic en **"Restore"**.
+1.  Open the Duplicati interface.
+2.  Click on the backup job you want to restore.
+3.  Click **"Restore"**.
 
-### Paso 3: Seleccionar los archivos a restaurar
+### Step 3: Select files to restore
 
-1.  Selecciona la fecha de la copia de seguridad que quieres restaurar.
-2.  Puedes restaurar todos los archivos o seleccionar directorios específicos. Para una recuperación completa, selecciona todos los directorios.
-3.  Haz clic en "Continue".
+1.  Select the backup date you want to restore.
+2.  You can restore all files or select specific directories. For a full recovery, select all directories.
+3.  Click "Continue".
 
-### Paso 4: Opciones de restauración
+### Step 4: Restoration options
 
-1.  **Restore to original location:** Selecciona esta opción para restaurar los archivos a sus directorios originales.
-2.  **Overwrite:** Selecciona "Overwrite" para reemplazar cualquier archivo existente (corrupto) con la versión de la copia de seguridad.
-3.  Haz clic en **"Restore"**.
+1.  **Restore to original location:** Select this option to restore files to their original directories.
+2.  **Overwrite:** Select "Overwrite" to replace any existing (corrupted) files with the version from the backup.
+3.  Click **"Restore"**.
 
-### Paso 5: Verificar y reiniciar los servicios
+### Step 5: Verify and restart services
 
-1.  Una vez que la restauración se haya completado, verifica que los archivos se han restaurado correctamente en los volúmenes de Docker en el `host`.
-2.  Reinicia el stack de `Cognito-Stack`.
+1.  Once the restoration is complete, verify that files have been correctly restored to the Docker volumes on the `host`.
+2.  Restart the `connect-core` stack.
 
 ```bash
 ./start.sh
 ```
 
-## 5. Conclusión
+## 5. Conclusion
 
-Esta guía proporciona los pasos fundamentales para asegurar y restaurar los datos de `Cognito-Stack`. Es responsabilidad del administrador del sistema asegurarse de que las copias de seguridad se configuren correctamente, se ejecuten de forma regular y se prueben periódicamente.
+This guide provides the fundamental steps to secure and restore `connect-core` data. It is the system administrator's responsibility to ensure that backups are correctly configured, run regularly, and tested periodically.

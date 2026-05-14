@@ -1,38 +1,38 @@
-# AUDIT 02: GESTIÓN DE VARIABLES DE ENTORNO Y CONFIGURACIÓN
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.ca.md)
+# 审计 02：环境变量与配置管理
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/02_ENVIRONMENT_AND_CONFIGURATION.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**日期：** 2024-07-25
+**分析师：** Jules
 
-## 1. Resumen de Hallazgos
+## 1. 发现摘要
 
-| Estado | Área | Resumen de Hallazgos |
+| 状态 | 领域 | 发现摘要 |
 | :--- | :--- | :--- |
-| ✓ | **Generación de Secretos** | Los scripts de inicialización (`init_env.sh`) utilizan métodos criptográficamente seguros (`openssl rand`) para generar secretos, lo cual es una práctica excelente. |
-| ✓ | **Protección de Archivos** | El archivo `.gitignore` está configurado correctamente para excluir `secrets/` y `.env*`, previniendo la exposición accidental de credenciales en el repositorio. |
-| ⚠️ | **Metodología Mixta** | El proyecto utiliza dos métodos para la gestión de secretos simultáneamente: **Docker Secrets** (seguro) y **variables de entorno a través de `.env`** (menos seguro). Esta inconsistencia es la principal fuente de riesgo. |
-| ✗ | **Exposición Potencial** | Secretos críticos como `POSTGRES_PASSWORD` y `REDIS_PASSWORD` se inyectan en los contenedores como variables de entorno, lo que los hace visibles a través de `docker inspect`, logs y potencialmente en herramientas de monitoreo. |
-| ✗ | **Validación de Entradas** | Los scripts de shell, aunque robustos, no validan exhaustivamente las entradas del usuario en modo interactivo, lo que podría permitir la inyección de caracteres maliciosos en el archivo `.env`. |
+| ✓ | **机密生成** | 初始化脚本 (`init_env.sh`) 使用加密安全的方法 (`openssl rand`) 生成机密 (Secrets)，这是一种极好的做法。 |
+| ✓ | **文件保护** | `.gitignore` 文件已正确配置，排除了 `secrets/` 和 `.env*`，防止凭据意外暴露在仓库中。 |
+| ⚠️ | **混合方法** | 项目同时使用两种方法管理机密：**Docker Secrets**（安全）和**通过 `.env` 的环境变量**（安全性较低）。这种不一致是主要的风险来源。 |
+| ✗ | **潜在暴露** | `POSTGRES_PASSWORD` 和 `REDIS_PASSWORD` 等关键机密被作为环境变量注入容器，这使得它们可以通过 `docker inspect`、日志以及可能的监控工具被看到。 |
+| ✗ | **输入验证** | Shell 脚本虽然稳健，但在交互模式下未对用户输入进行详尽验证，这可能允许在 `.env` 文件中注入恶意字符。 |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. 详细发现
 
-### ✓ Lo que está bien
+### ✓ 优点
 
-1.  **Generación Segura de Secretos:**
-    *   El script `init_env.sh` utiliza `openssl rand` como método principal para la creación de contraseñas y claves. Esta es la mejor práctica industrial para generar valores aleatorios seguros.
+1.  **安全的机密生成：**
+    *   `init_env.sh` 脚本将 `openssl rand` 作为创建密码和密钥的主要方法。这是生成安全随机值的行业最佳实践。
 
-2.  **Manejo de Archivos `.env.example`:**
-    *   El script `generate_env_example.sh` es notablemente inteligente. Identifica variables sensibles por patrones (`PASSWORD`, `KEY`, `TOKEN`, etc.) y las vacía, mientras preserva valores de configuración no sensibles. Esto asegura que el archivo de ejemplo sea seguro y útil.
+2.  **`.env.example` 文件处理：**
+    *   `generate_env_example.sh` 脚本非常智能。它通过模式（`PASSWORD`, `KEY`, `TOKEN` 等）识别敏感变量并将其清空，同时保留非敏感的配置值。这确保了示例文件既安全又有用。
 
-3.  **使用 Parcial de Docker Secrets:**
-    *   El `docker-compose.yml` define un bloque de `secrets:` y los utiliza correctamente en varios servicios (por ejemplo, `authelia`, `n8n-import`). Esto demuestra conocimiento de la forma correcta de manejar secretos en Docker.
-    *   **Ejemplo (`authelia` service):**
+3.  **部分使用 Docker Secrets：**
+    *   `docker-compose.yml` 定义了 `secrets:` 块，并在多个服务（例如 `authelia`, `n8n-import`）中正确使用了它们。这展示了对 Docker 中处理机密正确方式的了解。
+    *   **示例（`authelia` 服务）：**
         ```yaml
         secrets:
           - authelia_jwt_secret
@@ -41,30 +41,34 @@
           - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
           - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/authelia_session_secret
         ```
-    *   Este método es seguro porque el secreto se monta como un archivo en `/run/secrets/` dentro del contenedor y nunca se expone como una variable de entorno.
+    *   这种方法是安全的，因为机密以文件形式挂载到容器内的 `/run/secrets/` 中，且绝不会作为环境变量暴露。
 
-### ✗ Problemas Encontrados
+### ✗ 发现的问题
 
-| ID | Severidad | Problema | Impacto |
+| ID | 严重程度 | 问题 | 影响 |
 | :- | :--- | :--- | :--- |
-| **C-01** | **ALTO** | **使用 de Variables de Entorno para Secretos Críticos** | El servicio principal de `postgres` y `redis` reciben sus contraseñas a través de variables de entorno cargadas desde el archivo `.env`. Un atacante con acceso al host de Docker podría extraer estas credenciales con el comando `docker inspect postgres`. |
-| **C-02** | **MEDIO** | **Inconsistencia en la Gestión de Secretos** | El proyecto utiliza Docker Secrets para algunos servicios (Authelia) pero variables de entorno para otros (Postgres, Redis). Esta falta de un estándar único aumenta la complejidad, el riesgo de error humano y la superficie de ataque. |
-| **C-03** | **BAJO** | **Visualización de Secretos en Consola** | `init_env.sh` muestra una porción del secreto generado en la consola. Aunque es una porción truncada, esto podría exponer el secreto al historial del shell (`.bash_history`) o a observadores. |
+| **C-01** | **高** | **关键机密使用环境变量** | `postgres` 和 `redis` 主服务通过从 `.env` 文件加载的环境变量接收密码。拥有 Docker 宿主机访问权限的攻击者可以使用 `docker inspect postgres` 命令提取这些凭据。 |
+| **C-02** | **中** | **机密管理不一致** | 项目对某些服务（Authelia）使用 Docker Secrets，但对其他服务（Postgres, Redis）使用环境变量。缺乏统一标准增加了复杂性、人为错误风险以及攻击面。 |
+| **C-03** | **低** | **控制台显示机密** | `init_env.sh` 在控制台中显示生成的机密的一部分。虽然是截断的，但这可能会将机密暴露给 Shell 历史记录 (`.bash_history`) 或旁观者。 |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Documentación de `ENV_MANAGEMENT.md`:**
-    *   El archivo `ENV_MANAGEMENT.md` existe pero podría ser más explícito sobre la estrategia de secretos. Debería explicar *por qué* se prefiere Docker Secrets y advertir sobre los riesgos de usar variables de entorno para datos sensibles.
+### ⚠️ 警告/建议
 
-2.  **Hardening de Scripts de Shell:**
-    *   Los scripts `init_env.sh` y `generate_env_example.sh` son complejos. Una buena práctica sería añadir `set -o pipefail` al inicio para asegurar que los pipelines fallen si un comando intermedio falla.
+1.  **`ENV_MANAGEMENT.md` 文档：**
+    *   `ENV_MANAGEMENT.md` 文件虽然存在，但可以更明确地说明机密策略。它应该解释*为什么*首选 Docker Secrets，并警告对敏感数据使用环境变量的风险。
 
-### 🔧 Soluciones Sugeridas
+2.  **Shell 脚本增强 (Hardening)：**
+    *   `init_env.sh` 和 `generate_env_example.sh` 脚本较为复杂。一个好的做法是在开头添加 `set -o pipefail`，以确保如果中间命令失败，流水线也会失败。
 
-1.  **Para C-01 y C-02 (Unificar en Docker Secrets - CRÍTICO):**
-    *   **Paso 1: Modificar `docker-compose.yml`:**
-        *   Reconfigurar todos los servicios que actualmente usan variables de entorno para secretos para que usen Docker Secrets.
-        *   **Ejemplo para el servicio `postgres`:**
+---
+
+### 🔧 建议的解决方案
+
+1.  **针对 C-01 和 C-02（统一使用 Docker Secrets - 关键）：**
+    *   **第 1 步：修改 `docker-compose.yml`：**
+        *   重新配置目前为机密使用环境变量的所有服务，改用 Docker Secrets。
+        *   **`postgres` 服务示例：**
             ```diff
             --- a/docker-compose.yml
             +++ b/docker-compose.yml
@@ -82,28 +86,28 @@
                - POSTGRES_DB=${POSTGRES_DB}
                - PGDATA=/var/lib/postgresql/data/pgdata
             ```
-    *   **Paso 2: Actualizar `init_env.sh`:**
-        *   Modificar el script para que, en lugar de escribir `POSTGRES_PASSWORD=valor_secreto` en el `.env`, cree el archivo correspondiente en el directorio `secrets/`.
+    *   **第 2 步：更新 `init_env.sh`：**
+        *   修改脚本，不再将 `POSTGRES_PASSWORD=机密值` 写入 `.env`，而是在 `secrets/` 目录中创建相应文件。
             ```bash
-            # En init_env.sh, en lugar de sed:
+            # 在 init_env.sh 中，代替 sed 操作：
             echo "$new_value" > secrets/postgres_password.txt
             chmod 600 secrets/postgres_password.txt
-            # Y eliminar la variable del .env
+            # 并在 .env 中删除该变量
             sed -i '/^POSTGRES_PASSWORD=/d' "$TARGET_FILE"
             ```
-        *   Esto centraliza todos los secretos en un único lugar (`/secrets`) gestionado con los permisos correctos.
+        *   这将所有机密集中到一个位置 (`/secrets`)，并使用正确的权限进行管理。
 
-2.  **Para C-03 (Visualización de Secretos):**
-    *   **解决方案:** Modificar `init_env.sh` para no mostrar el valor generado en la consola. Simplemente informar al usuario que se ha generado y guardado un valor.
+2.  **针对 C-03（显示机密）：**
+    *   **解决方案：** 修改 `init_env.sh`，不在控制台中显示生成的值。只需告知用户值已生成并保存。
         ```diff
         --- a/init_env.sh
         +++ b/init_env.sh
         @@ -145,7 +145,7 @@
              echo ""
              echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-             echo -e "${BLUE}Variable:${NC} $var"
--            echo -e "${BLUE}Valor generado:${NC} ${new_value:0:20}...${new_value: -10}"
-+            echo -e "${BLUE}Valor generado:${NC} [OCULTO POR SEGURIDAD]"
-             echo -n "¿Usar este valor? (S/n/personalizar): "
+             echo -e "${BLUE}变量：${NC} $var"
+-            echo -e "${BLUE}生成的值：${NC} ${new_value:0:20}...${new_value: -10}"
++            echo -e "${BLUE}生成的值：${NC} [出于安全原因已隐藏]"
+             echo -n "是否使用此值？(Y/n/自定义): "
              read -r response
          ```

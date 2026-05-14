@@ -1,18 +1,18 @@
-# Configuración de Authelia - FAQ y Respuestas a sus Preguntas
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/AUTHELIA_FAQ.zh-cn.md)
+# Configuració d'Authelia - FAQ i Respostes a les vostres preguntes
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/AUTHELIA_FAQ.zh-cn.md)
 
 
-## Q1: Configuración SMTP - ¿Cuál es la forma correcta de configurar SMTP?
+## Q1: Configuració SMTP - Quina és la forma correcta de configurar l'SMTP?
 
-### Su pregunta
-"¿Cuál es la forma correcta de configurar SMTP en el nuevo formato? ¿Deberíamos usar `notifier.smtp.address` en lugar de `host` y `port` por separado?"
+### La vostra pregunta
+"Quina és la forma correcta de configurar l'SMTP en el nou format? Hauríem d'utilitzar `notifier.smtp.address` en lloc d' `host` i `port` per separat?"
 
-### Respuesta: SÍ, use solo el formato `address`
+### Resposta: SÍ, utilitzeu només el format `address`
 
-**Correcto (Moderno v4.38.0+)**:
+**Correcte (Modern v4.38.0+)**:
 ```yaml
 notifier:
   smtp:
@@ -24,90 +24,90 @@ notifier:
       skip_verify: false
 ```
 
-**Formato**: `smtp[s]://[usuario@]host[:puerto]`
+**Format**: `smtp[s]://[usuari@]host[:port]`
 
-**Ejemplos**:
+**Exemples**:
 ```
-smtp://smtp.example.com:587              # STARTTLS en el puerto 587
-smtps://smtp.example.com:465             # TLS implícito en el puerto 465
-smtp://user@smtp.example.com:587         # Con usuario en la URL
+smtp://smtp.example.com:587              # STARTTLS al port 587
+smtps://smtp.example.com:465             # TLS implícit al port 465
+smtp://user@smtp.example.com:587         # Amb usuari a la URL
 ```
 
-**Credenciales mediante variables de entorno**:
+**Credencials mitjançant variables d'entorn**:
 ```yaml
 environment:
   - AUTHELIA_NOTIFIER_SMTP_ADDRESS=smtp://smtp.tinet.cat:587
-  - AUTHELIA_NOTIFIER_SMTP_USERNAME=su_correo@example.com
-  - AUTHELIA_NOTIFIER_SMTP_PASSWORD=su_contraseña
+  - AUTHELIA_NOTIFIER_SMTP_USERNAME=el_vostre_correu@example.com
+  - AUTHELIA_NOTIFIER_SMTP_PASSWORD=la_vostra_contrasenya
   - AUTHELIA_NOTIFIER_SMTP_SENDER=Authelia <noreply@example.com>
 ```
 
-**Desde `.env`**:
+**Des de `.env`**:
 ```bash
 SMTP_HOST=smtp.tinet.cat
 SMTP_PORT=587
-SMTP_USERNAME=su_correo@example.com
-SMTP_PASSWORD=su_contraseña
+SMTP_USERNAME=el_vostre_correu@example.com
+SMTP_PASSWORD=la_vostra_contrasenya
 SMTP_SENDER=Authelia <noreply@example.com>
 ```
 
-**NO mezcle formatos** (causará conflicto):
+**NO barregeu formats** (causarà conflicte):
 ```yaml
-# ❌ INCORRECTO - Esto causa el error de conflicto:
+# ❌ INCORRECTE - Això causa l'error de conflicte:
 notifier:
   smtp:
-    host: smtp.example.com        # ❌ Formato antiguo
-    port: 587                      # ❌ Formato antiguo
-    address: 'smtp://...:587'      # ❌ Formato nuevo (¡conflicto!)
+    host: smtp.example.com        # ❌ Format antic
+    port: 587                      # ❌ Format antic
+    address: 'smtp://...:587'      # ❌ Format nou (conflicte!)
 ```
 
 ---
 
-## Q2: Cookies de sesión para Localhost
+## Q2: Cookies de sessió per a Localhost
 
-### Su pregunta
-"¿Cómo debemos configurar las cookies de sesión para el desarrollo local usando dominios `.localhost`? El error indica que los dominios deben tener un punto o ser una dirección IP."
+### La vostra pregunta
+"Com hem de configurar les cookies de sessió per al desenvolupament local utilitzant dominis `.localhost`? L'error indica que els dominis han de tenir un punt o ser una adreça IP."
 
-### Respuesta: Use `localhost` en la configuración, nginx-proxy gestiona la compatibilidad del navegador
+### Resposta: Utilitzeu `localhost` a la configuració, nginx-proxy gestiona la compatibilitat del navegador
 
-**La Configuración**:
+**La Configuració**:
 ```yaml
 session:
   cookies:
     - name: authelia_session
-      domain: localhost              # ✅ Correcto para la red Docker
+      domain: localhost              # ✅ Correcte per a la xarxa Docker
       authelia_url: https://auth.localhost
       default_redirection_url: https://forgejo.localhost
       same_site: Lax
-      secure: false                  # Cambiar a true en producción
+      secure: false                  # Canviar a true en producció
 ```
 
-**Cómo funciona**:
-1. **Red Docker**: Los servicios se comunican usando `localhost` (funciona bien)
-2. **Acceso desde el navegador**: El usuario va a `http://auth.localhost:9091`
-3. **nginx-proxy**: Intercepta la petición a `auth.localhost` y la dirige a Authelia
-4. **Dominio de la cookie**: nginx-proxy gestiona la reescritura de la cookie para la compatibilidad del navegador
-5. **Resultado**: El navegador nunca ve el dominio `localhost` inválido directamente
+**Com funciona**:
+1. **Xarxa Docker**: Els serveis es comuniquen utilitzant `localhost` (funciona bé)
+2. **Accés des del navegador**: L'usuari va a `http://auth.localhost:9091`
+3. **nginx-proxy**: Intercepta la petició a `auth.localhost` i la dirigeix a Authelia
+4. **Domini de la cookie**: nginx-proxy gestiona la reescriptura de la cookie per a la compatibilitat del navegador
+5. **Resultat**: El navegador mai veu el domini `localhost` invàlid directament
 
-**Por qué funciona esto**:
-- El DNS interno de Docker resuelve `localhost` dentro de los contenedores
-- El navegador nunca establece cookies directamente en el dominio `localhost`
-- nginx-proxy intermedia y gestiona la traducción del dominio de la cookie
-- Tanto el acceso interno de Docker como el del navegador funcionan perfectamente
+**Per què funciona això**:
+- El DNS intern de Docker resol `localhost` dins dels contenidors
+- El navegador mai estableix cookies directament al domini `localhost`
+- nginx-proxy intermedia i gestiona la traducció del domini de la cookie
+- Tant l'accés intern de Docker com el del navegador funcionen perfectament
 
-**Qué NO hacer**:
+**Què NO fer**:
 ```yaml
-# ❌ INCORRECTO - Esto también fallará:
-domain: .localhost    # El navegador sigue rechazando dominios de una sola etiqueta
+# ❌ INCORRECTE - Això també fallarà:
+domain: .localhost    # El navegador continua rebutjant dominis d'una sola etiqueta
 
-# ❌ INCORRECTO - Demasiado restrictivo para desarrollo:
-domain: auth.localhost  # Solo funciona para auth.localhost, no para otros servicios
+# ❌ INCORRECTE - Massa restrictiu per a desenvolupament:
+domain: auth.localhost  # Només funciona per a auth.localhost, no per a altres serveis
 
-# ✅ CORRECTO:
-domain: localhost     # Funciona para la red Docker + nginx-proxy gestiona el navegador
+# ✅ CORRECTE:
+domain: localhost     # Funciona per a la xarxa Docker + nginx-proxy gestiona el navegador
 ```
 
-**Variables de entorno**:
+**Variables d'entorn**:
 ```yaml
 environment:
   - VIRTUAL_HOST=${AUTHELIA_DOMAIN:-auth.localhost}
@@ -121,34 +121,34 @@ AUTHELIA_DOMAIN=auth.localhost
 
 ---
 
-## Q3: Migración del Secreto JWT
+## Q3: Migració del Secret JWT
 
-### Su pregunta
-"¿Deberíamos actualizar el archivo de configuración para usar la nueva clave `identity_validation.reset_password.jwt_secret`?"
+### La vostra pregunta
+"Hauríem d'actualitzar el fitxer de configuració per utilitzar la nova clau `identity_validation.reset_password.jwt_secret`?"
 
-### Respuesta: SÍ, migre a la nueva ruta de clave
+### Resposta: SÍ, migreu a la nova ruta de clau
 
-**Antiguo (Obsoleto)**:
+**Antic (Obsolet)**:
 ```yaml
-jwt_secret: su_secreto_aqui
+jwt_secret: el_vostre_secret_aqui
 ```
 
-**Nuevo (v4.38.0+)**:
+**Nou (v4.38.0+)**:
 ```yaml
 identity_validation:
   reset_password:
     jwt:
       expiration: 15m
-      # Secreto inyectado vía variable de entorno
+      # Secret injectat via variable d'entorn
 ```
 
-**Variable de entorno**:
+**Variable d'entorn**:
 ```yaml
 environment:
   - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
 ```
 
-**Configuración de Docker Compose**:
+**Configuració de Docker Compose**:
 ```yaml
 secrets:
   - authelia_jwt_secret
@@ -159,41 +159,41 @@ services:
       - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
 ```
 
-**¿Por qué migrar?**:
-- ✅ Soporta el nuevo flujo de restablecimiento de contraseña de Authelia
-- ✅ Sigue el versionado semántico (JWT separado para diferentes propósitos)
-- ✅ Permite la futura separación de JWTs para autenticación frente a restablecimiento de contraseña
-- ✅ Elimina las advertencias de obsolescencia
+**Per què migrar?**:
+- ✅ Suporta el nou flux de restabliment de contrasenya d'Authelia
+- ✅ Segueix el versionat semàntic (JWT separat per a diferents propòsits)
+- ✅ Permet la futura separació de JWTs per a autenticació enfront de restabliment de contrasenya
+- ✅ Elimina els avisos d'obsolescència
 
-**Compatibilidad con versiones anteriores**:
-- Authelia 4.38.0+ sigue aceptando el antiguo `jwt_secret` pero muestra una advertencia
-- Se requiere la nueva configuración para tener logs limpios
-- La funcionalidad de restablecimiento de contraseña solo funciona con la nueva clave
+**Compatibilitat amb versions anteriors**:
+- Authelia 4.38.0+ segueix acceptant l'antic `jwt_secret` però mostra un avís
+- Es requereix la nova configuració per tenir logs nets
+- La funcionalitat de restabliment de contrasenya només funciona amb la nova clau
 
 ---
 
-## Q4: Configuración de la URL de redirección por defecto
+## Q4: Configuració de la URL de redirecció per defecte
 
-### Su pregunta
-"¿Cómo debemos configurar correctamente `default_redirection_url` a nivel de cada cookie en lugar de hacerlo globalmente?"
+### La vostra pregunta
+"Com hem de configurar correctament `default_redirection_url` a nivell de cada cookie en lloc de fer-ho globalment?"
 
-### Respuesta: Muévalo dentro de la configuración de cada cookie
+### Resposta: Moveu-ho dins de la configuració de cada cookie
 
-**Antiguo (Causa Error)**:
+**Antic (Causa Error)**:
 ```yaml
 session:
   expiration: 1h
-  default_redirection_url: https://forgejo.localhost  # ❌ INCORRECTO
+  default_redirection_url: https://forgejo.localhost  # ❌ INCORRECTE
   cookies:
     - name: authelia_session
       domain: localhost
 ```
 
-**Nuevo (Correcto)**:
+**Nou (Correcte)**:
 ```yaml
 session:
   expiration: 1h
-  # No lo ponga aquí ❌
+  # No ho poseu aquí ❌
 
   cookies:
     - name: authelia_session
@@ -203,69 +203,69 @@ session:
       same_site: Lax
       secure: false
 
-# Opcional: Fallback global al nivel de la raíz
+# Opcional: Fallback global al nivell de l'arrel
 default_redirection_url: 'https://forgejo.localhost'
 ```
 
-**Múltiples Cookies (Avanzado)**:
+**Múltiples Cookies (Avançat)**:
 ```yaml
 session:
   cookies:
-    # Cookie de producción
+    # Cookie de producció
     - name: authelia_session
-      domain: ejemplo.com
-      default_redirection_url: https://app.ejemplo.com
+      domain: exemple.com
+      default_redirection_url: https://app.exemple.com
       secure: true
 
-    # Cookie de desarrollo
+    # Cookie de desenvolupament
     - name: authelia_session_dev
       domain: localhost
       default_redirection_url: https://forgejo.localhost
       secure: false
 
 # Fallback global
-default_redirection_url: 'https://ejemplo.com'
+default_redirection_url: 'https://exemple.com'
 ```
 
-**Cómo funciona**:
-1. El usuario accede a un servicio protegido (ej. n8n.localhost)
-2. Es redirigido al login de Authelia (auth.localhost)
-3. Tras el login, Authelia comprueba el `default_redirection_url` de cada cookie
-4. Redirige a la URL configurada (ej. forgejo.localhost)
-5. Si no hay configuración por cookie, usa el `default_redirection_url` global
+**Com funciona**:
+1. L'usuari accedeix a un servei protegit (ex. n8n.localhost)
+2. És redirigit al login d'Authelia (auth.localhost)
+3. Després del login, Authelia comprova el `default_redirection_url` de cada cookie
+4. Redirigeix a la URL configurada (ex. forgejo.localhost)
+5. Si no hi ha configuració per cookie, utilitza el `default_redirection_url` global
 
-**Campos de configuración requeridos**:
+**Camps de configuració requerits**:
 ```yaml
 cookies:
-  - name: authelia_session              # Nombre de la cookie
-    domain: localhost                   # Dominio de la cookie
-    authelia_url: https://auth.localhost  # Endpoint de Authelia
-    default_redirection_url: https://forgejo.localhost  # Destino de fallback
-    same_site: Lax                      # Protección CSRF
-    secure: false                       # true en producción
+  - name: authelia_session              # Nom de la cookie
+    domain: localhost                   # Domini de la cookie
+    authelia_url: https://auth.localhost  # Endpoint d'Authelia
+    default_redirection_url: https://forgejo.localhost  # Destí de fallback
+    same_site: Lax                      # Protecció CSRF
+    secure: false                       # true en producció
 ```
 
 ---
 
-## Q5: HTTP vs HTTPS - Desarrollo Local vs Producción
+## Q5: HTTP vs HTTPS - Desenvolupament Local vs Producció
 
-### Su pregunta
-"¿Podemos ejecutar Authelia con HTTP en desarrollo local (con nginx-proxy gestionando SSL mediante certificados autofirmados o sin SSL) y luego cambiar a HTTPS en producción?"
+### La vostra pregunta
+"Podem executar Authelia amb HTTP en desenvolupament local (amb nginx-proxy gestionant SSL mitjançant certificats autosignats o sense SSL) i després canviar a HTTPS en producció?"
 
-### Respuesta: SÍ, Authelia es agnóstico al protocolo
+### Resposta: SÍ, Authelia és agnòstic al protocol
 
-**Desarrollo Local (HTTP, sin SSL)**:
+**Desenvolupament Local (HTTP, sense SSL)**:
 ```yaml
-# En authelia/configuration.yml:
+# A authelia/configuration.yml:
 server:
   address: 'tcp://0.0.0.0:9091'
   tls:
-    enabled: false          # ✅ Solo HTTP
+    enabled: false          # ✅ Només HTTP
 
 session:
   cookies:
     - name: authelia_session
-      secure: false         # ✅ Permitir cookies HTTP
+      secure: false         # ✅ Permetre cookies HTTP
       same_site: Lax
 ```
 
@@ -277,10 +277,10 @@ authelia:
   environment:
     - VIRTUAL_HOST=auth.localhost
     - VIRTUAL_PORT=9091
-    # nginx-proxy sirve vía HTTP
+    # nginx-proxy serveix via HTTP
 ```
 
-**Cómo acceder**:
+**Com accedir**:
 ```
 Navegador: http://auth.localhost:9091
 Navegador: http://n8n.localhost
@@ -288,14 +288,14 @@ Navegador: http://n8n.localhost
 
 ---
 
-**Producción (HTTPS con Let's Encrypt)**:
+**Producció (HTTPS amb Let's Encrypt)**:
 ```yaml
-# En authelia/configuration.yml (NO SE NECESITAN CAMBIOS):
+# A authelia/configuration.yml (NO CALEN CANVIS):
 server:
   address: 'tcp://0.0.0.0:9091'
   tls:
-    enabled: false          # ✅ Sigue siendo false
-    # nginx-proxy gestiona la terminación TLS
+    enabled: false          # ✅ Segueix sent false
+    # nginx-proxy gestiona la terminació TLS
 
 session:
   cookies:
@@ -312,64 +312,64 @@ authelia:
   labels:
     - com.github.jrcs.letsencrypt_nginx_proxy_companion.enable=true
   environment:
-    - VIRTUAL_HOST=auth.ejemplo.com
+    - VIRTUAL_HOST=auth.exemple.com
     - VIRTUAL_PORT=9091
-    # nginx-proxy + acme-companion gestionan HTTPS + Let's Encrypt
+    # nginx-proxy + acme-companion gestionen HTTPS + Let's Encrypt
 ```
 
-**Cómo acceder**:
+**Com accedir**:
 ```
-Navegador: https://auth.ejemplo.com
-Navegador: https://app.ejemplo.com
+Navegador: https://auth.exemple.com
+Navegador: https://app.exemple.com
 ```
 
 ---
 
-**Puntos Clave**:
+**Punts Clau**:
 
-1. **Authelia en sí**: Siempre se ejecuta en HTTP (puerto 9091) internamente
-2. **Terminación TLS**: Deje que nginx-proxy gestione la terminación HTTPS
-3. **Configuración de Authelia**: `tls.enabled: false` para todos los escenarios
-4. **Seguridad de la sesión**:
-   - Dev local: `secure: false` (permitir HTTP)
-   - Producción: `secure: true` (requerir HTTPS)
-5. **Ruta de migración**:
-   - Empezar con dev local (HTTP, sin SSL)
-   - Mover a producción (HTTPS vía nginx-proxy + Let's Encrypt)
-   - No se necesitan cambios en la configuración de Authelia
-   - Solo cambiar las etiquetas de docker-compose y las variables de entorno
+1. **Authelia en si**: Sempre s'executa en HTTP (port 9091) internament
+2. **Terminació TLS**: Deixeu que nginx-proxy gestioni la terminació HTTPS
+3. **Configuració d'Authelia**: `tls.enabled: false` per a tots els escenaris
+4. **Seguretat de la sessió**:
+   - Dev local: `secure: false` (permetre HTTP)
+   - Producció: `secure: true` (requerir HTTPS)
+5. **Ruta de migració**:
+   - Començar amb dev local (HTTP, sense SSL)
+   - Moure a producció (HTTPS via nginx-proxy + Let's Encrypt)
+   - No calen canvis a la configuració d'Authelia
+   - Només canviar les etiquetes de docker-compose i les variables d'entorn
 
 ---
 
-## Estado de la Implementación
+## Estat de la Implementació
 
-Todas las correcciones han sido implementadas:
+Totes les correccions han estat implementades:
 
-| Problema | Estado | Archivo |
+| Problema | Estat | Fitxer |
 |-------|--------|------|
-| Obsolescencia de secreto JWT | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| Conflicto SMTP | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) + [docker-compose.yml](docker-compose.yml) |
-| Cookies de sesión | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| Dominio de la cookie | ✅ Corregido | [authelia/configuration.yml](authelia/configuration.yml) |
-| HTTP vs HTTPS | ✅ Configurado | [authelia/configuration.yml](authelia/configuration.yml) |
-| Documentación | ✅ Completa | [docs/authelia-setup.md](docs/authelia-setup.md) + [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md) |
+| Obsolescència de secret JWT | ✅ Corregit | [authelia/configuration.yml](authelia/configuration.yml) |
+| Conflicte SMTP | ✅ Corregit | [authelia/configuration.yml](authelia/configuration.yml) + [docker-compose.yml](docker-compose.yml) |
+| Cookies de sessió | ✅ Corregit | [authelia/configuration.yml](authelia/configuration.yml) |
+| Domini de la cookie | ✅ Corregit | [authelia/configuration.yml](authelia/configuration.yml) |
+| HTTP vs HTTPS | ✅ Configurat | [authelia/configuration.yml](authelia/configuration.yml) |
+| Documentació | ✅ Completa | [docs/authelia-setup.md](docs/authelia-setup.md) + [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md) |
 
 ---
 
-## Inicio Rápido
+## Inici Ràpid
 
-1. **Actualizar archivos de configuración** ✅ (Ya hecho)
-2. **Crear `.env` con SMTP**:
+1. **Actualitzar fitxers de configuració** ✅ (Ja fet)
+2. **Crear `.env` amb SMTP**:
    ```bash
    SMTP_HOST=smtp.tinet.cat
    SMTP_PORT=587
-   SMTP_USERNAME=su_correo@example.com
-   SMTP_PASSWORD=su_contraseña
+   SMTP_USERNAME=el_vostre_correu@example.com
+   SMTP_PASSWORD=la_vostra_contrasenya
    SMTP_SENDER=Authelia <noreply@example.com>
    AUTHELIA_DOMAIN=auth.localhost
    ```
 
-3. **Generar secretos** (si no se ha hecho):
+3. **Generar secrets** (si no s'ha fet):
    ```bash
    mkdir -p ./secrets
    openssl rand -base64 32 > ./secrets/authelia_jwt_secret.txt
@@ -377,28 +377,28 @@ Todas las correcciones han sido implementadas:
    chmod 600 ./secrets/*.txt
    ```
 
-4. **Iniciar servicios**:
+4. **Iniciar serveis**:
    ```bash
    docker compose up -d redis authelia
    docker compose logs -f authelia
    ```
 
-5. **Prueba**:
+5. **Prova**:
    ```bash
    curl http://localhost:9091/api/health
-   # Esperado: 200 OK
+   # Esperat: 200 OK
    ```
 
-6. **Acceder a la UI**:
+6. **Accedir a la UI**:
    ```
    Navegador: http://auth.localhost:9091
    ```
 
 ---
 
-## ¿Aún necesita ayuda?
+## Encara necessiteu ajuda?
 
-- **Guía de configuración completa**: Ver [docs/authelia-setup.md](docs/authelia-setup.md)
-- **Explicaciones detalladas de los problemas**: Ver [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md)
-- **Solución de problemas**: Consulte la sección "Troubleshooting" en [docs/authelia-setup.md](docs/authelia-setup.md)
-- **Docs oficiales**: https://www.authelia.com/configuration/
+- **Guia de configuració completa**: Vegeu [docs/authelia-setup.md](docs/authelia-setup.md)
+- **Explicacions detallades dels problemes**: Vegeu [AUTHELIA_FIXES_SUMMARY.md](AUTHELIA_FIXES_SUMMARY.md)
+- **Solució de problemes**: Consulteu la secció "Troubleshooting" a [docs/authelia-setup.md](docs/authelia-setup.md)
+- **Docs oficials**: https://www.authelia.com/configuration/

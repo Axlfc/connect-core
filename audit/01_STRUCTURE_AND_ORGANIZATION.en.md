@@ -1,74 +1,74 @@
-# AUDIT 01: ESTRUCTURA Y CONFIGURACIÓN GENERAL
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
+# AUDIT 01: GENERAL STRUCTURE AND CONFIGURATION
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Estructura General** | La estructura del repositorio es **lógica, limpia y sigue convenciones bien establecidas**. La separación de configuraciones por servicio en directorios dedicados es una excelente práctica. |
-| ✓ | **Consistencia** | Se observa una **alta consistencia** en el nombrado de archivos y directorios, lo que facilita enormemente la navegación y comprensión del proyecto. |
-| ⚠️ | **Documentación** | Aunque existe una cantidad significativa de documentación, su **dispersión en múltiples archivos** (`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`) puede dificultar la obtención de una visión unificada. |
-| ✗ | **Archivos de Configuración** | El archivo `.gitignore` es robusto, pero la presencia de archivos de configuración específicos del entorno (`.env.staging`) junto a los ejemplos (`.env.example`) aumenta el riesgo de commits accidentales si `.gitignore` fallara o fuera modificado. |
+| ✓ | **General Structure** | The repository structure is **logical, clean, and follows well-established conventions**. Separating configurations by service into dedicated directories is an excellent practice. |
+| ✓ | **Consistency** | **High consistency** is observed in file and directory naming, which greatly facilitates project navigation and understanding. |
+| ⚠️ | **Documentation** | Although there is a significant amount of documentation, its **dispersion across multiple files** (`AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, `README.md`) can make it difficult to obtain a unified view. |
+| ✗ | **Configuration Files** | The `.gitignore` file is robust, but the presence of environment-specific configuration files (`.env.staging`) alongside examples (`.env.example`) increases the risk of accidental commits if `.gitignore` were to fail or be modified. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Organización por Service:**
-    *   La decisión de crear un directorio raíz para cada servicio principal (ej. `/authelia`, `/n8n`, `/prometheus`) es una práctica recomendada. Centraliza la configuración, los volúmenes persistentes y los scripts relacionados con cada componente, facilitando el mantenimiento y la depuración.
-    *   **Ejemplo:** El directorio `/fail2ban` contiene de forma clara su `jail.local` y los filtros (`filter.d`), haciendo que su configuración sea modular y fácil de auditar.
+1.  **Organization by Service:**
+    *   The decision to create a root directory for each major service (e.g., `/authelia`, `/n8n`, `/prometheus`) is a recommended practice. It centralizes configuration, persistent volumes, and scripts related to each component, facilitating maintenance and debugging.
+    *   **Example:** The `/fail2ban` directory clearly contains its `jail.local` and filters (`filter.d`), making its configuration modular and easy to audit.
 
-2.  **Separación de Lógica y Datos:**
-    *   El proyecto distingue claramente entre el código fuente/configuración (versionado en Git) y los datos de tiempo de ejecución (que se montarían en directorios como `/data`, `/logs`, etc., y que están correctamente ignorados por Git).
-    *   El uso de un directorio `/scripts` para la automatización general es limpio y centralizado.
+2.  **Separation of Logic and Data:**
+    *   The project clearly distinguishes between source code/configuration (versioned in Git) and runtime data (which would be mounted in directories like `/data`, `/logs`, etc., and are correctly ignored by Git).
+    *   The use of a `/scripts` directory for general automation is clean and centralized.
 
-3.  **Consistencia de Nombrado:**
-    *   Los Dockerfiles personalizados siguen una convención clara (`Dockerfile.*`), lo que permite identificar rápidamente qué imágenes son construidas a medida.
-    *   Los scripts de shell tienen nombres descriptivos que reflejan su propósito (ej. `setup-permissions.sh`, `download_models.sh`).
+3.  **Naming Consistency:**
+    *   Custom Dockerfiles follow a clear convention (`Dockerfile.*`), allowing for quick identification of which images are custom-built.
+    *   Shell scripts have descriptive names that reflect their purpose (e.g., `setup-permissions.sh`, `download_models.sh`).
 
-4.  **Archivo `.gitignore` Completo:**
-    *   El archivo `.gitignore` es exhaustivo y cubre dependencias de Python, archivos de IDE, datos de Jupyter Notebooks y, crucialmente, los directorios de `logs`, `secrets` y los archivos `.env`.
+4.  **Comprehensive `.gitignore` File:**
+    *   The `.gitignore` file is exhaustive and covers Python dependencies, IDE files, Jupyter Notebook data, and crucially, logs, secrets directories, and `.env` files.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **S-01** | **BAJO** | **Archivos de entorno en la raíz** | Aunque `.env.staging` está correctamente en `.gitignore`, tener archivos de entorno reales (incluso de staging) en el directorio raíz puede llevar a errores humanos, como arrastrarlos accidentalmente a un commit si `.gitignore` se modifica temporalmente. |
+| **S-01** | **LOW** | **Environment files in the root** | Although `.env.staging` is correctly in `.gitignore`, having actual environment files (even for staging) in the root directory can lead to human errors, such as accidentally including them in a commit if `.gitignore` is temporarily modified. |
 
-### ⚠️ Warnings/Recomendaciones
+### ⚠️ Warnings/Recommendations
 
-1.  **Consolidación de la Documentación:**
-    *   **Recomendación:** Considerar la creación de un directorio `/docs` más formal o un sistema de documentación (como MkDocs o Docusaurus) que unifique las guías. El `README.md` principal debería servir como un punto de entrada de alto nivel con enlaces claros a la documentación más detallada. Actualmente, la información crítica está dispersa entre el `README.md`, varios `AUTHELIA_*.md`, `DESIGN_TRUTH_*.md` y `ENV_MANAGEMENT.md`.
+1.  **Documentation Consolidation:**
+    *   **Recommendation:** Consider creating a more formal `/docs` directory or a documentation system (like MkDocs or Docusaurus) to unify the guides. The main `README.md` should serve as a high-level entry point with clear links to more detailed documentation. Currently, critical information is scattered between the `README.md`, various `AUTHELIA_*.md`, `DESIGN_TRUTH_*.md`, and `ENV_MANAGEMENT.md`.
 
-2.  **Claridad en los Dockerfiles:**
-    *   **Recomendación:** Aunque los nombres de los Dockerfiles son claros, no hay un `README.md` en la raíz que explique brevemente el propósito de cada imagen personalizada. Un desarrollador nuevo tendría que leer cada Dockerfile para entender su función.
+2.  **Clarity in Dockerfiles:**
+    *   **Recommendation:** Although Dockerfile names are clear, there is no `README.md` in the root that briefly explains the purpose of each custom image. A new developer would have to read each Dockerfile to understand its function.
 
-### 🔧 Soluciones Sugeridas
+### 🔧 Suggested Solutions
 
-1.  **Para el Problema S-01 (Archivos de Entorno):**
-    *   **Solution Simple:** Mantener la estructura actual pero reforzar en la documentación la importancia de no modificar el `.gitignore` y de manejar los archivos `.env` con extremo cuidado.
-    *   **Solution Robusta (Recomendada):** Crear un directorio `/environments` que contenga todos los archivos de configuración de entorno (ej. `/environments/staging.env`, `/environments/production.env`). Luego, los scripts de inicialización (`init_env.sh`) podrían copiar el archivo apropiado a un `.env` en la raíz, que sigue estando ignorado por Git. Esto organiza mejor los entornos y reduce el desorden en la raíz.
+1.  **For Problem S-01 (Environment Files):**
+    *   **Simple Solution:** Maintain the current structure but reinforce in the documentation the importance of not modifying `.gitignore` and handling `.env files` with extreme care.
+    *   **Robust Solution (Recommended):** Create an `/environments` directory containing all environment configuration files (e.g., `/environments/staging.env`, `/environments/production.env`). Then, initialization scripts (`init_env.sh`) could copy the appropriate file to a `.env` in the root, which remains ignored by Git. This better organizes environments and reduces root clutter.
         ```bash
-        # Ejemplo en init_env.sh
+        # Example in init_env.sh
         ENV_FILE="environments/${1:-staging}.env"
         if [ -f "$ENV_FILE" ]; then
           cp "$ENV_FILE" ".env"
-          echo "Entorno '$1' inicializado."
+          echo "Environment '$1' initialized."
         else
-          echo "Error: El archivo de entorno '$ENV_FILE' no existe."
+          echo "Error: Environment file '$ENV_FILE' does not exist."
           exit 1
         fi
         ```
 
-2.  **Para la Consolidación de la Documentación:**
-    *   **Acción Inmediata:** Modificar el `README.md` principal para añadir una sección de "Índice de Documentación" que enlace a todos los demás archivos `.md` relevantes, explicando brevemente qué contiene cada uno.
-    *   **Acción a Largo Plazo:** Evaluar la implementación de una herramienta de documentación estática para centralizar y mejorar la navegabilidad de la documentación del proyecto.
+2.  **For Documentation Consolidation:**
+    *   **Immediate Action:** Modify the main `README.md` to add a "Documentation Index" section that links to all other relevant `.md` files, briefly explaining what each one contains.
+    *   **Long-Term Action:** Evaluate the implementation of a static documentation tool to centralize and improve the navigability of project documentation.

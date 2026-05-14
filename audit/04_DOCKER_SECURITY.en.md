@@ -1,65 +1,69 @@
-# AUDIT 04: SEGURIDAD DE DOCKER
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
+# AUDIT 04: DOCKER SECURITY
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/04_DOCKER_SECURITY.zh-cn.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**Date:** 2024-07-25
+**Analyst:** Jules
 
-## 1. Resumen de Hallazgos
+## 1. Summary of Findings
 
-| Estado | Área | Resumen de Hallazgos |
+| Status | Area | Summary of Findings |
 | :--- | :--- | :--- |
-| ✓ | **Aislamiento de Red** | El uso de redes de Docker personalizadas (`frontend`, `backend`, `ai`, `monitoring`) con la mayoría configuradas como `internal: true` es una **excelente práctica de seguridad** que limita la comunicación entre servicios. |
-| ✓ | **Minimums Privilegios (Parcial)** | La mayoría de los servicios utilizan `cap_drop: - ALL` y `security_opt: - no-new-privileges:true`, lo que demuestra una sólida comprensión de los principios de seguridad de contenedores. |
-| ✗ | **Ejecución como Root** | Varios contenedores críticos, incluyendo `ollama` y los basados en imágenes de NVIDIA (`whisper-stt`), se ejecutan con el **usuario `root`**. Una vulnerabilidad en cualquiera de estas aplicaciones otorgaría privilegios de administrador dentro del contenedor. |
-| ✗ | **Capacidades de Linux Peligrosas** | Múltiples servicios (`postgres`, `forgejo`, `duplicati`) tienen la capacidad `DAC_OVERRIDE` añadida. Esta capacidad permite a un proceso eludir las comprobaciones de permisos de lectura, escritura y ejecución de archivos, socavando la seguridad del sistema de archivos. |
-| ✗ | **Exposición de la Red del Host** | El servicio `fail2ban` está configurado con `network_mode: host`. Esto **rompe completamente el aislamiento de red del contenedor**, dándole acceso directo a las interfaces de red del host. Esto es extremadamente peligroso y anula muchos de los beneficios de seguridad de la contenedorización. |
-| ✗ | **Secretos en Logs** | El `Dockerfile.matrix` contiene un script de entrypoint que **imprime los secretos generados (macaroon key, form secret, etc.) en los logs del contenedor** en el primer inicio. Esto expone credenciales críticas a cualquiera que tenga acceso a los logs de Docker. |
+| ✓ | **Network Isolation** | Using custom Docker networks (`frontend`, `backend`, `ai`, `monitoring`) with most configured as `internal: true` is an **excellent security practice** that limits communication between services. |
+| ✓ | **Least Privilege (Partial)** | Most services use `cap_drop: - ALL` and `security_opt: - no-new-privileges:true`, demonstrating a solid understanding of container security principles. |
+| ✗ | **Running as Root** | Several critical containers, including `ollama` and those based on NVIDIA images (`whisper-stt`), run as the **`root` user**. A vulnerability in any of these applications would grant administrator privileges within the container. |
+| ✗ | **Dangerous Linux Capabilities** | Multiple services (`postgres`, `forgejo`, `duplicati`) have the `DAC_OVERRIDE` capability added. This capability allows a process to bypass file read, write, and execute permission checks, undermining filesystem security. |
+| ✗ | **Host Network Exposure** | The `fail2ban` service is configured with `network_mode: host`. This **completely breaks container network isolation**, giving it direct access to the host's network interfaces. This is extremely dangerous and nullifies many of containerization's security benefits. |
+| ✗ | **Secrets in Logs** | `Dockerfile.matrix` contains an entrypoint script that **prints generated secrets (macaroon key, form secret, etc.) in the container logs** on the first start. This exposes critical credentials to anyone with access to Docker logs. |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. Detailed Findings
 
-### ✓ Lo que está bien
+### ✓ What is right
 
-1.  **Principio de Minimums Privilegios Aplicado (en parte):**
-    *   La mayoría de los servicios están configurados con `security_opt: [no-new-privileges:true]`, lo que impide que los procesos obtengan privilegios adicionales.
-    *   El uso de `cap_drop: [ALL]` como configuración por defecto, y luego añadir solo las capacidades necesarias (`cap_add`), es la estrategia correcta a seguir.
+1.  **Least Privilege Principle Applied (partially):**
+    *   Most services are configured with `security_opt: [no-new-privileges:true]`, preventing processes from gaining additional privileges.
+    *   Using `cap_drop: [ALL]` as a default configuration and then adding only necessary capabilities (`cap_add`) is the correct strategy to follow.
 
-2.  **Aislamiento de Red Robusto:**
-    *   La arquitectura de red está muy bien diseñada. Los servicios de backend no son accesibles desde el exterior, y la comunicación está segmentada por función, lo que limita el movimiento lateral de un atacante.
+2.  **Robust Network Isolation:**
+    *   The network architecture is very well designed. Backend services are not accessible from the outside, and communication is segmented by function, limiting an attacker's lateral movement.
 
-3.  **Usage de Usuarios No-Root (en parte):**
-    *   Services como `redis` (`user: "999:999"`), `authelia`, y `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) se ejecutan correctamente con usuarios no privilegiados, reduciendo significativamente su riesgo.
+3.  **Use of Non-Root Users (partially):**
+    *   Services like `redis` (`user: "999:999"`), `authelia`, and `n8n` (`user: "${PUID:-1000}:${PGID:-1000}"`) run correctly with non-privileged users, significantly reducing their risk.
 
-### ✗ Problemas Encontrados
+### ✗ Problems Found
 
-| ID | Severidad | Problema | Impacto |
+| ID | Severity | Problem | Impact |
 | :- | :--- | :--- | :--- |
-| **DS-01** | **CRÍTICO** | **`fail2ban` con `network_mode: host`** | El contenedor tiene acceso completo a la pila de red del host. Puede sniffear todo el tráfico, conectarse a cualquier servicio en `localhost` en el host, e interferir con las reglas de firewall del host. Un compromiso de este contenedor es equivalente a un compromiso del host a nivel de red. |
-| **DS-02** | **CRÍTICO** | **Secretos Expuestos en Logs de `matrix-synapse`** | El script de entrypoint en `Dockerfile.matrix` imprime un bloque de "GENERATED SECRETS" en la salida estándar, que es capturada por los logs de Docker. Esto hace que secretos de sesión y de federación sean trivialmente accesibles. |
-| **DS-03** | **ALTO** | **Ejecución como `root` en Contenedores Clave** | Los servicios `ollama`, `whisper-stt`, y `kokoro-tts` se ejecutan como `root`. Una vulnerabilidad de ejecución remota de código en cualquiera de estos servicios daría a un atacante control total dentro del contenedor, con la capacidad de modificar archivos, instalar software malicioso y atacar otros servicios en la red. |
-| **DS-04** | **ALTO** | **Usage de la Capacidad `DAC_OVERRIDE`** | Esta capacidad, presente en `postgres`, `matrix-postgres`, `forgejo` y `duplicati`, permite a un proceso ignorar los permisos de archivos. Si un atacante compromete uno de estos contenedores, podría leer/escribir archivos a los que normalmente no tendría acceso, incluyendo potencialmente archivos de configuración sensibles o datos de otros usuarios. |
-| **DS-05** | **MEDIO** | **El socket de Docker montado de forma insegura** | El servicio `nginx-proxy` monta el socket de Docker (`/var/run/docker.sock`) como `read-only`. Esto es bueno, pero comprometer `nginx-proxy` aún permitiría a un atacante obtener información sensible sobre todos los demás contenedores y la configuración del host de Docker. |
+| **DS-01** | **CRITICAL** | **`fail2ban` with `network_mode: host`** | The container has full access to the host's network stack. It can sniff all traffic, connect to any `localhost` service on the host, and interfere with host firewall rules. A compromise of this container is equivalent to a network-level host compromise. |
+| **DS-02** | **CRITICAL** | **Secrets Exposed in `matrix-synapse` Logs** | The entrypoint script in `Dockerfile.matrix` prints a "GENERATED SECRETS" block to standard output, which is captured by Docker logs. This makes session and federation secrets trivially accessible. |
+| **DS-03** | **HIGH** | **Running as `root` in Key Containers** | `ollama`, `whisper-stt`, and `kokoro-tts` services run as `root`. A remote code execution vulnerability in any of these services would give an attacker full control within the container, with the ability to modify files, install malicious software, and attack other services on the network. |
+| **DS-04** | **HIGH** | **Use of `DAC_OVERRIDE` Capability** | This capability, present in `postgres`, `matrix-postgres`, `forgejo`, and `duplicati`, allows a process to ignore file permissions. If an attacker compromises one of these containers, they could read/write files they would normally not have access to, potentially including sensitive configuration files or other users' data. |
+| **DS-05** | **MEDIUM** | **Insecurely Mounted Docker Socket** | The `nginx-proxy` service mounts the Docker socket (`/var/run/docker.sock`) as `read-only`. This is good, but compromising `nginx-proxy` would still allow an attacker to obtain sensitive information about all other containers and the Docker host configuration. |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Filesystems Read-Only:**
-    *   **Recomendación:** Para contenedores que no necesitan escribir datos en su propio sistema de archivos (aparte de en los volúmenes montados), considere añadir la opción `read_only: true`. Esto puede mitigar muchas clases de ataques que dependen de escribir archivos binarios o scripts maliciosos.
+### ⚠️ Warnings/Recommendations
 
-2.  **Perfiles de Seguridad (AppArmor/Seccomp):**
-    *   **Recomendación:** El uso de `apparmor=docker-default` es un buen punto de partida. Para una seguridad aún mayor, se podrían crear perfiles de AppArmor o Seccomp personalizados para cada servicio, restringiendo las llamadas al sistema que cada aplicación puede realizar.
+1.  **Read-Only Filesystems:**
+    *   **Recommendation:** For containers that do not need to write data to their own filesystem (other than to mounted volumes), consider adding the `read_only: true` option. This can mitigate many classes of attacks that rely on writing binary files or malicious scripts.
 
-### 🔧 Soluciones Sugeridas
+2.  **Security Profiles (AppArmor/Seccomp):**
+    *   **Recommendation:** Using `apparmor=docker-default` is a good starting point. For even greater security, custom AppArmor or Seccomp profiles could be created for each service, restricting the system calls each application can make.
 
-1.  **Para DS-01 (`fail2ban` en `network_mode: host`):**
-    *   **Solution:** Esta es una configuración difícil de cambiar, ya que `fail2ban` necesita modificar las `iptables` del host. La solución más segura es **ejecutar `fail2ban` directamente en el host**, fuera de Docker. Si debe permanecer en un contenedor, se debe investigar el uso de un contenedor más especializado y "Rooteado" con herramientas como `nsenter` para ejecutar comandos en el namespace del host de manera controlada, en lugar de exponer toda la pila de red.
+---
 
-2.  **Para DS-02 (Secretos en Logs de Matrix):**
-    *   **Solution:** Modificar `/scripts/entrypoint.sh` dentro de `Dockerfile.matrix` para que los secretos se guarden en un archivo dentro del contenedor con permisos restringidos, en lugar de imprimirlos.
+### 🔧 Suggested Solutions
+
+1.  **For DS-01 (`fail2ban` in `network_mode: host`):**
+    *   **Solution:** This is a difficult configuration to change since `fail2ban` needs to modify host `iptables`. The safest solution is to **run `fail2ban` directly on the host**, outside of Docker. If it must remain in a container, investigate using a more specialized and "Rooted" container with tools like `nsenter` to execute commands in the host namespace in a controlled manner, instead of exposing the entire network stack.
+
+2.  **For DS-02 (Secrets in Matrix Logs):**
+    *   **Solution:** Modify `/scripts/entrypoint.sh` inside `Dockerfile.matrix` so that secrets are saved to a file inside the container with restricted permissions instead of being printed.
         ```diff
         --- a/Dockerfile.matrix
         +++ b/Dockerfile.matrix
@@ -84,9 +88,9 @@
          fi
          ```
 
-3.  **Para DS-03 (Ejecución como `root`):**
-    *   **Solution para `ollama`:** La imagen oficial de `ollama` ahora soporta la ejecución como no-root. Se debe crear un usuario `ollama` y asegurarse de que los permisos del volumen (`/root/.ollama` debe cambiar a `/home/ollama/.ollama`) sean correctos.
-    *   **Solution para Dockerfiles personalizados (e.g., `whisper-stt`):** Añadir los siguientes pasos al final del Dockerfile:
+3.  **For DS-03 (Running as `root`):**
+    *   **Solution for `ollama`:** The official `ollama` image now supports running as non-root. An `ollama` user should be created and volume permissions should be ensured correctly (`/root/.ollama` should change to `/home/ollama/.ollama`).
+    *   **Solution for custom Dockerfiles (e.g., `whisper-stt`):** Add the following steps to the end of the Dockerfile:
         ```dockerfile
         # Create a non-root user
         RUN useradd -ms /bin/bash appuser
@@ -101,5 +105,5 @@
         CMD ["python", "/app/server.py"]
         ```
 
-4.  **Para DS-04 (`DAC_OVERRIDE`):**
-    *   **Solution:** Investigar por qué cada servicio necesita esta capacidad. A menudo, se añade para solucionar problemas de permisos en los volúmenes montados. La solución correcta es **arreglar los permisos en el host** (usando el script `setup-permissions.sh` y asegurando que `PUID`/`PGID` coincidan) en lugar de otorgar capacidades peligrosas. Eliminar `DAC_OVERRIDE` de la sección `cap_add` de todos los servicios.
+4.  **For DS-04 (`DAC_OVERRIDE`):**
+    *   **Solution:** Investigate why each service needs this capability. Often, it is added to solve permission issues on mounted volumes. The correct solution is to **fix host permissions** (using the `setup-permissions.sh` script and ensuring `PUID`/`PGID` match) instead of granting dangerous capabilities. Remove `DAC_OVERRIDE` from the `cap_add` section of all services.

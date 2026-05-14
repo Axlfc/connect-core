@@ -1,58 +1,60 @@
-# AUDIT 11: SCRIPTS DE AUTOMATIZACIÓN
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.ca.md)
+# 审计 11：自动化脚本
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/11_AUTOMATION_SCRIPTS.ca.md)
 
 
-**Fecha:** 2024-07-25
-**Analista:** Jules
+**日期：** 2024-07-25
+**分析师：** Jules
 
-## 1. Resumen de Hallazgos
+## 1. 发现摘要
 
-| Estado | Área | Resumen de Hallazgos |
+| 状态 | 领域 | 发现摘要 |
 | :--- | :--- | :--- |
-| ✓ | **Robustez y Usabilidad** | Los scripts principales (`start.sh`, `stop.sh`, `init_env.sh`) son **excepcionalmente robustos y fáciles de usar**. Incluyen manejo de errores (`set -e`), salida de texto con colores, mensajes de ayuda claros y manejo de parámetros para diferentes entornos. |
-| ✓ | **Seguridad en la Destrucción de Datos** | El script `stop.sh` implementa una **medida de seguridad crítica** al requerir una confirmación explícita del usuario (`type 'yes'`) antes de ejecutar la acción destructiva de eliminar volúmenes, previniendo la pérdida accidental de datos. |
-| ⚠️ | **Manipulación Directa de Archivos `.env`** | El script `start.sh` modifica directamente el archivo `.env` para actualizar la `WEBHOOK_URL` de Zrok. Aunque es funcional, la modificación programática de archivos de configuración sensibles es una práctica que debe manejarse con extremo cuidado. |
-| ⚠️ | **Potencial Fuga de Información** | El script `start.sh` utiliza `docker inspect` para los health checks. En caso de error, este comando puede volcar toda la configuración del contenedor a la consola, incluyendo variables de entorno que podrían ser sensibles. |
-| ✗ | **Falta de Validación de Entradas** | El script `init_env.sh`, en su modo interactivo, no sanea ni valida las entradas del usuario para los valores de las variables. Un usuario podría inyectar accidental o maliciosamente caracteres especiales o comandos que podrían corromper el archivo `.env` o ser interpretados por el shell. |
+| ✓ | **健壮性与易用性** | 主要脚本 (`start.sh`, `stop.sh`, `init_env.sh`) **异常健壮且易于使用**。它们包含错误处理 (`set -e`)、彩色文本输出、清晰的帮助信息以及针对不同环境的参数处理。 |
+| ✓ | **数据销毁安全** | `stop.sh` 脚本实施了**关键安全措施**，在执行删除卷的破坏性操作前要求用户显式确认（输入 'yes'），防止意外数据丢失。 |
+| ⚠️ | **直接修改 `.env` 文件** | `start.sh` 脚本直接修改 `.env` 文件以更新 Zrok 的 `WEBHOOK_URL`。虽然功能正常，但以编程方式修改敏感配置文件是一种必须极其谨慎处理的做法。 |
+| ⚠️ | **潜在信息泄露** | `start.sh` 脚本使用 `docker inspect` 进行健康检查。如果发生错误，此命令可能会将容器的所有配置转储到控制台，包括可能敏感的环境变量。 |
+| ✗ | **缺少输入验证** | `init_env.sh` 脚本在其交互模式下未对用户输入的变量值进行清理或验证。用户可能会无意或恶意地注入特殊字符或命令，从而损坏 `.env` 文件或被 Shell 解释执行。 |
 
 ---
 
-## 2. Hallazgos Detallados
+## 2. 详细发现
 
-### ✓ Lo que está bien
+### ✓ 优点
 
-1.  **Manejo de Errores (`set -e`):**
-    *   Todos los scripts principales comienzan con `set -e`. Esta es una de las mejores prácticas más importantes en scripting de shell, ya que asegura que el script falle inmediatamente si un comando devuelve un código de salida distinto de cero, evitando comportamientos inesperados o peligrosos.
+1.  **错误处理 (`set -e`)：**
+    *   所有主要脚本均以 `set -e` 开头。这是 Shell 脚本编写中最重要的最佳实践之一，因为它确保如果命令返回非零退出代码，脚本将立即失败，从而避免意外或危险行为。
 
-2.  **Scripts de Ciclo de Vida Claros:**
-    *   La separación de responsabilidades entre `start.sh`, `stop.sh`, `init_env.sh`, `setup-permissions.sh`, etc., es muy clara. Cada script tiene un propósito bien definido, lo que facilita enormemente el mantenimiento y la comprensión del sistema.
+2.  **清晰的生命周期脚本：**
+    *   `start.sh`, `stop.sh`, `init_env.sh`, `setup-permissions.sh` 等脚本之间的职责划分非常清晰。每个脚本都有明确定义的用途，极大地便利了系统的维护和理解。
 
-3.  **Lógica de Limpieza Robusta:**
-    *   El script `stop.sh` no solo ejecuta `docker compose down`, sino que también realiza una limpieza explícita de contenedores (`docker rm -f`) y redes. Esto ayuda a prevenir la acumulación de recursos huérfanos de Docker, un problema común en entornos de desarrollo complejos.
+3.  **稳健的清理逻辑：**
+    *   `stop.sh` 脚本不仅执行 `docker compose down`，还显式清理了容器 (`docker rm -f`) 和网络。这有助于防止孤立 Docker 资源的堆积，这是复杂开发环境中的常见问题。
 
-### ✗ Problemas Encontrados
+### ✗ 发现的问题
 
-| ID | Severidad | Problema | Impacto |
+| ID | 严重程度 | 问题 | 影响 |
 | :- | :--- | :--- | :--- |
-| **AS-01** | **BAJO** | **Falta de Saneamiento de Entradas en `init_env.sh`** | En el modo interactivo, un usuario puede introducir cualquier cadena de texto como valor para una variable. Si introducen `valor; rm -rf /`, aunque en este caso solo corrompería el archivo `.env`, es una mala práctica no validar o escapar las entradas. |
-| **AS-02** | **BAJO** | **Modificación Directa del `.env` por `start.sh`** | El script `start.sh` usa `sed` para actualizar la `WEBHOOK_URL`. Si el formato del archivo `.env` cambiara o si el valor de la URL contuviera caracteres especiales que `sed` interpreta, podría corromper el archivo. |
+| **AS-01** | **低** | **`init_env.sh` 缺少输入清理** | 在交互模式下，用户可以输入任何字符串作为变量值。如果输入 `value; rm -rf /`，虽然在这种情况下只会损坏 `.env` 文件，但不进行验证或转义输入是不良做法。 |
+| **AS-02** | **低** | **`start.sh` 直接修改 `.env`** | `start.sh` 脚本使用 `sed` 来更新 `WEBHOOK_URL`。如果 `.env` 文件的格式发生变化，或者 URL 值包含 `sed` 解释的特殊字符，可能会损坏文件。 |
 
-### ⚠️ Warnings/Recomendaciones
+---
 
-1.  **Idempotencia:**
-    *   Los scripts son mayormente idempotentes (se pueden ejecutar varias veces sin efectos secundarios negativos), pero la lógica de backup en `init_env.sh` crea un nuevo archivo de backup cada vez, lo que podría llevar a la acumulación de muchos archivos de backup. Se podría mejorar para que solo se cree un backup si el archivo `.env` ha cambiado.
+### ⚠️ 警告/建议
 
-2.  **Complejidad de los Comandos `docker compose`:**
-    *   Los comandos `docker compose` en `start.sh` y `stop.sh` son bastante complejos debido a la gestión de múltiples perfiles.
+1.  **幂等性 (Idempotency)：**
+    *   这些脚本大多具有幂等性（可以多次运行而无负面副作用），但 `init_env.sh` 中的备份逻辑每次都会创建一个新的备份文件，这可能导致产生大量备份文件。可以改进为仅在 `.env` 文件发生更改时才创建备份。
+
+2.  **`docker compose` 命令的复杂性：**
+    *   由于多配置文件管理，`start.sh` 和 `stop.sh` 中的 `docker compose` 命令相当复杂。
         ```bash
         docker compose -f "$COMPOSE_FILE" --profile "$PROFILE" $([ "$ENABLE_VOICE" = true ] && echo "--profile voice" || [ "$PROFILE" = "cpu" ] && [ "$ENABLE_VOICE" = true ] && echo "--profile voice-cpu") up -d ...
         ```
-    *   **Recomendación:** Para mejorar la legibilidad, esta lógica podría ser refactorizada en una función o una variable.
+    *   **建议：** 为提高可读性，可以将此逻辑重构为函数或变量。
         ```bash
-        # Ejemplo de refactorización
+        # 重构示例
         PROFILES_TO_RUN=("--profile" "$PROFILE")
         if [ "$ENABLE_VOICE" = true ]; then
             if [ "$PROFILE" = "cpu" ]; then
@@ -64,27 +66,29 @@
         docker compose -f "$COMPOSE_FILE" "${PROFILES_TO_RUN[@]}" up -d
         ```
 
-### 🔧 Soluciones Sugeridas
+---
 
-1.  **Para AS-01 (Validación de Entradas):**
-    *   **解决方案:** Añadir una validación simple en `init_env.sh` para asegurar que los valores introducidos no contengan caracteres peligrosos. Se pueden envolver las variables en comillas para mayor seguridad.
+### 🔧 建议的解决方案
+
+1.  **针对 AS-01（输入验证）：**
+    *   **解决方案：** 在 `init_env.sh` 中添加简单的验证，以确保输入的值不包含危险字符。可以为变量加上引号以增加安全性。
         ```bash
-        # En la sección de 'personalizar' de init_env.sh
-        echo -n "Introduce el valor para $var: "
+        # 在 init_env.sh 的“自定义 (customize)”部分
+        echo -n "输入 $var 的值: "
         read -r new_value
-        # Validar que no contiene caracteres problemáticos (ej. punto y coma, saltos de línea)
+        # 验证是否包含不允许的字符（例如分号、换行符）
         if [[ "$new_value" =~ [;\n] ]]; then
-            print_error "El valor contiene caracteres no permitidos."
+            print_error "值包含不允许的字符。"
             continue
         fi
-        # Usar comillas al escribir en el archivo
+        # 写入文件时使用引号
         sed -i "s|^${var}=.*|${var}=\"${new_value}\"|" "$TARGET_FILE"
         ```
 
-2.  **Para AS-02 (Modificación Segura del `.env`):**
-    *   **解决方案:** Utilizar un enfoque más seguro que no dependa de `sed` para parsear el archivo. Una alternativa es leer el archivo línea por línea, modificar la línea deseada en memoria y luego reescribir el archivo completo.
+2.  **针对 AS-02（安全修改 `.env`）：**
+    *   **解决方案：** 使用不依赖 `sed` 解析文件的更安全方法。另一种方法是逐行读取文件，在内存中修改所需行，然后重写整个文件。
         ```bash
-        # Lógica mejorada en start.sh
+        # start.sh 中改进后的逻辑
         TEMP_ENV=$(mktemp)
         while IFS= read -r line; do
             if [[ "$line" == WEBHOOK_URL=* ]]; then
@@ -95,4 +99,4 @@
         done < "$ENV_FILE"
         mv "$TEMP_ENV" "$ENV_FILE"
         ```
-    *   Este enfoque es más resistente a errores de formato y a caracteres especiales.
+    *   这种方法对格式错误和特殊字符的抵抗力更强。

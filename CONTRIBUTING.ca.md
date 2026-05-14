@@ -1,21 +1,21 @@
-# Contributing to cognito-stack 🤝
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
+# Contribuir a connect-core 🤝
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/CONTRIBUTING.zh-cn.md)
 
 
-¡Gracias por tu interés en contribuir a cognito-stack! Este documento proporciona las pautas para contribuir al proyecto.
+Gràcies pel teu interès a contribuir a connect-core! Aquest document proporciona les pautes per contribuir al projecte.
 
 ## Taula de continguts
 
-- [Codi de conducta](#código-de-conducta)
-- [Com contribuir-hi?](#cómo-contribuir)
-- [Informar d'errors](#reportar-bugs)
-- [Suggerir millores](#sugerir-mejoras)
+- [Codi de conducta](#codi-de-conducta)
+- [Com contribuir-hi?](#com-contribuir-hi)
+- [Informar d'errors](#informar-derrors)
+- [Suggerir millores](#suggerir-millores)
 - [Pull Requests](#pull-requests)
-- [Estàndards de codi](#estándares-de-código)
-- [Validació local](#validación-local)
+- [Estàndards de codi](#estandards-de-codi)
+- [Validació local](#validacio-local)
 - [Commit conventions](#commit-conventions)
 
 ---
@@ -24,27 +24,27 @@
 
 ### La nostra promesa
 
-Nos comprometemos a proporcionar un entorno abierto y acogedor para todos, independientemente de:
-- Edad, tamaño corporal, capacidad/discapacidad
-- Etnia, identidad y expresión de género
-- Nivel de experiencia, educación
-- Situación socioeconómica
+Ens comprometem a proporcionar un entorn obert i acollidor per a tothom, independentment de:
+- Edat, mida corporal, capacitat/discapacitat
+- Ètnia, identitat i expressió de gènere
+- Nivell d'experiència, educació
+- Situació socioeconòmica
 
 ### Els nostres estàndards
 
-Comportamientos que contribuyen a crear un entorno positivo:
-- ✅ Usar lenguaje inclusivo y acogedor
-- ✅ Ser respetuoso con los puntos de vista diferentes
-- ✅ Aceptar críticas constructivas
-- ✅ Enfocarse en lo mejor para la comunidad
-- ✅ Mostrar empatía hacia otros miembros
+Comportaments que contribueixen a crear un entorn positiu:
+- ✅ Utilitzar llenguatge inclusiu i acollidor
+- ✅ Ser respectuós amb els punts de vista diferents
+- ✅ Acceptar crítiques constructives
+- ✅ Enfocar-se en el millor per a la comunitat
+- ✅ Mostrar empatia cap als altres membres
 
-Comportamientos inaceptables:
-- ❌ Lenguaje o imágenes sexuales
-- ❌ Trolling, comentarios insultantes o ataques personales
-- ❌ Acoso público o privado
-- ❌ Publicar información privada sin consentimiento
-- ❌ Otra conducta inapropiada
+Comportaments inacceptables:
+- ❌ Llenguatge o imatges sexuals
+- ❌ Trolling, comentaris insultants o atacs personals
+- ❌ Assetjament públic o privat
+- ❌ Publicar informació privada sense consentiment
+- ❌ Altres conductes inapropiades
 
 ---
 
@@ -52,61 +52,61 @@ Comportamientos inaceptables:
 
 ### Requisits previs
 
-- Git instalado (`git --version`)
+- Git instal·lat (`git --version`)
 - Docker & Docker Compose (`docker --version`, `docker compose version`)
 - Bash 4.0+ (`bash --version`)
-- Cuenta GitHub
+- Compte de GitHub
 
-### Workflow de contribución
+### Flux de treball de contribució
 
-1. **Fork el repositorio**
+1. **Fes un fork del repositori**
    ```bash
-   # En GitHub, haz clic en "Fork"
-   # Luego clona tu fork
-   git clone https://github.com/TU_USUARIO/cognito-stack.git
-   cd cognito-stack
+   # A GitHub, fes clic a "Fork"
+   # Després clona el teu fork
+   git clone https://github.com/[EL_TEU_USUARI]/connect-core.git
+   cd connect-core
    ```
 
-2. **Crea una rama para tu feature**
+2. **Crea una branca per a la teva funcionalitat**
    ```bash
-   git checkout -b feature/descripcion-clara
-   # o para bugs:
-   git checkout -b fix/descripcion-del-bug
+   git checkout -b feature/descripcio-clara
+   # o per a errors:
+   git checkout -b fix/descripcio-de-l-error
    ```
 
-3. **Realiza cambios**
-   - Edita archivos necesarios
-   - Mantén commits atómicos y con mensajes claros
-   - Valida localmente (ver [Validació local](#validación-local))
+3. **Realitza canvis**
+   - Edita els fitxers necessaris
+   - Mantén commits atòmics i amb missatges clars
+   - Valida localment (vegeu [Validació local](#validacio-local))
 
-4. **Push a tu fork**
+4. **Puja al teu fork**
    ```bash
-   git push origin feature/descripcion-clara
+   git push origin feature/descripcio-clara
    ```
 
-5. **Abre un Pull Request**
-   - Haz clic en "New Pull Request" en GitHub
-   - Completa el template de PR
-   - Espera review
+5. **Obre un Pull Request**
+   - Fes clic a "New Pull Request" a GitHub
+   - Completa la plantilla de PR
+   - Espera la revisió
 
 ---
 
 ## Informar d'errors
 
-### Antes de reportar
+### Abans d'informar
 
-- ✅ Verifica que no exista un issue similar
-- ✅ Actualiza al código más reciente (`git pull origin master`)
-- ✅ Reproduce el bug con el código actual
-- ✅ Recopila información de debugging
+- ✅ Verifica que no existeixi un issue similar
+- ✅ Actualitza al codi més recent (`git pull origin master`)
+- ✅ Reprodueix l'error amb el codi actual
+- ✅ Recull informació de depuració
 
-### Cómo reportar
+### Com informar
 
-**Abre un issue** con los siguientes detalles:
+**Obre un issue** amb els següents detalls:
 
 ```markdown
-## Descripción
-Breve descripción del bug
+## Descripció
+Breu descripció de l'error
 
 ## Passos per reproduir
 1. ...
@@ -114,120 +114,120 @@ Breve descripción del bug
 3. ...
 
 ## Comportament actual
-¿Qué sucedió?
+Què ha passat?
 
 ## Comportament esperat
-¿Qué debería suceder?
+Què hauria de passar?
 
 ## Informació del sistema
-- OS: [ej: Ubuntu 22.04]
-- Docker version: [ej: 24.0.0]
+- OS: [ex: Ubuntu 22.04]
+- Docker version: [ex: 24.0.0]
 - Profile: [cpu/gpu-nvidia/gpu-amd]
 
 ## Logs
 ```
-<logs relevantes aquí>
+<logs rellevants aquí>
 ```
 
 ## Informació addicional
-Cualquier contexto adicional
+Qualsevol context addicional
 ```
 
 ---
 
 ## Suggerir millores
 
-### Antes de sugerir
+### Abans de suggerir
 
-- ✅ Lee la documentación
-- ✅ Busca sugerencias similares
-- ✅ Considera el alcance del proyecto
+- ✅ Llegeix la documentació
+- ✅ Busca suggeriments similars
+- ✅ Considera l'abast del projecte
 
-### Template de sugerencia
+### Plantilla de suggeriment
 
 ```markdown
-## Descripción breve
-Una línea describiendo la mejora
+## Descripció breu
+Una línia descrivint la millora
 
-## Problema que resuelve
-¿Qué problema de usuario resuelve esto?
+## Problema que resol
+Quin problema d'usuari resol això?
 
-## Solució propuesta
-Descripción de la mejora
+## Solució proposada
+Descripció de la millora
 
-## Beneficios
-- Beneficio 1
-- Beneficio 2
+## Beneficis
+- Benefici 1
+- Benefici 2
 
-## Ejemplos de implementación
-Pseudocódigo o ejemplos si aplica
+## Exemples d'implementació
+Pseudocodi o exemples si s'aplica
 
-## Alternativas consideradas
-Otras soluciones evaluadas
+## Alternatives considerades
+Altres solucions avaluades
 ```
 
 ---
 
 ## Pull Requests
 
-### Checklist antes de abrir PR
+### Checklist abans d'obrir un PR
 
-- [ ] Mi código sigue los estándares de código del proyecto
-- [ ] He actualizado la documentación
-- [ ] Mis commits tienen mensajes claros y descriptivos
-- [ ] He validado localmente con `scripts/validate.sh`
-- [ ] He testeado con `scripts/smoke-test.sh`
-- [ ] No contiene código "en construcción" o temporal
-- [ ] No añade dependencias innecesarias
+- [ ] El meu codi segueix els estàndards de codi del projecte
+- [ ] He actualitzat la documentació
+- [ ] Els meus commits tenen missatges clars i descriptius
+- [ ] He validat localment amb `scripts/validate.sh`
+- [ ] He fet proves amb `scripts/smoke-test.sh`
+- [ ] No conté codi "en construcció" o temporal
+- [ ] No afegeix dependències innecessàries
 
-### Proceso de review
+### Procés de revisió
 
-1. **Validación automática** (GitHub Actions)
+1. **Validació automàtica** (GitHub Actions)
    - YAML validation
    - Shell linting
    - Dockerfile linting
    - Docker Compose validation
    - Security checks
 
-2. **Review manual**
-   - Revisión de código
-   - Evaluación de cambios
-   - Solicitud de cambios si es necesario
+2. **Revisió manual**
+   - Revisió de codi
+   - Avaluació de canvis
+   - Sol·licitud de canvis si és necessari
 
 3. **Merge**
-   - Aprobación del maintainer
+   - Aprovació del maintainer
    - Squash & merge a master
-   - CI/CD deploys cambios
+   - CI/CD desplega els canvis
 
-### Template de PR
+### Plantilla de PR
 
 ```markdown
-## Descripción
-Breve descripción de los cambios
+## Descripció
+Breve descripció dels canvis
 
-## Relacionado con
+## Relacionat amb
 - Closes #123
 - Fixes #456
 
 ## Tipus de canvi
-- [ ] Bug fix
-- [ ] Nueva feature
-- [ ] Cambio de documentación
-- [ ] Refactoring
+- [ ] Correcció d'error (Bug fix)
+- [ ] Nova funcionalitat (Feature)
+- [ ] Canvi de documentació
+- [ ] Refactorització
 
 ## Canvis realitzats
-- Cambio 1
-- Cambio 2
-- Cambio 3
+- Canvi 1
+- Canvi 2
+- Canvi 3
 
 ## Proves realitzades
-Describe cómo testeaste los cambios
+Descriu com has provat els canvis
 
-## Screenshots (si aplica)
-Añade screenshots si hay cambios visuales
+## Screenshots (si s'aplica)
+Afegeix captures de pantalla si hi ha canvis visuals
 
 ## Notes addicionals
-Cualquier información adicional para los reviewers
+Qualsevol informació addicional per als revisors
 ```
 
 ---
@@ -238,28 +238,28 @@ Cualquier información adicional para los reviewers
 
 ```bash
 #!/bin/bash
-set -e  # Exit on error
+set -e  # Surt en cas d'error
 
-# Usar comentarios descriptivos
-# Variables en MAYUSCULAS
+# Utilitzar comentaris descriptius
+# Variables en MAJÚSCULES
 CONFIG_FILE="/path/to/file"
 
-# Funciones con nombres descriptivos
+# Funcions amb noms descriptius
 print_info() {
     echo "ℹ️ $1"
 }
 
-# Validación de entrada
+# Validació d'entrada
 if [ -z "$1" ]; then
-    echo "Error: Falta parametro"
+    echo "Error: Falta paràmetre"
     exit 1
 fi
 
-# Usar comillas para variables
-echo "Mensaje: $CONFIG_FILE"
+# Utilitzar cometes per a les variables
+echo "Missatge: $CONFIG_FILE"
 ```
 
-**Herramienta:** `shellcheck`
+**Eina:** `shellcheck`
 ```bash
 shellcheck script.sh
 ```
@@ -272,30 +272,30 @@ FROM base-image:version
 LABEL maintainer="maintainer@example.com"
 LABEL description="Clear description"
 
-# Usar comentarios para secciones
+# Utilitzar comentaris per a les seccions
 USER root
 
-# Combinar RUN cuando sea posible
+# Combinar RUN quan sigui possible
 RUN apt-get update && \
     apt-get install -y \
     package1 \
     package2 && \
     rm -rf /var/lib/apt/lists/*
 
-# Exponer puertos explícitamente
+# Exposar ports explícitament
 EXPOSE 5678
 
-# Definir volúmenes
+# Definir volums
 VOLUME ["/data"]
 
-# Usuario no-root
+# Usuari no-root
 USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["start"]
 ```
 
-**Herramienta:** `hadolint`
+**Eina:** `hadolint`
 ```bash
 hadolint Dockerfile
 ```
@@ -303,18 +303,18 @@ hadolint Dockerfile
 ### YAML (docker-compose.yml)
 
 ```yaml
-# Indentación de 2 espacios
+# Indentació de 2 espais
 version: "3.8"
 
 services:
   service-name:
     image: image:version
 
-    # Organización lógica
+    # Organització lògica
     container_name: service-name
     restart: unless-stopped
 
-    # Variables de entorno primero
+    # Variables d'entorn primer
     environment:
       - VAR_NAME=value
 
@@ -322,7 +322,7 @@ services:
     ports:
       - "5678:5678"
 
-    # Volúmenes
+    # Volums
     volumes:
       - volume-name:/path
 
@@ -353,67 +353,67 @@ networks:
 }
 ```
 
-**Validar con:** `python -m json.tool n8n-task-runners.json`
+**Validar amb:** `python -m json.tool n8n-task-runners.json`
 
-### Documentación (Markdown)
+### Documentació (Markdown)
 
-- ✅ Títulos jerárquicos claros
-- ✅ Ejemplos de código en bloques
-- ✅ Enlaces internos a archivos
-- ✅ Taula de continguts para documentos largos
-- ✅ Notas destacadas con blockquotes
-- ✅ Listas estructuradas
+- ✅ Títols jeràrquics clars
+- ✅ Exemples de codi en blocs
+- ✅ Enllaços interns a fitxers
+- ✅ Taula de continguts per a documents llargs
+- ✅ Notes destacades amb blockquotes
+- ✅ Llistes estructurades
 
 ```markdown
-# Título Principal
+# Títol Principal
 
-## Subtítulo
+## Subtítol
 
 ### Subsubtítulo
 
-**Texto en negrita** y *en itálica*
+**Text en negreta** i *en cursiva*
 
-> Nota o cita importante
+> Nota o cita important
 
-### Ejemplo de código
+### Exemple de codi
 \`\`\`bash
-# Bash code
-echo "Hello"
+# Codi Bash
+echo "Hola"
 \`\`\`
 
-- Punto 1
-- Punto 2
-  - Subpunto 2a
+- Punt 1
+- Punt 2
+  - Subpunt 2a
 ```
 
 ---
 
 ## Validació local
 
-### 1. Script de validación general
+### 1. Script de validació general
 
 ```bash
-# Ejecuta todas las comprobaciones
+# Executa totes les comprovacions
 ./scripts/validate.sh
 
-# Salida esperada:
-# ✓ Validaciones pasadas
-# ⚠ Warnings (no bloquea)
-# ✗ Errores (bloquea)
+# Sortida esperada:
+# ✓ Validacions passades
+# ⚠ Avisos (no bloqueja)
+# ✗ Errors (bloqueja)
 ```
 
-### 2. Smoke test
+### 2. Prova de fum (Smoke test)
 
 ```bash
-# Prueba rápida del stack (requiere Docker)
-./scripts/smoke-test.sh          # Usa profile CPU
-./scripts/smoke-test.sh gpu-nvidia  # Usa GPU NVIDIA
-./scripts/smoke-test.sh gpu-amd     # Usa GPU AMD
+# Prova ràpida de l'stack (requereix Docker)
+./scripts/smoke-test.sh          # Utilitza el perfil CPU
+./scripts/smoke-test.sh gpu-nvidia  # Utilitza GPU NVIDIA
+./scripts/smoke-test.sh gpu-amd     # Utilitza GPU AMD
 
-# Comprueba:
-# - Inicio de servicios
+# Comprova:
+# - Inici de serveis
 # - Health checks
-# - Disponibilidad de APIs
+# - Disponibilitat d'APIs
 ```
 
 ### 3. Linting manual
@@ -435,16 +435,16 @@ python3 -m json.tool n8n-task-runners.json
 markdownlint *.md
 ```
 
-### 4. Validación de Docker Compose
+### 4. Validació de Docker Compose
 
 ```bash
-# Verificar sintaxis
+# Verificar sintaxi
 docker compose config --quiet
 
-# Listar servicios
+# Llistar serveis
 docker compose config | grep "^  [a-z]"
 
-# Simular inicio (sin pull)
+# Simular inici (sense pull)
 docker compose --profile cpu config --quiet
 ```
 
@@ -452,80 +452,80 @@ docker compose --profile cpu config --quiet
 
 ## Commit conventions
 
-### Formato de mensaje
+### Format del missatge
 
 ```
-<tipo>(<alcance>): <asunto>
+<tipus>(<abast>): <assumpte>
 
-<descripción>
+<descripció>
 
 <footer>
 ```
 
-### Tipos de commit
+### Tipus de commit
 
-- `feat:` Nueva funcionalidad
-- `fix:` Corrección de bug
-- `docs:` Cambios de documentación
-- `style:` Cambios de formato (no lógica)
-- `refactor:` Refactorización sin cambio funcional
-- `test:` Cambios en tests/validación
-- `ci:` Cambios en CI/CD
-- `chore:` Cambios de build, dependencias, etc
+- `feat:` Nova funcionalitat
+- `fix:` Correcció d'error
+- `docs:` Canvis de documentació
+- `style:` Canvis de format (no lògica)
+- `refactor:` Refactorització sense canvi funcional
+- `test:` Canvis en tests/validació
+- `ci:` Canvis en CI/CD
+- `chore:` Canvis de build, dependències, etc.
 
-### Ejemplos
+### Exemples
 
 ```bash
 # Feature
-git commit -m "feat(n8n): agregar soporte para runners paralelos"
+git commit -m "feat(n8n): afegir suport per a runners paral·lels"
 
 # Bug fix
-git commit -m "fix(docker-compose): corregir puerto de Ollama"
+git commit -m "fix(docker-compose): corregir port d'Ollama"
 
 # Documentation
-git commit -m "docs: actualizar guía de instalación"
+git commit -m "docs: actualitzar guia d'instal·lació"
 
-# Con descripción
-git commit -m "feat(comfyui): agregar soporte para custom nodes
+# Amb descripció
+git commit -m "feat(comfyui): afegir suport per a nodes personalitzats
 
-- Instala git durante build
-- Clona repositorio de custom nodes
-- Configura rutas correctas
+- Instal·la git durant la construcció
+- Clona el repositori de nodes personalitzats
+- Configura les rutes correctes
 
 Closes #42"
 ```
 
 ---
 
-## Preguntes freqüents
+## Preguntes freqüents (FAQ)
 
-### ¿Cuál es el proceso de release?
+### Quin és el procés de llançament (release)?
 
-1. Cambios en master van a production
-2. GitHub Actions valida y construye imágenes
-3. Imágenes se publican en GHCR
-4. Tags semánticos para releases
+1. Els canvis a master van a producció
+2. GitHub Actions valida i construeix imatges
+3. Les imatges es publiquen a GHCR
+4. Tags semàntics per a llançaments
 
-### ¿Cómo reporto un vulnerability?
+### Com informo d'una vulnerabilitat?
 
-**NO** abras un issue público. Contáctanos privadamente:
-- Email: [maintainer email si disponible]
-- GitHub Security Advisory: Usa la opción "Report a vulnerability"
+**NO** obris un issue públic. Contacta amb nosaltres privadament:
+- Email: [EMAIL_DEL_MANTENIDOR]
+- GitHub Security Advisory: Utilitza l'opció "Report a vulnerability"
 
-### ¿Cuánto tiempo tarda el review?
+### Quant de temps triga la revisió?
 
-- Bugs críticos: 24-48 horas
-- Features: 3-7 días
-- Documentación: 1-3 días
-- Depende de complejidad y disponibilidad
+- Errors crítics: 24-48 hores
+- Funcionalitats: 3-7 dies
+- Documentació: 1-3 dies
+- Depèn de la complexitat i disponibilitat
 
-### ¿Puedo sugerir nuevas dependencias?
+### Puc suggerir noves dependències?
 
-Sí, pero:
-- Justifica por qué es necesaria
-- Considera alternativas ligeras
-- Actualiza Dockerfiles correspondientes
-- Añade a documentación
+Sí, però:
+- Justifica per què és necessària
+- Considera alternatives lleugeres
+- Actualitza els Dockerfiles corresponents
+- Afegeix a la documentació
 
 ---
 
@@ -541,14 +541,14 @@ Sí, pero:
 
 ## Reconeixement
 
-¡Gracias por contribuir a cognito-stack! Cada contribución, sin importar su tamaño, ayuda a mejorar el proyecto.
+Gràcies per contribuir a connect-core! Cada contribució, sense importar la seva mida, ajuda a millorar el projecte.
 
-Si tienes preguntas, no dudes en abrir un issue de discussion o contactar a los maintainers.
+Si tens preguntes, no dubtis a obrir un issue de discussió o contactar amb els mantenidors.
 
 ---
 
 <div align="center">
 
-**¡Esperamos tu contribución! ❤️**
+**Esperem la teva contribució! ❤️**
 
 </div>
