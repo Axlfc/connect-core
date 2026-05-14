@@ -1,8 +1,8 @@
 # 审计 08：监控、日志与可观测性
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/08_MONITORING_AND_LOGGING.ca.md)
 
 
 **日期：** 2024-07-25

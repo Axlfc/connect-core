@@ -1,8 +1,8 @@
 # Informe d'Auditoria Tècnica - Projecte connect-core
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.zh-cn.md)
 
 
 **Data:** 2024-07-25
@@ -10,7 +10,7 @@
 
 ## Introducció
 
-Aquest directori conté els resultats d'una auditoria tècnica exhaustiva del projecte `[ORGANIZATION]/connect-core`. El propòsit d'aquesta auditoria va ser realitzar una anàlisi profunda de l'arquitectura, seguretat, mantenibilitat i preparació per a producció del sistema.
+Aquest directori conté els resultats d'una auditoria tècnica exhaustiva del projecte `Axlfc/connect-core`. El propòsit d'aquesta auditoria va ser realitzar una anàlisi profunda de l'arquitectura, seguretat, mantenibilitat i preparació per a producció del sistema.
 
 L'informe està dividit en diversos documents Markdown, cadascun cobrint una àrea específica de l'anàlisi.
 

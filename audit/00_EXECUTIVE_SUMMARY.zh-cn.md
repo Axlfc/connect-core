@@ -1,13 +1,13 @@
 # 审计 00：执行摘要
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
 
 
 **日期：** 2024-07-25
 **分析师：** Jules, 高级软件工程师
-**项目：** `[ORGANIZATION]/connect-core`
+**项目：** `Axlfc/connect-core`
 
 ## 1. 引言
 

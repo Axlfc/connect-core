@@ -1,8 +1,8 @@
 # Gestió de Variables d'Entorn
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/ENV_MANAGEMENT.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/ENV_MANAGEMENT.zh-cn.md)
 
 
 Aquest projecte inclou diversos scripts per gestionar les variables d'entorn de forma intel·ligent i segura.

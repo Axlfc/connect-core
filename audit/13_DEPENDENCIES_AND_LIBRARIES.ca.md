@@ -1,8 +1,8 @@
 # AUDIT 13: DEPÈNDENCIES I LLIBRERIES
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/13_DEPENDENCIES_AND_LIBRARIES.zh-cn.md)
 
 
 **Data:** 2024-07-25

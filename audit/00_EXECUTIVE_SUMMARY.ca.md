@@ -1,13 +1,13 @@
 # AUDIT 00: RESUM EXECUTIU
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/00_EXECUTIVE_SUMMARY.zh-cn.md)
 
 
 **Data:** 2024-07-25
 **Analista:** Jules, Enginyer de Programari Senior
-**Projecte:** `[ORGANIZATION]/connect-core`
+**Projecte:** `Axlfc/connect-core`
 
 ## 1. Introducció
 

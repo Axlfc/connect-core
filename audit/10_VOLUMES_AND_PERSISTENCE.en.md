@@ -1,8 +1,8 @@
 # AUDIT 10: VOLUME MANAGEMENT AND PERSISTENCE
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.ca.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/10_VOLUMES_AND_PERSISTENCE.zh-cn.md)
 
 
 **Date:** 2024-07-25

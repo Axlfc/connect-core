@@ -1,8 +1,8 @@
 # 审计 01：总体结构与配置
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/01_STRUCTURE_AND_ORGANIZATION.ca.md)
 
 
 **日期：** 2024-07-25

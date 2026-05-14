@@ -1,8 +1,8 @@
 # 技术审计报告 - connect-core 项目
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/audit/README.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/audit/README.ca.md)
 
 
 **日期：** 2024-07-25
@@ -10,7 +10,7 @@
 
 ## 引言
 
-本目录包含了对 `[ORGANIZATION]/connect-core` 项目进行的全面技术审计结果。本次审计的目的是对系统的架构、安全性、可维护性和生产就绪状态进行深入分析。
+本目录包含了对 `Axlfc/connect-core` 项目进行的全面技术审计结果。本次审计的目的是对系统的架构、安全性、可维护性和生产就绪状态进行深入分析。
 
 报告分为几个 Markdown 文档，每个文档涵盖一个特定的分析领域。
 

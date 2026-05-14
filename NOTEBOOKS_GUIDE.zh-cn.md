@@ -1,8 +1,8 @@
 # 用于测试 connect-core 的 Jupyter Notebooks
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
 
 
 本目录包含用于测试 connect-core 智能体架构和编排功能的 Jupyter Notebooks。

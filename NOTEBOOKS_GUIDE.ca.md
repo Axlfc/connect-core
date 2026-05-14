@@ -1,8 +1,8 @@
 # Notebooks de Jupyter per a provar connect-core
-[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
-[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/[ORGANIZATION]/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
+[![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.ca.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.en.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.md)
+[![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/NOTEBOOKS_GUIDE.zh-cn.md)
 
 
 Aquest directori conté notebooks de Jupyter per a provar l'arquitectura d'agents i l'orquestració de connect-core.
