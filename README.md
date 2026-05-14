@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)](https://nodejs.org/)
 
-**cognito-stack** es una plataforma modular de orquestación de IA containerizada que integra automatización de workflows, generación de imágenes e inteligencia artificial local en un único stack Docker Compose reproducible y escalable. Soporta múltiples runtimes de contenedores (Docker y Podman) y perfiles de hardware (CPU, NVIDIA GPU, AMD GPU).
+**connect-core**, o **cognito-stack** es una plataforma modular de orquestación de IA containerizada que integra automatización de workflows, generación de imágenes e inteligencia artificial local en un único stack Docker Compose reproducible y escalable. Soporta múltiples runtimes de contenedores (Docker y Podman) y perfiles de hardware (CPU, NVIDIA GPU, AMD GPU).
 
 > ⚠️ **Advertencia de Seguridad:** Este proyecto se encuentra en desarrollo activo y no debe ser desplegado en un entorno de producción sin una auditoría de seguridad exhaustiva.
 
