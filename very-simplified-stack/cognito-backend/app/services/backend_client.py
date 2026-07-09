@@ -2,7 +2,7 @@
 backend_client.py
 
 A unified async client that can talk to:
-  - Ollama native API  (POST /api/generate)
+  - Ollama native API  (POST /api/generate or POST /api/chat)
   - OpenAI-compatible  (POST /v1/chat/completions)
 
 Supports both blocking and streaming responses.
@@ -12,12 +12,15 @@ The caller never needs to know which protocol is being used.
 import httpx
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
 from app.services.backend_registry import BackendConfig, BackendType
 
 logger = logging.getLogger(__name__)
 
+
+# In-memory cache for tool calling support: {(backend_name, model_name): bool}
+_TOOL_SUPPORT_CACHE: Dict[tuple[str, str], bool] = {}
 
 class BackendClient:
     """
@@ -69,6 +72,53 @@ class BackendClient:
         else:
             async for chunk in self._stream_openai(prompt, model_params):
                 yield chunk
+
+    async def generate_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        New method for Phase 1. Calls backend with tool support.
+        If tools aren't supported, yields an error event or signals failure.
+        Uses POST /api/chat for Ollama.
+        """
+        cache_key = (self.config.name, self.config.model)
+        if _TOOL_SUPPORT_CACHE.get(cache_key) is False:
+            raise NotImplementedError(f"Backend '{self.config.name}' does not support tool calling.")
+
+        try:
+            if self.config.backend_type == BackendType.OLLAMA:
+                async for chunk in self._stream_ollama_chat(messages, tools, model_params):
+                    yield chunk
+            else:
+                async for chunk in self._stream_openai_chat(messages, tools, model_params):
+                    yield chunk
+
+            # If we reached here without error, mark as supported
+            if cache_key not in _TOOL_SUPPORT_CACHE:
+                _TOOL_SUPPORT_CACHE[cache_key] = True
+
+        except (httpx.HTTPStatusError, httpx.RequestError, NotImplementedError) as e:
+            # Detect if it's a "tool calling not supported" error
+            is_unsupported = False
+            if isinstance(e, httpx.HTTPStatusError):
+                try:
+                    error_data = e.response.json()
+                    error_msg = str(error_data).lower()
+                    if "tool" in error_msg or "schema" in error_msg:
+                        is_unsupported = True
+                except:
+                    pass
+            elif isinstance(e, NotImplementedError):
+                is_unsupported = True
+
+            if is_unsupported:
+                _TOOL_SUPPORT_CACHE[cache_key] = False
+                logger.warning("Backend '%s' marked as NO TOOL SUPPORT.", self.config.name)
+
+            raise e
 
     async def check_health(self) -> bool:
         """
@@ -236,3 +286,95 @@ class BackendClient:
 
                 if token or logprobs:
                     yield {"token": token, "logprobs": logprobs}
+
+    # ── Tool calling helpers ───────────────────────────────────────────────────
+
+    async def _stream_ollama_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_params: Optional[Dict[str, Any]],
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        url = f"{self.config.base_url}/api/chat"
+        payload: Dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "tools": tools,
+            "stream": True,
+        }
+        if model_params:
+            payload.update({k: v for k, v in model_params.items() if k != "stream"})
+
+        logger.info("[%s] CHAT STREAM %s (ollama tools)", self.config.name, url)
+
+        async with self._client.stream("POST", url, json=payload) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                msg = data.get("message", {})
+                token = msg.get("content", "")
+                tool_calls = msg.get("tool_calls")
+                logprobs = data.get("logprobs")
+
+                # Ollama returns tool_calls in a single chunk
+                yield {
+                    "token": token,
+                    "tool_calls": tool_calls,
+                    "logprobs": logprobs,
+                    "done": data.get("done", False)
+                }
+
+                if data.get("done", False):
+                    break
+
+    async def _stream_openai_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_params: Optional[Dict[str, Any]],
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        url = f"{self.config.base_url}/v1/chat/completions"
+        payload: Dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "tools": tools,
+            "stream": True,
+        }
+        if model_params:
+            payload.update({k: v for k, v in model_params.items() if k != "stream"})
+
+        logger.info("[%s] CHAT STREAM %s (openai tools)", self.config.name, url)
+
+        async with self._client.stream("POST", url, json=payload) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                if line.startswith("data:"):
+                    line = line[5:].strip()
+                if line == "[DONE]":
+                    break
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                try:
+                    choice = data["choices"][0]
+                    delta = choice.get("delta", {})
+                    token = delta.get("content", "")
+                    tool_calls = delta.get("tool_calls")
+                    logprobs = choice.get("logprobs")
+                except (KeyError, IndexError):
+                    token = ""
+                    tool_calls = None
+                    logprobs = None
+
+                if token or tool_calls or logprobs:
+                    yield {"token": token, "tool_calls": tool_calls, "logprobs": logprobs}

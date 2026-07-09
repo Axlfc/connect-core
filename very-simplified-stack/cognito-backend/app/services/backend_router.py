@@ -18,7 +18,7 @@ Usage (singleton already exported at the bottom):
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from app.services.backend_client import BackendClient
 from app.services.backend_registry import BACKENDS_BY_PRIORITY, BackendConfig
@@ -78,6 +78,52 @@ class BackendRouter:
             f"All {len(self._clients)} backends failed. "
             f"Last error: {last_exc}"
         ) from last_exc
+
+    async def generate_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Try each backend in priority order for tool-enabled chat.
+        If a backend doesn't support tools, it's skipped.
+        """
+        last_exc: Optional[Exception] = None
+
+        for attempt, client in enumerate(self._clients, start=1):
+            try:
+                logger.info(
+                    "[Tools] Attempt %d/%d → backend '%s'",
+                    attempt, len(self._clients), client.config.name,
+                )
+                async for chunk in client.generate_with_tools(messages, tools, model_params):
+                    yield chunk
+                return # Success!
+
+            except (NotImplementedError, RuntimeError) as exc:
+                # Handle NotImplementedError (explicitly marked unsupported)
+                # or general errors that we might want to failover from
+                logger.warning(
+                    "[Tools] Backend '%s' skipped (attempt %d): %s",
+                    client.config.name, attempt, exc,
+                )
+                last_exc = exc
+                continue
+            except Exception as exc:
+                logger.warning(
+                    "[Tools] Backend '%s' failed (attempt %d): %s",
+                    client.config.name, attempt, exc,
+                )
+                last_exc = exc
+                continue
+
+        # All backends exhausted
+        logger.error("[Tools] All %d backends failed or unsupported.", len(self._clients))
+        raise RuntimeError(
+            f"All backends failed or do not support tool calling. "
+            f"Last error: {last_exc}"
+        )
 
     async def health_all(self) -> Dict[str, str]:
         """
