@@ -59,9 +59,30 @@ Settings are loaded in the following order of priority:
 
 - `app/api/routes/openai_compat.py`: Core streaming and uncertainty calculation logic.
 - `app/services/backend_client.py`: Unified async client for Ollama and OpenAI backends.
+- `app/core/agent_loop.py`: Turning text generation into a tool-executing agent loop.
 - `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
+
+## 🤖 Cognito Agent (Fase 1)
+
+El backend ahora incluye soporte para agentes capaces de ejecutar herramientas (tools).
+
+### Endpoints
+- `POST /api/agent/loop`: Endpoint SSE que ejecuta un bucle de razonamiento y ejecución de herramientas.
+  - **Body**: `{ "messages": [...], "cwd": "path/to/repo", "model_params": {} }`
+  - **Eventos**: `text_delta`, `tool_call`, `tool_result`, `done`, `error`.
+
+### Herramientas Disponibles
+1. `read`: Lee archivos del sistema (restringido al `cwd`).
+2. `write`: Crea o sobrescribe archivos (requiere `trust`).
+3. `edit`: Edición basada en búsqueda y reemplazo único (requiere `trust`).
+4. `bash`: Ejecución de comandos en el workspace (requiere `trust`, sin `sudo`).
+
+### Seguridad y Trust
+- **Protected Files**: Ciertos archivos críticos (`auth.js`, etc.) nunca pueden ser modificados.
+- **Project Trust**: Las herramientas de escritura y ejecución requieren que el directorio haya sido marcado como confiable.
+- **AGENTS.md**: Si existe en el raíz del `cwd`, se inyecta automáticamente como contexto del sistema.
 
 ## 🧪 Testing
 
