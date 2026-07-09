@@ -28,4 +28,9 @@ class ErrorEvent(BaseModel):
     type: Literal["error"] = "error"
     message: str
 
-AgentEvent = Union[TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent]
+class SessionInfoEvent(BaseModel):
+    type: Literal["session_info"] = "session_info"
+    session_id: str
+    is_new: bool
+
+AgentEvent = Union[TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent, SessionInfoEvent]
