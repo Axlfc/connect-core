@@ -172,12 +172,12 @@ def _parse_routing_plan(xml_text: str) -> RoutingPlan:
     )
 
 
-def _resolve_route(intent: str, client_map: Dict[str, BackendClient]) -> BackendClient:
+def _resolve_route(intent: str, client_map: Dict[str, BackendClient], routing_table: Dict[str, Dict[str, str]]) -> BackendClient:
     """
     Given an intent string, return the appropriate BackendClient with the
     correct model injected. Falls back to 'general' then to first available.
     """
-    route = MODEL_ROUTING.get(intent) or MODEL_ROUTING.get("general")
+    route = routing_table.get(intent) or routing_table.get("general")
     backend_name = route["backend"]
     model_name   = route["model"]
 
@@ -205,9 +205,15 @@ class SemanticOrchestrator:
                            respecting dependency order.
     """
 
-    def __init__(self, configs: List[BackendConfig]):
+    def __init__(self, configs: List[BackendConfig], extra_routing: Optional[Dict[str, Dict[str, str]]] = None):
         self._client_map = _build_client_map(configs)
+        self.routing = {**MODEL_ROUTING, **(extra_routing or {})}
         self._orchestrator_client = self._build_orchestrator_client()
+
+    def add_intent_route(self, intent: str, backend_name: str, model: str) -> None:
+        """Adds a new intent route at runtime."""
+        self.routing[intent] = {"backend": backend_name, "model": model}
+        logger.info(f"Intent route '{intent}' -> {backend_name}/{model} added via extension.")
 
     def _build_orchestrator_client(self) -> BackendClient:
         import copy
@@ -261,7 +267,7 @@ class SemanticOrchestrator:
 
             # Execute ready tasks concurrently
             async def _run(task: SubTask) -> tuple[str, str]:
-                client = _resolve_route(task.intent, self._client_map)
+                client = _resolve_route(task.intent, self._client_map, self.routing)
                 # Enrich the input slice with context from upstream tasks
                 context = ""
                 for dep_id in task.depends_on:
@@ -327,8 +333,8 @@ class SemanticOrchestrator:
                 "task_id":     t.id,
                 "description": t.description,
                 "intent":      t.intent,
-                "backend":     MODEL_ROUTING.get(t.intent, MODEL_ROUTING["general"])["backend"],
-                "model":       MODEL_ROUTING.get(t.intent, MODEL_ROUTING["general"])["model"],
+                "backend":     self.routing.get(t.intent, self.routing["general"])["backend"],
+                "model":       self.routing.get(t.intent, self.routing["general"])["model"],
             }
             for t in plan.subtasks
         ]
