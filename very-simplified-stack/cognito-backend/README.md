@@ -60,6 +60,7 @@ Settings are loaded in the following order of priority:
 - `app/api/routes/openai_compat.py`: Core streaming and uncertainty calculation logic.
 - `app/services/backend_client.py`: Unified async client for Ollama and OpenAI backends.
 - `app/core/agent_loop.py`: Turning text generation into a tool-executing agent loop.
+- `app/core/session_manager.py`: Persistence and history management for AI sessions.
 - `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
@@ -72,6 +73,13 @@ El backend ahora incluye soporte para agentes capaces de ejecutar herramientas (
 - `POST /api/agent/loop`: Endpoint SSE que ejecuta un bucle de razonamiento y ejecución de herramientas.
   - **Body**: `{ "messages": [...], "cwd": "path/to/repo", "model_params": {} }`
   - **Eventos**: `text_delta`, `tool_call`, `tool_result`, `done`, `error`.
+
+### Sesiones y Persistencia (Fase 2)
+Las sesiones se guardan en `~/.cognito/sessions/` en formato JSONL (append-only) con un índice global en `index.json`.
+
+- **Compactado Automático**: Cuando una sesión supera el umbral de tokens (default 8000), el sistema genera automáticamente un resumen y compacta el historial para liberar ventana de contexto.
+- **Continuidad**: Usa `session_id: "latest"` para continuar automáticamente la conversación más reciente en el `cwd` actual.
+- **Forking**: Permite clonar una sesión existente para explorar ramas alternativas sin perder el historial original.
 
 ### Herramientas Disponibles
 1. `read`: Lee archivos del sistema (restringido al `cwd`).
