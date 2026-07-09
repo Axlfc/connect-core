@@ -62,6 +62,8 @@ Settings are loaded in the following order of priority:
 - `app/core/agent_loop.py`: Turning text generation into a tool-executing agent loop.
 - `app/core/session_manager.py`: Persistence and history management for AI sessions.
 - `cli/cognito_cli.py`: Python CLI client for Cognito Agent.
+- `app/core/extensions/`: System for loading and managing extensions.
+- `app/services/escalation_routing.py`: Uncertainty-based subtask escalation mapping.
 - `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
@@ -108,6 +110,21 @@ El backend incluye un cliente ligero en Python con tres modos de operación:
 - **Protected Files**: Ciertos archivos críticos (`auth.js`, etc.) nunca pueden ser modificados.
 - **Project Trust**: Las herramientas de escritura y ejecución requieren que el directorio haya sido marcado como confiable.
 - **AGENTS.md**: Si existe en el raíz del `cwd`, se inyecta automáticamente como contexto del sistema.
+
+### Sistema de Extensiones (Fase 4)
+El sistema permite extender el agente sin modificar el código fuente mediante ficheros Python cargados en runtime.
+
+- **Niveles de Carga**: Global (`~/.cognito/extensions/`), Configurado (`config.json`), y Local al Proyecto (`.cognito/extensions/`).
+- **Capacidades**: Registrar herramientas nuevas, backends, intents del orquestador, y suscribirse a eventos (hooks).
+- **Seguridad**: Las extensiones locales requieren que el proyecto sea marcado como confiable para extensiones (`set_extensions_trusted`).
+  - ⚠️ **ADVERTENCIA**: Marcar un repo con `extensions_trusted=True` concede a ese código el mismo nivel de acceso que el propio proceso del backend. No es un sandbox.
+
+### Escalado Adaptativo (Fase 5)
+El orquestador (`cognito-orchestrator`) ahora puede detectar si una subtarea se ha generado con alta incertidumbre y reintentarla automáticamente con un modelo de mayor capacidad.
+
+- **Umbral de Escalado**: configurable vía `COGNITO_ESCALATION_UNCERTAINTY_THRESHOLD` (default: 0.6).
+- **Mapeo de Escalado**: Definido en `app/services/escalation_routing.py`. Axel debe revisar este archivo para asegurar que los modelos de destino están disponibles en su entorno.
+- **Transparencia**: El escalado es automático y se registra en los logs del servidor. La respuesta final incluye metadatos sobre qué subtareas fueron escaladas.
 
 ## 🧪 Testing
 

@@ -25,15 +25,24 @@ Routing map (edit MODEL_ROUTING below to tune):
 import asyncio
 import logging
 import re
+import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from app.services.backend_client import BackendClient
 from app.services.backend_registry import BackendConfig, BackendType, BACKENDS_BY_PRIORITY
 from app.models.ai import AIRequest, AIResponse
+from app.services.escalation_routing import ESCALATION_ROUTING
 
 logger = logging.getLogger(__name__)
+
+# Escalation settings
+ESCALATION_ENABLED = os.environ.get("COGNITO_ESCALATION_ENABLED", "true").lower() == "true"
+ESCALATION_THRESHOLD = float(os.environ.get("COGNITO_ESCALATION_UNCERTAINTY_THRESHOLD", "0.6"))
+
+# In-memory tracking of backends/models that don't return logprobs
+_NO_LOGPROBS_WARNED: Set[tuple[str, str]] = set()
 
 
 # ── Routing table: intent → (backend_name, model) ────────────────────────────
@@ -209,6 +218,7 @@ class SemanticOrchestrator:
         self._client_map = _build_client_map(configs)
         self.routing = {**MODEL_ROUTING, **(extra_routing or {})}
         self._orchestrator_client = self._build_orchestrator_client()
+        self._subtask_metadata: Dict[str, Dict[str, Any]] = {} # Track metadata like escalation
 
     def add_intent_route(self, intent: str, backend_name: str, model: str) -> None:
         """Adds a new intent route at runtime."""
@@ -267,22 +277,33 @@ class SemanticOrchestrator:
 
             # Execute ready tasks concurrently
             async def _run(task: SubTask) -> tuple[str, str]:
-                client = _resolve_route(task.intent, self._client_map, self.routing)
+                # Resolve original route
+                route = self.routing.get(task.intent) or self.routing.get("general")
+                backend_name = route["backend"]
+                model_name = route["model"]
+
                 # Enrich the input slice with context from upstream tasks
-                context = ""
+                context_str = ""
                 for dep_id in task.depends_on:
-                    context += f"\n<context from_task='{dep_id}'>{results[dep_id]}</context>"
+                    context_str += f"\n<context from_task='{dep_id}'>{results[dep_id]}</context>"
 
                 full_prompt = task.input_slice or original_input
-                if context:
-                    full_prompt = f"{context}\n\n{full_prompt}"
+                if context_str:
+                    full_prompt = f"{context_str}\n\n{full_prompt}"
 
-                logger.info(
-                    "[Orchestrator] Task %s → %s (%s) | intent=%s",
-                    task.id, client.config.name, client.config.model, task.intent,
+                # Execute with escalation logic
+                text, final_backend, final_model, escalated = await self._execute_subtask_with_escalation(
+                    task, task.intent, backend_name, model_name, full_prompt
                 )
-                res = await client.generate(prompt=full_prompt)
-                return task.id, res.get("response", "")
+
+                # Store metadata for process() to use
+                self._subtask_metadata[task.id] = {
+                    "backend": final_backend,
+                    "model": final_model,
+                    "escalated": escalated
+                }
+
+                return task.id, text
 
             batch_results = await asyncio.gather(*[_run(t) for t in ready])
             for task_id, response in batch_results:
@@ -291,6 +312,55 @@ class SemanticOrchestrator:
             pending = [t for t in pending if t.id not in results]
 
         return results
+
+    async def _execute_subtask_with_escalation(
+        self, task: SubTask, intent: str, backend_name: str, model_name: str, prompt: str, already_escalated: bool = False
+    ) -> tuple[str, str, str, bool]:
+        client = _resolve_route(intent if not already_escalated else "general", self._client_map, {**self.routing, "general": {"backend": backend_name, "model": model_name}})
+        # Actually, _resolve_route is simpler: it just needs intent and client_map.
+        # But we want to force a specific backend/model.
+
+        import copy
+        target_client = self._client_map.get(backend_name)
+        if target_client:
+            cfg = copy.copy(target_client.config)
+            cfg.model = model_name
+            client = BackendClient(cfg)
+        else:
+            client = next(iter(self._client_map.values()))
+
+        if not ESCALATION_ENABLED:
+            res = await client.generate(prompt=prompt)
+            return res.get("response", ""), backend_name, model_name, False
+
+        text, uncertainty = await client.generate_with_uncertainty(prompt)
+
+        if uncertainty is None:
+            cache_key = (backend_name, model_name)
+            if cache_key not in _NO_LOGPROBS_WARNED and intent in ESCALATION_ROUTING:
+                logger.warning(
+                    "Backend %s / modelo %s no devuelve logprobs — el escalado no podrá activarse "
+                    "para este backend/modelo aunque el intent lo tenga configurado",
+                    backend_name, model_name
+                )
+                _NO_LOGPROBS_WARNED.add(cache_key)
+
+        if (
+            uncertainty is not None
+            and uncertainty > ESCALATION_THRESHOLD
+            and not already_escalated
+            and intent in ESCALATION_ROUTING
+        ):
+            target = ESCALATION_ROUTING[intent]
+            logger.info(
+                "Subtask %s (intent=%s) escalado de %s/%s a %s/%s: incertidumbre %.2f > umbral %.2f",
+                task.id, intent, backend_name, model_name, target["backend"], target["model"], uncertainty, ESCALATION_THRESHOLD,
+            )
+            return await self._execute_subtask_with_escalation(
+                task, intent, target["backend"], target["model"], prompt, already_escalated=True
+            )
+
+        return text, backend_name, model_name, already_escalated
 
     # ── Public interface ───────────────────────────────────────────────────────
 
@@ -328,16 +398,17 @@ class SemanticOrchestrator:
         duration_ms = (time.perf_counter() - start) * 1000
 
         # Build routing metadata for observability
-        routing_info = [
-            {
+        routing_info = []
+        for t in plan.subtasks:
+            meta = self._subtask_metadata.get(t.id, {})
+            routing_info.append({
                 "task_id":     t.id,
                 "description": t.description,
                 "intent":      t.intent,
-                "backend":     self.routing.get(t.intent, self.routing["general"])["backend"],
-                "model":       self.routing.get(t.intent, self.routing["general"])["model"],
-            }
-            for t in plan.subtasks
-        ]
+                "backend":     meta.get("backend", self.routing.get(t.intent, self.routing["general"])["backend"]),
+                "model":       meta.get("model", self.routing.get(t.intent, self.routing["general"])["model"]),
+                "escalated":   meta.get("escalated", False),
+            })
 
         return AIResponse(
             response=final_response,
