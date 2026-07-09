@@ -37,3 +37,11 @@ def compute_uncertainty(logprob_data: Any) -> Optional[float]:
     except Exception as e:
         logger.error("[Uncertainty] Error computing entropy: %s", e)
         return None
+
+def aggregate_uncertainty(per_token_values: list[float]) -> Optional[float]:
+    """Media aritmética simple de las incertidumbres por token de una respuesta completa.
+    Devuelve None si la lista está vacía (el backend no devolvió logprobs).
+    Se usa la media y no el máximo para no disparar escalado por un único token ruidoso."""
+    if not per_token_values:
+        return None
+    return sum(per_token_values) / len(per_token_values)

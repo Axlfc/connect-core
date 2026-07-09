@@ -15,6 +15,7 @@ import logging
 from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
 from app.services.backend_registry import BackendConfig, BackendType
+from app.core.uncertainty import compute_uncertainty, aggregate_uncertainty
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,35 @@ class BackendClient:
             return await self._call_ollama(prompt, model_params)
         else:
             return await self._call_openai(prompt, model_params)
+
+    async def generate_with_uncertainty(
+        self,
+        prompt: str,
+        model_params: Optional[Dict[str, Any]] = None,
+    ) -> tuple[str, Optional[float]]:
+        """
+        Executes generation and aggregates uncertainty from all tokens.
+        Returns (full_text, aggregated_uncertainty).
+        """
+        full_text = ""
+        uncertainties = []
+
+        if self.config.backend_type == BackendType.OLLAMA:
+            async for chunk in self._stream_ollama(prompt, model_params):
+                token = chunk.get("token", "")
+                full_text += token
+                u = compute_uncertainty(chunk.get("logprobs"))
+                if u is not None:
+                    uncertainties.append(u)
+        else:
+            async for chunk in self._stream_openai(prompt, model_params):
+                token = chunk.get("token", "")
+                full_text += token
+                u = compute_uncertainty(chunk.get("logprobs"))
+                if u is not None:
+                    uncertainties.append(u)
+
+        return full_text, aggregate_uncertainty(uncertainties)
 
     async def generate_stream(
         self,
