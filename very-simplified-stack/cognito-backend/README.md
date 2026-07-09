@@ -61,6 +61,7 @@ Settings are loaded in the following order of priority:
 - `app/services/backend_client.py`: Unified async client for Ollama and OpenAI backends.
 - `app/core/agent_loop.py`: Turning text generation into a tool-executing agent loop.
 - `app/core/session_manager.py`: Persistence and history management for AI sessions.
+- `cli/cognito_cli.py`: Python CLI client for Cognito Agent.
 - `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
@@ -80,6 +81,22 @@ Las sesiones se guardan en `~/.cognito/sessions/` en formato JSONL (append-only)
 - **Compactado Automático**: Cuando una sesión supera el umbral de tokens (default 8000), el sistema genera automáticamente un resumen y compacta el historial para liberar ventana de contexto.
 - **Continuidad**: Usa `session_id: "latest"` para continuar automáticamente la conversación más reciente en el `cwd` actual.
 - **Forking**: Permite clonar una sesión existente para explorar ramas alternativas sin perder el historial original.
+
+### CLI de Python (Fase 3)
+El backend incluye un cliente ligero en Python con tres modos de operación:
+
+- **Modo `print`** (default): Salida interactiva con colores ANSI TrueColor por incertidumbre.
+  ```bash
+  python -m cli.cognito_cli "Explica la fotosíntesis" --session-id latest
+  ```
+- **Modo `json`**: Salida NDJSON para integración con otros scripts.
+  ```bash
+  python -m cli.cognito_cli "Lista archivos" --mode json
+  ```
+- **Modo `rpc`**: JSON-RPC 2.0 sobre stdin/stdout, para integración con procesos de larga duración.
+  ```bash
+  python -m cli.cognito_cli --mode rpc
+  ```
 
 ### Herramientas Disponibles
 1. `read`: Lee archivos del sistema (restringido al `cwd`).
