@@ -109,19 +109,15 @@ async def run_agent_loop(request: AgentLoopRequest):
     )
     tools = [ReadTool(), WriteTool(), EditTool(), BashTool()]
 
-    # Inyectar AGENTS.md
-    agents_md = loader.discover_agents_md()
-    history = list(effective_messages)
-    if agents_md:
-        system_msg = next((m for m in history if m["role"] == "system"), None)
-        if system_msg:
-            system_msg["content"] += f"\n\nContext from AGENTS.md:\n{agents_md}"
-        else:
-            history.insert(0, {"role": "system", "content": f"Context from AGENTS.md:\n{agents_md}"})
+    # Generar y anteponer el base system message dinámicamente en caliente,
+    # sin persistirlo nunca en el .jsonl de la sesión.
+    from app.core.system_prompt import build_system_message
+    system_prompt = build_system_message(request.cwd)
+    system_msg = {"role": "system", "content": system_prompt}
 
-    # Mensajes nuevos de la request
+    history = list(effective_messages)
     new_messages = list(request.messages)
-    full_messages_for_loop = history + new_messages
+    full_messages_for_loop = [system_msg] + history + new_messages
 
     # REDESIGN: To persist assistant messages correctly, we need to capture them.
     # The current agent_loop yields events but doesn't return the full objects.
