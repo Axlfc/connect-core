@@ -14,6 +14,16 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(ai_agents.router, prefix="/api", tags=["AI Agents"])
 app.include_router(openai_router)          # monta /v1/models y /v1/chat/completions
 
+from app.core.extensions.registry import extension_registry
+from app.services.backend_router import backend_router
+from app.services.semantic_orchestrator import semantic_orchestrator
+
+@app.on_event("startup")
+async def startup_event():
+    # Load global and configured extensions on startup
+    extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
+    extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
+
 @app.get("/")
 async def root():
     """

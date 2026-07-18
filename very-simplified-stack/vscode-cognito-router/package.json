@@ -1,0 +1,95 @@
+{
+  "name": "vscode-cognito-router",
+  "displayName": "Cognito Codex Router",
+  "description": "Intelligent development router for Cognito & Codex",
+  "version": "1.0.0",
+  "publisher": "cognito-stack",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:vscode-cognito-router.routeTask",
+    "onCommand:vscode-cognito-router.planTask",
+    "onCommand:vscode-cognito-router.fixSelection",
+    "onCommand:vscode-cognito-router.explainSelection",
+    "onCommand:vscode-cognito-router.reviewDiff",
+    "onCommand:vscode-cognito-router.routeDiagnostics",
+    "onCommand:vscode-cognito-router.cancelTask",
+    "onCommand:vscode-cognito-router.retryTask",
+    "onCommand:vscode-cognito-router.escalateTask",
+    "onCommand:vscode-cognito-router.openWorktree",
+    "onCommand:vscode-cognito-router.viewHistory"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-cognito-router.routeTask",
+        "title": "Cognito: Route Task"
+      },
+      {
+        "command": "vscode-cognito-router.planTask",
+        "title": "Cognito: Plan Task"
+      },
+      {
+        "command": "vscode-cognito-router.fixSelection",
+        "title": "Cognito: Fix Selection"
+      },
+      {
+        "command": "vscode-cognito-router.explainSelection",
+        "title": "Cognito: Explain Selection"
+      },
+      {
+        "command": "vscode-cognito-router.reviewDiff",
+        "title": "Cognito: Review Current Diff"
+      },
+      {
+        "command": "vscode-cognito-router.routeDiagnostics",
+        "title": "Cognito: Route Diagnostics"
+      },
+      {
+        "command": "vscode-cognito-router.cancelTask",
+        "title": "Cognito: Cancel Task"
+      },
+      {
+        "command": "vscode-cognito-router.retryTask",
+        "title": "Cognito: Retry Task"
+      },
+      {
+        "command": "vscode-cognito-router.escalateTask",
+        "title": "Cognito: Escalate Task"
+      },
+      {
+        "command": "vscode-cognito-router.openWorktree",
+        "title": "Cognito: Open Task Worktree"
+      },
+      {
+        "command": "vscode-cognito-router.viewHistory",
+        "title": "Cognito: View Task History"
+      }
+    ],
+    "configuration": {
+      "title": "Cognito Codex Router",
+      "properties": {
+        "cognito.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Cognito control plane URL"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^16.11.7",
+    "typescript": "^4.9.5"
+  }
+}

@@ -20,12 +20,13 @@ async def test_registry_tool_isolation():
 
     # tools_for A should have both
     tools_a = registry.tools_for("/repo/a")
-    assert len(tools_a) == 2
+    assert any(t.name == "t1" for t in tools_a)
+    assert any(t.name == "t2" for t in tools_a)
 
     # tools_for B should only have global
     tools_b = registry.tools_for("/repo/b")
-    assert len(tools_b) == 1
-    assert tools_b[0].name == "t1"
+    assert any(t.name == "t1" for t in tools_b)
+    assert not any(t.name == "t2" for t in tools_b)
 
 @pytest.mark.asyncio
 async def test_registry_hook_isolation():

@@ -1,0 +1,22 @@
+# Cognito Routing Policy Definition
+
+[metadata]
+version = "1.0.0"
+description = "Production-ready deterministic routing policy"
+
+[overrides]
+sol_force_patterns = [
+    "auth", "login", "signup", "permission", "authorization", "secret", "token", "password", "credential",
+    "migration", "database schema", "concurrency", "race condition", "deadlock", "distributed",
+    "ci/cd", "workflow", "deploy", "kubernetes", "dockerfile", "docker-compose",
+    "truncate", "drop table", "rm -rf", "delete database", "architectural refactor"
+]
+
+luna_prefer_patterns = [
+    "rename", "formatting", "lint", "eslint", "prettier", "import normalization",
+    "changelog", "boilerplate", "add comment", "typo"
+]
+
+ollama_prefer_patterns = [
+    "explain", "what is", "how does", "summarize", "documentation", "read-only", "analyze"
+]
