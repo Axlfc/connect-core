@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.models.ai import AIRequest, AIResponse
 from app.services.reasoning_engine import reasoning_engine
 from app.services.backend_router import backend_router
+from app.services.semantic_orchestrator import semantic_orchestrator
 from app.core.agent_loop import agent_loop
 from app.core.tools.base import ToolContext
 from app.core.tools.read_tool import ReadTool
@@ -18,7 +19,16 @@ from app.core.resource_loader import ResourceLoader
 from app.core.session_manager import SessionManager
 from app.core.compaction import should_compact, compact
 from app.core.events import SessionInfoEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent
+from app.core.extensions.registry import extension_registry
 import logging
+
+from typing import Literal
+from app.models.domain import Task, TaskContext, RouteDecision, ApprovalRequest, ExecutionAttempt, VerificationRun, EscalationDecision, ModelDescriptor
+from app.services.ollama_classifier import ollama_task_classifier
+from app.services.policy_engine import policy_engine
+from app.services.task_store import task_store
+from app.services.escalation_service import escalation_service
+from app.services.model_discovery import model_discovery_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -107,7 +117,9 @@ async def run_agent_loop(request: AgentLoopRequest):
         trusted=trust_store.is_trusted(request.cwd),
         protected_files=loader.get_effective_protected_files()
     )
-    tools = [ReadTool(), WriteTool(), EditTool(), BashTool()]
+    # Refresh local extensions for the project before fetching tools
+    extension_registry.refresh("project_local", request.cwd, backend_router, semantic_orchestrator)
+    tools = extension_registry.tools_for(request.cwd)
 
     # Generar y anteponer el base system message dinámicamente en caliente,
     # sin persistirlo nunca en el .jsonl de la sesión.
@@ -224,3 +236,147 @@ async def fork_session(session_id: str):
         return {"session_id": new_id}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Cognito-Codex Intelligent Router endpoints
+# ══════════════════════════════════════════════════════════════════════════════
+
+class PreviewRouteRequest(BaseModel):
+    user_task: str
+    workspace_folder: str
+    active_file: Optional[str] = None
+    selected_language: Optional[str] = None
+    selected_text_size: Optional[int] = None
+    diagnostics_summary: Optional[Dict[str, Any]] = None
+    git_status_summary: Optional[str] = None
+    changed_files_count: int = 0
+    detected_technologies: List[str] = []
+
+class CreateTaskRequest(BaseModel):
+    task_id: Optional[str] = None
+    session_id: str
+    title: str
+    requirements: str
+    context: TaskContext
+
+class ApproveRequest(BaseModel):
+    approval_id: str
+    status: Literal["approved", "denied"]
+    reason: Optional[str] = None
+
+@router.get("/agent/models/catalog")
+async def get_combined_catalog():
+    """
+    Combined models catalog API.
+    """
+    catalog = await model_discovery_service.get_combined_catalog()
+    return {"catalog": catalog}
+
+@router.post("/agent/route/preview", response_model=RouteDecision)
+async def preview_route(req: PreviewRouteRequest):
+    """
+    Evaluates a task context and outputs a RouteDecision preview.
+    """
+    from app.models.domain import RepositoryContext, EditorContext, TaskContext
+    import uuid
+
+    repo = RepositoryContext(
+        repository_id="preview-repo",
+        root_path=req.workspace_folder,
+        current_branch="main",
+        base_commit="HEAD",
+        is_dirty=False,
+        changed_files_count=req.changed_files_count,
+        detected_technologies=req.detected_technologies
+    )
+    editor = EditorContext(
+        workspace_folder=req.workspace_folder,
+        active_file=req.active_file,
+        selected_language=req.selected_language,
+        selected_text_size=req.selected_text_size,
+        diagnostics_summary=req.diagnostics_summary,
+        git_status_summary=req.git_status_summary
+    )
+    context = TaskContext(
+        repository=repo,
+        editor=editor,
+        user_task=req.user_task
+    )
+
+    classification = await ollama_task_classifier.classify_task(context)
+    decision = policy_engine.evaluate(context, classification)
+    return decision
+
+@router.post("/agent/tasks", response_model=Task)
+async def create_task(req: CreateTaskRequest):
+    """
+    Idempotent task creation.
+    """
+    import uuid
+    task_id = req.task_id or f"task-{uuid.uuid4().hex[:12]}"
+
+    # 1. Preview/Calculate decision
+    classification = await ollama_task_classifier.classify_task(req.context)
+    decision = policy_engine.evaluate(req.context, classification)
+
+    task = Task(
+        task_id=task_id,
+        session_id=req.session_id,
+        title=req.title,
+        requirements=req.requirements,
+        context=req.context,
+        route_decision=decision,
+        status="pending"
+    )
+    await task_store.create_task(task)
+    return task
+
+@router.get("/agent/tasks", response_model=List[Task])
+async def list_tasks(session_id: Optional[str] = None):
+    return await task_store.list_tasks(session_id=session_id)
+
+@router.get("/agent/tasks/{task_id}", response_model=Task)
+async def get_task(task_id: str):
+    task = await task_store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@router.post("/agent/tasks/{task_id}/approve")
+async def approve_task_request(task_id: str, req: ApproveRequest):
+    appr = await task_store.update_approval(req.approval_id, req.status, req.reason)
+    if not appr:
+        raise HTTPException(status_code=404, detail="Approval request not found")
+    return appr
+
+@router.post("/agent/tasks/{task_id}/cancel")
+async def cancel_task(task_id: str):
+    task = await task_store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await task_store.update_task_status(task_id, "cancelled")
+    return {"status": "success", "message": f"Task {task_id} marked as cancelled"}
+
+@router.post("/agent/tasks/{task_id}/retry")
+async def retry_task(task_id: str):
+    task = await task_store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Simple manual retry/escalation trigger
+    attempts = await task_store.get_attempts(task_id)
+    attempt_num = len(attempts) + 1
+
+    # If escalated, get next logical tier
+    decision = task.route_decision
+    if attempts:
+        last_attempt = attempts[-1]
+        next_tier = escalation_service.escalation_chain.get(last_attempt.route_decision.logical_tier)
+        if next_tier:
+            decision = last_attempt.route_decision.model_copy()
+            decision.logical_tier = next_tier
+            decision.resolved_model_identifier = f"codex.{next_tier}" if next_tier != "sol" else "codex.max"
+
+    attempt = await escalation_service.execute_task_attempt(task, attempt_num, decision)
+    return {"status": "success", "attempt": attempt}

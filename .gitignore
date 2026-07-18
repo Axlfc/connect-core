@@ -39,7 +39,7 @@ wheels/
 workspace/
 shared/
 config/
-models/
+/models/
 
 .env
 
@@ -68,3 +68,9 @@ md_files.txt
 source_md_files.txt
 apply_badges.py
 translate_docs.py
+
+# Node.js
+node_modules/
+out/
+very-simplified-stack/vscode-cognito-router/node_modules/
+very-simplified-stack/vscode-cognito-router/out/

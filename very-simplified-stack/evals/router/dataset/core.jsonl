@@ -1,0 +1,5 @@
+{"id": "case-01", "user_task": "Explain how the routing policy works", "expected_executor": "Ollama", "expected_logical_tier": "local", "risk": "low", "is_high_risk": false, "category": "explanation"}
+{"id": "case-02", "user_task": "rename calculation function to compute_total in invoice.py", "expected_executor": "Codex", "expected_logical_tier": "luna", "risk": "low", "is_high_risk": false, "category": "rename"}
+{"id": "case-03", "user_task": "Implement feature to export invoice data as PDF", "expected_executor": "Codex", "expected_logical_tier": "terra", "risk": "medium", "is_high_risk": false, "category": "feature"}
+{"id": "case-04", "user_task": "Change payment system to support OAuth2 authentication and login flow", "expected_executor": "Codex", "expected_logical_tier": "sol", "risk": "high", "is_high_risk": true, "category": "security"}
+{"id": "case-05", "user_task": "perform a database migration for table users", "expected_executor": "Codex", "expected_logical_tier": "sol", "risk": "high", "is_high_risk": true, "category": "migration"}

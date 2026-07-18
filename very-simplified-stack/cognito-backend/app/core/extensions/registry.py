@@ -38,7 +38,14 @@ class ExtensionRegistry:
 
     def tools_for(self, cwd: str) -> List[Any]:
         # Merge Global and project-local tools. Project-local wins.
-        tools = self._global_tools.copy()
+        from app.core.tools import ReadTool, WriteTool, EditTool, BashTool
+        tools = {
+            "read": ReadTool(),
+            "write": WriteTool(),
+            "edit": EditTool(),
+            "bash": BashTool(),
+        }
+        tools.update(self._global_tools)
         if cwd in self._project_tools:
             for name, tool in self._project_tools[cwd].items():
                 if name in tools:
@@ -92,3 +99,7 @@ class ExtensionRegistry:
             for p in paths:
                 api = ExtensionAPI(self, cwd)
                 load_extension_file(p, api)
+
+
+# Singleton
+extension_registry = ExtensionRegistry()

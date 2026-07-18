@@ -27,7 +27,8 @@ class ReadTool(AgentTool):
         abs_cwd = os.path.realpath(context.cwd)
         target_path = os.path.realpath(os.path.join(abs_cwd, path))
 
-        if not target_path.startswith(abs_cwd):
+        from app.core.path_safety import is_path_contained
+        if not is_path_contained(target_path, abs_cwd):
             return ToolResult(is_error=True, output=f"Error: Access denied. Path '{path}' is outside of workspace.")
 
         if not os.path.exists(target_path):

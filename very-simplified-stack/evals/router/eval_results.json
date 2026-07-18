@@ -1,0 +1,277 @@
+{
+  "metrics": {
+    "total_cases": 5,
+    "exact_tier_agreement_rate": 1.0,
+    "executor_agreement_rate": 1.0,
+    "safe_route_agreement_rate": 1.0,
+    "under_routing_rate": 0.0,
+    "under_routing_weighted_cost": 0.0,
+    "over_routing_rate": 0.0,
+    "high_risk_recall": 1.0,
+    "high_risk_total": 2
+  },
+  "results": [
+    {
+      "case": {
+        "id": "case-01",
+        "user_task": "Explain how the routing policy works",
+        "expected_executor": "Ollama",
+        "expected_logical_tier": "local",
+        "risk": "low",
+        "is_high_risk": false,
+        "sensitive_path_indicators": [],
+        "category": "explanation"
+      },
+      "decision": {
+        "decision_id": "route-71934e990137",
+        "executor": "Ollama",
+        "logical_tier": "local",
+        "resolved_model_identifier": "qwen3.5:9b",
+        "reasoning_effort": null,
+        "mode": "read",
+        "risk": "low",
+        "confidence": 0.9,
+        "execution_policy": {
+          "sandbox": {
+            "allowed_writable_roots": [
+              "/tmp"
+            ],
+            "read_only": true
+          },
+          "network": {
+            "allowed_hosts": [],
+            "allow_all": false
+          },
+          "approval": {
+            "require_approval_for_shell": true,
+            "require_approval_for_write": false,
+            "require_approval_for_destructive": true
+          }
+        },
+        "reasons": [
+          "Forced read-only Ollama route due to pattern match: 'explain'"
+        ],
+        "execution_constraints": [],
+        "verification_requirements": [
+          "lint",
+          "typecheck"
+        ],
+        "fallback_chain": [
+          "sol"
+        ],
+        "timestamp": 1784394921.2238674
+      }
+    },
+    {
+      "case": {
+        "id": "case-02",
+        "user_task": "rename calculation function to compute_total in invoice.py",
+        "expected_executor": "Codex",
+        "expected_logical_tier": "luna",
+        "risk": "low",
+        "is_high_risk": false,
+        "sensitive_path_indicators": [],
+        "category": "rename"
+      },
+      "decision": {
+        "decision_id": "route-417170259644",
+        "executor": "Codex",
+        "logical_tier": "luna",
+        "resolved_model_identifier": "codex.economy",
+        "reasoning_effort": null,
+        "mode": "act",
+        "risk": "low",
+        "confidence": 0.9,
+        "execution_policy": {
+          "sandbox": {
+            "allowed_writable_roots": [
+              "/tmp"
+            ],
+            "read_only": false
+          },
+          "network": {
+            "allowed_hosts": [],
+            "allow_all": false
+          },
+          "approval": {
+            "require_approval_for_shell": true,
+            "require_approval_for_write": false,
+            "require_approval_for_destructive": true
+          }
+        },
+        "reasons": [
+          "Preferred mechanical Luna route due to pattern match: 'rename'"
+        ],
+        "execution_constraints": [],
+        "verification_requirements": [
+          "lint",
+          "typecheck"
+        ],
+        "fallback_chain": [
+          "terra",
+          "sol"
+        ],
+        "timestamp": 1784394921.223963
+      }
+    },
+    {
+      "case": {
+        "id": "case-03",
+        "user_task": "Implement feature to export invoice data as PDF",
+        "expected_executor": "Codex",
+        "expected_logical_tier": "terra",
+        "risk": "medium",
+        "is_high_risk": false,
+        "sensitive_path_indicators": [],
+        "category": "feature"
+      },
+      "decision": {
+        "decision_id": "route-cd5ba74e4678",
+        "executor": "Codex",
+        "logical_tier": "terra",
+        "resolved_model_identifier": "codex.balanced",
+        "reasoning_effort": null,
+        "mode": "act",
+        "risk": "medium",
+        "confidence": 0.9,
+        "execution_policy": {
+          "sandbox": {
+            "allowed_writable_roots": [
+              "/tmp"
+            ],
+            "read_only": false
+          },
+          "network": {
+            "allowed_hosts": [],
+            "allow_all": false
+          },
+          "approval": {
+            "require_approval_for_shell": true,
+            "require_approval_for_write": false,
+            "require_approval_for_destructive": true
+          }
+        },
+        "reasons": [],
+        "execution_constraints": [],
+        "verification_requirements": [
+          "lint",
+          "typecheck"
+        ],
+        "fallback_chain": [
+          "sol"
+        ],
+        "timestamp": 1784394921.2240388
+      }
+    },
+    {
+      "case": {
+        "id": "case-04",
+        "user_task": "Change payment system to support OAuth2 authentication and login flow",
+        "expected_executor": "Codex",
+        "expected_logical_tier": "sol",
+        "risk": "high",
+        "is_high_risk": true,
+        "sensitive_path_indicators": [],
+        "category": "security"
+      },
+      "decision": {
+        "decision_id": "route-6b489230d8b9",
+        "executor": "Codex",
+        "logical_tier": "sol",
+        "resolved_model_identifier": "codex.max",
+        "reasoning_effort": null,
+        "mode": "plan",
+        "risk": "high",
+        "confidence": 0.9,
+        "execution_policy": {
+          "sandbox": {
+            "allowed_writable_roots": [
+              "/tmp"
+            ],
+            "read_only": false
+          },
+          "network": {
+            "allowed_hosts": [],
+            "allow_all": false
+          },
+          "approval": {
+            "require_approval_for_shell": true,
+            "require_approval_for_write": true,
+            "require_approval_for_destructive": true
+          }
+        },
+        "reasons": [
+          "Forced plan-first Sol route due to high-risk pattern match: 'auth'"
+        ],
+        "execution_constraints": [
+          "Read-only planning session required before execution."
+        ],
+        "verification_requirements": [
+          "lint",
+          "typecheck",
+          "tests",
+          "integration_tests"
+        ],
+        "fallback_chain": [
+          "sol"
+        ],
+        "timestamp": 1784394921.22418
+      }
+    },
+    {
+      "case": {
+        "id": "case-05",
+        "user_task": "perform a database migration for table users",
+        "expected_executor": "Codex",
+        "expected_logical_tier": "sol",
+        "risk": "high",
+        "is_high_risk": true,
+        "sensitive_path_indicators": [],
+        "category": "migration"
+      },
+      "decision": {
+        "decision_id": "route-2141c10a0bd6",
+        "executor": "Codex",
+        "logical_tier": "sol",
+        "resolved_model_identifier": "codex.max",
+        "reasoning_effort": null,
+        "mode": "plan",
+        "risk": "high",
+        "confidence": 0.9,
+        "execution_policy": {
+          "sandbox": {
+            "allowed_writable_roots": [
+              "/tmp"
+            ],
+            "read_only": false
+          },
+          "network": {
+            "allowed_hosts": [],
+            "allow_all": false
+          },
+          "approval": {
+            "require_approval_for_shell": true,
+            "require_approval_for_write": true,
+            "require_approval_for_destructive": true
+          }
+        },
+        "reasons": [
+          "Forced plan-first Sol route due to high-risk pattern match: 'migration'"
+        ],
+        "execution_constraints": [
+          "Read-only planning session required before execution."
+        ],
+        "verification_requirements": [
+          "lint",
+          "typecheck",
+          "tests",
+          "integration_tests"
+        ],
+        "fallback_chain": [
+          "sol"
+        ],
+        "timestamp": 1784394921.2242527
+      }
+    }
+  ]
+}

@@ -40,6 +40,11 @@ class BackendRouter:
             [c.config.name for c in self._clients],
         )
 
+    def register_backend(self, config: Any):
+        """Register a new backend client dynamically."""
+        self._clients.append(BackendClient(config))
+        logger.info("Backend '%s' registered dynamically via extension.", config.name)
+
     # ── Public interface ───────────────────────────────────────────────────────
 
     async def generate(

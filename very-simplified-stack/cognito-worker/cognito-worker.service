@@ -1,0 +1,18 @@
+[Unit]
+Description=Cognito Host Worker Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/connect-core/very-simplified-stack/cognito-worker
+ExecStart=python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8765
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONPATH=.
+Environment=ALLOWED_REPOSITORY_ROOTS=/tmp,%h/connect-core
+Environment=COGNITO_WORKER_SECRETS=super-secret-key-123
+Environment=COGNITO_WORKER_ID=local-worker-01
+Environment=USE_MOCK_CODEX=true
+
+[Install]
+WantedBy=default.target

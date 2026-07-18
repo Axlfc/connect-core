@@ -364,6 +364,10 @@ class SemanticOrchestrator:
 
     # ── Public interface ───────────────────────────────────────────────────────
 
+    async def process_request(self, request: AIRequest) -> AIResponse:
+        """Alias for process() to conform to expected public interface."""
+        return await self.process(request)
+
     async def process(self, request: AIRequest) -> AIResponse:
         import time
         start = time.perf_counter()
