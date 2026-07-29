@@ -59,7 +59,8 @@
 ## 🔄 变体版本
 
 - [**simplified-stack**](simplified-stack/README.zh-cn.md): 为本地开发优化的轻量级版本，集成了 Drupal、Obsidian 和 Forgejo，用于隔离的 AI 工作流。
-- [**very-simplified-stack**](very-simplified-stack/README.zh-cn.md): 删除了 n8n 编排的极简版本，专注于语音服务和 Cognito 代理 API，旨在连接到外部 Ollama 实例。
+- [**very-simplified-stack**](very-simplified-stack/README.zh-cn.md): 删除了 n8n 编排的极简版本，专注于语音服务 and Cognito 代理 API，旨在连接 to 外部 Ollama 实例。
+- [**AGI Agents & NOOA Framework**](agents/README.md): 认知代理模块，实现5阶段路线图（思维链、自我评估与迭代、基于SQLite + 向量的长期记忆、多智能体协作、以及完全自主），原生集成并全面支持 NOOA (NVIDIA-labs Object Oriented Agents) 框架规范。
 
 ---
 

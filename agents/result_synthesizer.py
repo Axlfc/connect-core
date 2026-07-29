@@ -46,8 +46,10 @@ class ResultSynthesizer:
     def synthesize(
         self,
         main_task: str,
-        subtask_results: Dict[str, TaskResult],
-        subtask_descriptions: Dict[str, str]
+        subtask_results: Optional[Dict[str, Any]] = None,
+        subtask_descriptions: Optional[Dict[str, str]] = None,
+        results: Optional[Dict[str, Any]] = None,
+        task_descriptions: Optional[Dict[str, str]] = None
     ) -> str:
         """
         Synthesize multiple sub-task results into final answer.
@@ -67,15 +69,36 @@ class ResultSynthesizer:
         Returns:
             Final synthesized answer
         """
+        if subtask_results is None:
+            subtask_results = results or {}
+        if subtask_descriptions is None:
+            subtask_descriptions = task_descriptions or {}
+
+        # Normalize subtask_results to always have TaskResult objects
+        normalized_results = {}
+        for k, v in subtask_results.items():
+            if isinstance(v, dict):
+                ans = v.get("answer") or v.get("analysis") or v.get("result") or v.get("feedback") or ""
+                confidence = v.get("confidence", 0.9)
+                quality = v.get("quality") or (confidence * 5.0)
+                normalized_results[k] = TaskResult(
+                    task_id=k,
+                    status=TaskStatus.COMPLETED,
+                    result=ans,
+                    quality_score=quality
+                )
+            else:
+                normalized_results[k] = v
+
         logger.info(
-            f"Synthesizing {len(subtask_results)} subtask results "
+            f"Synthesizing {len(normalized_results)} subtask results "
             f"for main task: {main_task[:80]}..."
         )
         
         # Step 1: Filter successful results
         successful_results = {
             task_id: result
-            for task_id, result in subtask_results.items()
+            for task_id, result in normalized_results.items()
             if result.status == TaskStatus.COMPLETED and result.result
         }
         

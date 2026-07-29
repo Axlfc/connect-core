@@ -137,8 +137,8 @@ Then explain why in 1-2 sentences.
         In simple version, returns first available model.
         """
         if category not in MODEL_PROFILES:
-            logger.warning(f"Unknown category {category}, using general")
-            category = "general"
+            logger.warning(f"Unknown category {category}, using default model")
+            return DEFAULT_MODEL
 
         models = MODEL_PROFILES[category]["models"]
         selected = models[0] if models else DEFAULT_MODEL
@@ -194,9 +194,6 @@ Then explain why in 1-2 sentences.
 
     def get_routing_stats(self) -> Dict[str, Any]:
         """Get statistics on routing decisions."""
-        if not self.routing_history:
-            return {"total_tasks": 0}
-
         categories_used = {}
         models_used = {}
 
@@ -215,7 +212,7 @@ Then explain why in 1-2 sentences.
                 sum(c["confidence"] for c in self.classification_history)
                 / max(len(self.classification_history), 1),
                 2,
-            ),
+            ) if self.classification_history else 0.0,
         }
 
 
