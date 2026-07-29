@@ -11,6 +11,7 @@
 [![Status](https://img.shields.io/badge/Status-活跃-brightgreen)](https://github.com/Axlfc/connect-core)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)](https://nodejs.org/)
+[![询问 DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Axlfc/connect-core)
 
 **connect-code** - **cognito-stack** 是一个模块化的容器化 AI 编排平台，它将工作流自动化、图像生成和本地人工智能集成到单个可重现且可扩展的 Docker Compose 堆栈中。它支持多个容器运行时（Docker 和 Podman）和硬件配置文件（CPU、NVIDIA GPU、AMD GPU）。
 
