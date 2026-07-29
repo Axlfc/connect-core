@@ -58,6 +58,7 @@ La plataforma está diseñada para desarrolladores, científicos de datos y equi
 
 - [**simplified-stack**](simplified-stack/README.md): Versión ligera optimizada para desarrollo local que integra Drupal, Obsidian y Forgejo para flujos de trabajo de IA aislados.
 - [**very-simplified-stack**](very-simplified-stack/README.md): Versión minimalista que elimina la orquestación de n8n y se centra en servicios de voz y el API de agente Cognito, diseñada para conectar con una instancia de Ollama externa.
+- [**AGI Agents & NOOA Framework**](agents/README.md): Módulo de agentes cognitivos que implementa el Roadmap de 5 fases (Chain-of-Thought, Autovalidación e iteración, Memoria a largo plazo con SQLite + Vectorial, Multi-agente, y Autonomía) integrado de forma nativa con soporte para el paradigma NOOA (NVIDIA-labs Object Oriented Agents).
 
 ---
 

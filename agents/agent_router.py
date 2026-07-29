@@ -30,35 +30,74 @@ class AgentCapability(Enum):
     SYNTHESIS = "synthesis"
     EVALUATION = "evaluation"
 
+class TaskCategory(Enum):
+    """Task category for compatibility"""
+    ANALYSIS = "analysis"
+    RESEARCH = "research"
+    CODE = "code"
+    CREATIVE = "creative"
+    SYNTHESIS = "synthesis"
+    EVALUATION = "evaluation"
+
 
 @dataclass
 class Agent:
     """Represents an AI agent with specific capabilities"""
     name: str
-    agent_type: str
-    capabilities: List[AgentCapability]
-    max_complexity: int  # Maximum complexity it can handle (1-10)
+    capabilities: List[Any] = field(default_factory=list)
+    agent_type: str = "general"
+    max_complexity: int = 10
     current_load: int = 0
     success_rate: float = 0.95  # Historical success rate
-    
-    def can_handle(self, task_type: TaskType, complexity: int) -> bool:
+    type: str = ""
+    available: bool = True
+
+    def __post_init__(self):
+        if self.type:
+            self.agent_type = self.type
+        elif self.agent_type:
+            self.type = self.agent_type
+
+    def can_handle(self, task_type: Any, complexity: Any) -> bool:
         """Check if agent can handle the task"""
-        # Check complexity
+        if isinstance(complexity, float):
+            complexity = int(complexity * 10)
+        else:
+            complexity = int(complexity)
+
         if complexity > self.max_complexity:
             return False
-        
-        # Check capability match
-        capability_map = {
-            TaskType.ANALYSIS: AgentCapability.ANALYSIS,
-            TaskType.RESEARCH: AgentCapability.RESEARCH,
-            TaskType.CODE: AgentCapability.CODE_GENERATION,
-            TaskType.CREATIVE: AgentCapability.CREATIVE,
-            TaskType.SYNTHESIS: AgentCapability.SYNTHESIS,
-            TaskType.EVALUATION: AgentCapability.EVALUATION,
-        }
-        
-        required_capability = capability_map.get(task_type, AgentCapability.ANALYSIS)
-        return required_capability in self.capabilities
+
+        # Support both string and Enum for task_type
+        task_str = task_type.value if hasattr(task_type, "value") else str(task_type)
+
+        # Support both string and Enum for capabilities
+        agent_caps = []
+        for cap in self.capabilities:
+            if hasattr(cap, "value"):
+                agent_caps.append(cap.value)
+                if cap == AgentCapability.CODE_GENERATION:
+                    agent_caps.append("code")
+            else:
+                agent_caps.append(str(cap))
+                if str(cap) == "code":
+                    agent_caps.append("code_generation")
+
+        # Map task type to capability
+        required_caps = [task_str]
+        if task_str == "code":
+            required_caps.append("code_generation")
+        elif task_str == "code_generation":
+            required_caps.append("code")
+        elif task_str == "analytical":
+            required_caps.append("analysis")
+        elif task_str == "analysis":
+            required_caps.append("analytical")
+        elif task_str == "creative":
+            required_caps.append("brainstorm")
+            required_caps.append("ideate")
+
+        return any(rc in agent_caps for rc in required_caps)
     
     def get_load_score(self) -> float:
         """Get current load score (0-1, higher = busier)"""
@@ -177,13 +216,24 @@ class AgentRouter:
         """
         self.registry = registry or AgentRegistry()
         logger.info("AgentRouter initialized")
+
+    def register_agent(self, agent: Agent):
+        self.registry.add_agent(agent)
+
+    @property
+    def agent_registry(self) -> Dict[str, Agent]:
+        return self.registry.agents
     
     def select_best_agent(
         self,
-        task_type: TaskType,
-        complexity: int,
+        task_type: Any,
+        complexity: Any,
         preferences: Optional[List[str]] = None
     ) -> Optional[Agent]:
+        if isinstance(complexity, float):
+            complexity = int(complexity * 10)
+        else:
+            complexity = int(complexity)
         """
         Select the best agent for a task.
         
@@ -200,8 +250,9 @@ class AgentRouter:
         Returns:
             Selected Agent, or None if no suitable agent found
         """
+        task_str = task_type.value if hasattr(task_type, "value") else str(task_type)
         logger.debug(
-            f"Selecting agent for {task_type.value} task "
+            f"Selecting agent for {task_str} task "
             f"(complexity={complexity})"
         )
         
@@ -218,6 +269,8 @@ class AgentRouter:
         
         # Then, find all capable agents
         for agent in self.registry.list_agents():
+            if not getattr(agent, "available", True):
+                continue
             if agent.can_handle(task_type, complexity):
                 # Calculate score: lower is better
                 # Lower load is better, higher success rate is better
@@ -225,11 +278,13 @@ class AgentRouter:
                     agent.get_load_score() * 0.7 +  # 70% weight on load
                     (1 - agent.success_rate) * 0.3   # 30% weight on success rate
                 )
+                if agent.agent_type == task_str or agent.type == task_str:
+                    score -= 1.0 # Significant bonus for exact type matching!
                 candidates.append((agent, score))
         
         if not candidates:
             logger.warning(
-                f"No suitable agent found for {task_type.value} "
+                f"No suitable agent found for {task_str} "
                 f"(complexity={complexity})"
             )
             return None
