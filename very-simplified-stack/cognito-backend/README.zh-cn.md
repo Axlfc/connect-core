@@ -4,64 +4,62 @@
 [![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/Axlfc/connect-core/blob/master/very-simplified-stack/cognito-backend/README.md)
 [![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/very-simplified-stack/cognito-backend/README.ca.md)
 
+该后端为基于 Ollama 的模型提供具有额外**不确定性评分**的 OpenAI 兼容 API。它包括一个 PowerShell 配置文件，根据模型的置信度水平进行彩色编码标记渲染（蓝色 → 琥珀色 → 红色）。
 
-This backend provides an OpenAI-compatible API with additional **uncertainty scoring** for Ollama-based models. It includes a PowerShell profile with color-coded token rendering (blue → amber → red) based on the model's confidence level.
+## 🚀 主要特性
 
-## 🚀 Key Features
+- **不确定性监控**: 实时计算每个Token的香农熵。
+- **SSE流式丰富**: 向标准OpenAI兼容数据块中注入不确定性 (`uncertainty`) 评分。
+- **PowerShell CLI**: 集成支持流式视觉反馈的 `cog` (文本) 和 `cogt` (语音) 命令。
+- **多后端路由**: 具备级联故障转移逻辑 (GPU优先) 的优先级路由。
 
-- **Uncertainty Monitoring**: Real-time calculation of token-by-token Shannon entropy.
-- **SSE Streaming Enrichment**: Injects `uncertainty` scores into standard OpenAI-compatible chunks.
-- **PowerShell CLI**: Integrated `cog` (text) and `cogt` (voice) commands with visual feedback.
-- **Multi-Backend Routing**: Cascading failover logic (GPU-first) with priority-based routing.
+## 🛠️ 安装指南
 
-## 🛠️ Installation
+### 1. 后端 (Python/FastAPI)
+该后端作为 `very-simplified-stack` 的一部分通过 Docker Compose 运行。请确保您可以访问 Ollama 实例 (默认: `http://192.168.1.15:11434`)。
 
-### 1. Backend (Python/FastAPI)
-The backend is typically run via Docker Compose as part of the `very-simplified-stack`.
-Ensure you have access to an Ollama instance (default: `http://192.168.1.15:11434`).
+### 2. PowerShell 配置 (客户端)
+安装 CLI 工具 (`cog`, `cogt`) 并启用不确定性可视化：
 
-### 2. PowerShell Profile (Client)
-To install the CLI tools (`cog`, `cogt`) and enable uncertainty visualization:
-
-1. Open PowerShell.
-2. Navigate to this directory.
-3. Run the installer:
+1. 打开 PowerShell。
+2. 导航到此目录。
+3. 运行安装程序：
    ```powershell
    .\Install-CognitoProfile.ps1
    ```
-4. Restart PowerShell.
+4. 重启 PowerShell。
 
-## 🎨 Uncertainty Visualization
+## 🎨 不确定性可视化
 
-The CLI uses the following color gradient to indicate model confidence:
-- 🔵 **Blue** (low uncertainty, high confidence)
-- 🟡 **Amber** (medium uncertainty, mild hesitation)
-- 🔴 **Red** (high uncertainty, potential hallucination or complex reasoning)
+CLI 使用以下颜色渐变来指示模型的置信度：
+- 🔵 **蓝色** (低不确定性，高置信度)
+- 🟡 **琥珀色** (中等不确定性，轻微犹豫)
+- 🔴 **红色** (高不确定性，潜在的幻觉或复杂推理)
 
-### Command Parameters
+### 命令参数
 
-- `-Threshold 0.6`: Override the default uncertainty threshold for coloring.
-- `-NoColor`: Disable all coloring for the current request (useful for piping output).
-- `-NoTTS`: (for `cogt`) Disable text-to-speech for the current request.
+- `-Threshold 0.6`: 覆盖默认的着色不确定性阈值。
+- `-NoColor`: 禁用当前请求的所有着色（适用于管道输出）。
+- `-NoTTS`: (对于 `cogt`) 禁用当前请求的文本转语音。
 
-## ⚙️ Configuration
+## ⚙️ 配置
 
-Settings are loaded in the following order of priority:
-1. **Command Line Parameters** (e.g., `-Threshold`)
-2. **Environment Variables**:
-   - `COGNITO_UNCERTAINTY_THRESHOLD` (default: `0.55`)
+配置加载的优先级顺序如下：
+1. **命令行参数** (例如 `-Threshold`)
+2. **环境变量**:
+   - `COGNITO_UNCERTAINTY_THRESHOLD` (默认: `0.55`)
    - `COGNITO_ENABLE_UNCERTAINTY` (`true`/`false`)
-   - `COGNITO_COLOR_MODE` (`full`, `threshold`, or `none`)
-3. **Configuration File**: `~/.cognito/config.json`
-4. **Default Settings**
+   - `COGNITO_COLOR_MODE` (`full`, `threshold` 或 `none`)
+3. **配置文件**: `~/.cognito/config.json`
+4. **默认设置**
 
-## 📂 Project Structure
+## 📂 项目结构
 
-- `app/api/routes/openai_compat.py`: Core streaming and uncertainty calculation logic.
-- `app/services/backend_client.py`: Unified async client for Ollama and OpenAI backends.
-- `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
-- `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
-- `config.example.json`: Template for the user configuration file.
+- `app/api/routes/openai_compat.py`: 核心流式处理和不确定性计算逻辑。
+- `app/services/backend_client.py`: 统一的 Ollama 和 OpenAI 后端异步客户端。
+- `test-voice-api.ps1`: 包含 `cog` 和 `cogt` 的主 PowerShell 配置脚本。
+- `Install-CognitoProfile.ps1`: PowerShell 环境安装程序。
+- `config.example.json`: 用户配置文件模板。
 
 ## 🤖 Cognito Agent 智能代理（阶段 1）
 
@@ -86,7 +84,7 @@ Settings are loaded in the following order of priority:
   ```bash
   python -m cli.cognito_cli "解释光合作用" --session-id latest
   ```
-- **`json` 模式**：输出格式化的 NDJSON（换行符分割的 JSON），适合与其他 Shell 工具和脚本无缝集成。
+- **`json` 模式**：输出格式化的 NDJSON（换行符分割的 JSON），适合与其他 Shell 工具 and 脚本无缝集成。
   ```bash
   python -m cli.cognito_cli "列出工作区文件" --mode json
   ```
@@ -118,19 +116,19 @@ Settings are loaded in the following order of priority:
 - **升级阈值**：由环境变量 `COGNITO_ESCALATION_UNCERTAINTY_THRESHOLD` 控制（默认 0.6）。
 - **升级路由**：在 `app/services/escalation_routing.py` 中进行精确配置。
 
-## 🧪 Testing
+## 🧪 测试
 
-To test the uncertainty features:
+测试不确定性功能：
 ```powershell
-# Text only
+# 仅限文本
 cog "What is the meaning of life?"
 
-# Voice + Text with a custom threshold
+# 语音 + 带有自定义阈值的文本
 cogt "Explain quantum entanglement in one sentence." -Threshold 0.4
 ```
 
-To verify backward compatibility (using a backend without uncertainty):
+验证向后兼容性（使用不带不确定性的后端）：
 ```powershell
 cog "Test message" -Endpoint "http://external-openai-backend/v1/chat/completions"
 ```
-The output should be rendered in standard white/gray text without errors.
+输出将以标准的白色/灰色文本渲染，不会报错。
