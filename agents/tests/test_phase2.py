@@ -187,7 +187,7 @@ class TestIterationStatistics:
     
     def test_statistics_basic(self):
         """Test basic statistics calculation"""
-        manager = IterationManager()
+        manager = IterationManager(quality_threshold=4.5)
         
         manager.iterations_log = [
             {"iteration": 1, "quality": 2.5, "time_taken": 5.0},
@@ -201,7 +201,7 @@ class TestIterationStatistics:
         assert stats["max_quality"] == 4.1
         assert stats["min_quality"] == 2.5
         assert stats["quality_improvement"] == 4.1 - 2.5
-        assert stats["converged"] is False  # 4.1 >= 3.5 should be True!
+        assert stats["converged"] is False  # 4.1 >= 4.5 is False
     
     def test_statistics_convergence_false(self):
         """Test convergence detection when threshold not met"""

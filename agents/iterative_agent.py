@@ -9,8 +9,12 @@ import json
 from typing import Dict, Any, Optional
 import logging
 
-from .chain_of_thought_agent import ChainOfThoughtAgent
-from .output_validator import OutputValidator
+try:
+    from .chain_of_thought_agent import ChainOfThoughtAgent
+    from .output_validator import OutputValidator
+except (ImportError, ValueError):
+    from chain_of_thought_agent import ChainOfThoughtAgent
+    from output_validator import OutputValidator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

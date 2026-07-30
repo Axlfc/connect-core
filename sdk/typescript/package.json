@@ -1,0 +1,27 @@
+{
+  "name": "codex-security-sdk",
+  "version": "1.0.0",
+  "description": "NVIDIA-labs Object Oriented Security Agent & CLI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "codex-security": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "dotenv": "^16.4.5",
+    "toml": "^3.0.0",
+    "better-sqlite3": "^9.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/jest": "^29.5.12",
+    "typescript": "^5.3.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2"
+  }
+}
