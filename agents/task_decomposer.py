@@ -66,7 +66,7 @@ class TaskDecomposition:
     """Result of task decomposition"""
     main_task: str
     main_task_type: TaskType
-    complexity: int
+    complexity: float
     subtasks: List[SubTask]
     execution_layers: List[List[str]]  # Groups of tasks that can run in parallel
     estimated_total_time: float  # minutes
@@ -209,7 +209,7 @@ class TaskDecomposer:
         result = TaskDecomposition(
             main_task=task,
             main_task_type=main_task_type,
-            complexity=main_complexity,
+            complexity=main_complexity / 10.0,
             subtasks=subtasks,
             execution_layers=execution_layers,
             estimated_total_time=total_time,
@@ -242,7 +242,9 @@ class TaskDecomposer:
         
         Uses keyword matching, length, and task type indicators.
         """
-        complexity = 1
+        if len(task.split()) < 5:
+            return 1
+        complexity = 3
         task_lower = task.lower()
         
         # Base complexity from indicators

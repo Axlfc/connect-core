@@ -268,9 +268,9 @@ class MetaLearner:
         task_lower = task.lower()
         
         keywords = {
+            'coding': ['code', 'algorithm', 'program', 'function', 'class'],
             'analytical': ['analyze', 'compare', 'evaluate', 'explain cause'],
             'creative': ['create', 'generate', 'imagine', 'write', 'design'],
-            'coding': ['code', 'algorithm', 'program', 'function', 'class'],
             'explanation': ['what', 'how', 'why', 'explain', 'describe'],
             'evidence': ['prove', 'support', 'evidence', 'data']
         }

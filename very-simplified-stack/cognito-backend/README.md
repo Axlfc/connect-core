@@ -4,69 +4,67 @@
 [![ca](https://img.shields.io/badge/lang-ca-blue.svg)](https://github.com/Axlfc/connect-core/blob/master/very-simplified-stack/cognito-backend/README.ca.md)
 [![zh-cn](https://img.shields.io/badge/lang-zh--cn-red.svg)](https://github.com/Axlfc/connect-core/blob/master/very-simplified-stack/cognito-backend/README.zh-cn.md)
 
+Este backend proporciona una API compatible con OpenAI con **puntuación de incertidumbre** adicional para modelos basados en Ollama. Incluye un perfil de PowerShell con renderizado de tokens codificado por colores (azul → ámbar → rojo) basado en el nivel de confianza del modelo.
 
-This backend provides an OpenAI-compatible API with additional **uncertainty scoring** for Ollama-based models. It includes a PowerShell profile with color-coded token rendering (blue → amber → red) based on the model's confidence level.
+## 🚀 Características Clave
 
-## 🚀 Key Features
+- **Monitoreo de Incertidumbre**: Cálculo en tiempo real de la entropía de Shannon token por token.
+- **Enriquecimiento de Streaming SSE**: Inyecta puntuaciones de `uncertainty` (incertidumbre) en los fragmentos de streaming compatibles con OpenAI.
+- **PowerShell CLI**: Comandos integrados `cog` (texto) y `cogt` (vídeo/voz) con retroalimentación visual coloreada.
+- **Enrutamiento Multi-Backend**: Lógica de failover en cascada (GPU primero) con enrutamiento basado en prioridades.
 
-- **Uncertainty Monitoring**: Real-time calculation of token-by-token Shannon entropy.
-- **SSE Streaming Enrichment**: Injects `uncertainty` scores into standard OpenAI-compatible chunks.
-- **PowerShell CLI**: Integrated `cog` (text) and `cogt` (voice) commands with visual feedback.
-- **Multi-Backend Routing**: Cascading failover logic (GPU-first) with priority-based routing.
-
-## 🛠️ Installation
+## 🛠️ Instalación
 
 ### 1. Backend (Python/FastAPI)
-The backend is typically run via Docker Compose as part of the `very-simplified-stack`.
-Ensure you have access to an Ollama instance (default: `http://192.168.1.15:11434`).
+El backend se ejecuta habitualmente mediante Docker Compose como parte de `very-simplified-stack`. Asegúrate de tener acceso a una instancia de Ollama (por defecto: `http://192.168.1.15:11434`).
 
-### 2. PowerShell Profile (Client)
-To install the CLI tools (`cog`, `cogt`) and enable uncertainty visualization:
+### 2. Perfil de PowerShell (Cliente)
+Para instalar las herramientas de línea de comandos (`cog`, `cogt`) y habilitar la visualización de incertidumbre:
 
-1. Open PowerShell.
-2. Navigate to this directory.
-3. Run the installer:
+1. Abre PowerShell.
+2. Navega a este directorio.
+3. Ejecuta el instalador:
    ```powershell
    .\Install-CognitoProfile.ps1
    ```
-4. Restart PowerShell.
+4. Reinicia PowerShell.
 
-## 🎨 Uncertainty Visualization
+## 🎨 Visualización de Incertidumbre
 
-The CLI uses the following color gradient to indicate model confidence:
-- 🔵 **Blue** (low uncertainty, high confidence)
-- 🟡 **Amber** (medium uncertainty, mild hesitation)
-- 🔴 **Red** (high uncertainty, potential hallucination or complex reasoning)
+El CLI utiliza la siguiente escala de colores para indicar la confianza del modelo:
+- 🔵 **Azul** (baja incertidumbre, alta confianza)
+- 🟡 **Ámbar** (incertidumbre media, vacilación leve)
+- 🔴 **Rojo** (alta incertidumbre, posible alucinación o razonamiento complejo)
 
-### Command Parameters
+### Parámetros de Comando
 
-- `-Threshold 0.6`: Override the default uncertainty threshold for coloring.
-- `-NoColor`: Disable all coloring for the current request (useful for piping output).
-- `-NoTTS`: (for `cogt`) Disable text-to-speech for the current request.
+- `-Threshold 0.6`: Sobrescribe el umbral de incertidumbre por defecto para el coloreado.
+- `-NoColor`: Desactiva todo el coloreado para la petición actual (útil para tuberías/piping).
+- `-NoTTS`: (para `cogt`) Desactiva la lectura de texto a voz para la petición actual.
 
-## ⚙️ Configuration
+## ⚙️ Configuración
 
-Settings are loaded in the following order of priority:
-1. **Command Line Parameters** (e.g., `-Threshold`)
-2. **Environment Variables**:
-   - `COGNITO_UNCERTAINTY_THRESHOLD` (default: `0.55`)
+La configuración se carga en el siguiente orden estricto de prioridad:
+1. **Parámetros de línea de comandos** (ej. `-Threshold`)
+2. **Variables de entorno**:
+   - `COGNITO_UNCERTAINTY_THRESHOLD` (por defecto: `0.55`)
    - `COGNITO_ENABLE_UNCERTAINTY` (`true`/`false`)
-   - `COGNITO_COLOR_MODE` (`full`, `threshold`, or `none`)
-3. **Configuration File**: `~/.cognito/config.json`
-4. **Default Settings**
+   - `COGNITO_COLOR_MODE` (`full`, `threshold` o `none`)
+3. **Archivo de configuración**: `~/.cognito/config.json`
+4. **Ajustes por defecto**
 
-## 📂 Project Structure
+## 📂 Estructura del Proyecto
 
-- `app/api/routes/openai_compat.py`: Core streaming and uncertainty calculation logic.
-- `app/services/backend_client.py`: Unified async client for Ollama and OpenAI backends.
-- `app/core/agent_loop.py`: Turning text generation into a tool-executing agent loop.
-- `app/core/session_manager.py`: Persistence and history management for AI sessions.
-- `cli/cognito_cli.py`: Python CLI client for Cognito Agent.
-- `app/core/extensions/`: System for loading and managing extensions.
-- `app/services/escalation_routing.py`: Uncertainty-based subtask escalation mapping.
-- `test-voice-api.ps1`: The main PowerShell profile script containing `cog` and `cogt`.
-- `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
-- `config.example.json`: Template for the user configuration file.
+- `app/api/routes/openai_compat.py`: Lógica central de streaming y cálculo de incertidumbre.
+- `app/services/backend_client.py`: Cliente asíncrono unificado para backends Ollama y OpenAI.
+- `app/core/agent_loop.py`: Convierte la generación de texto en un bucle de agente de ejecución de herramientas.
+- `app/core/session_manager.py`: Persistencia y gestión de historial para sesiones de IA.
+- `cli/cognito_cli.py`: Cliente CLI de Python para el Agente Cognito.
+- `app/core/extensions/`: Sistema para cargar y gestionar extensiones.
+- `app/services/escalation_routing.py`: Mapeo de escalado de subtareas basado en incertidumbre.
+- `test-voice-api.ps1`: El script de perfil de PowerShell principal que contiene `cog` y `cogt`.
+- `Install-CognitoProfile.ps1`: Instalador para el entorno de PowerShell.
+- `config.example.json`: Plantilla para el archivo de configuración del usuario.
 
 ## 🤖 Cognito Agent (Fase 1)
 
@@ -126,19 +124,19 @@ El orquestador (`cognito-orchestrator`) ahora puede detectar si una subtarea se 
 - **Mapeo de Escalado**: Definido en `app/services/escalation_routing.py`. Axel debe revisar este archivo para asegurar que los modelos de destino están disponibles en su entorno.
 - **Transparencia**: El escalado es automático y se registra en los logs del servidor. La respuesta final incluye metadatos sobre qué subtareas fueron escaladas.
 
-## 🧪 Testing
+## 🧪 Pruebas
 
-To test the uncertainty features:
+Para probar las funciones de incertidumbre:
 ```powershell
-# Text only
+# Solo texto
 cog "What is the meaning of life?"
 
-# Voice + Text with a custom threshold
+# Voz + Texto con un umbral personalizado
 cogt "Explain quantum entanglement in one sentence." -Threshold 0.4
 ```
 
-To verify backward compatibility (using a backend without uncertainty):
+Para verificar la compatibilidad hacia atrás (usando un backend sin incertidumbre):
 ```powershell
 cog "Test message" -Endpoint "http://external-openai-backend/v1/chat/completions"
 ```
-The output should be rendered in standard white/gray text without errors.
+El resultado debería renderizarse en texto estándar blanco/gris sin errores.
