@@ -1,0 +1,448 @@
+[
+  {
+    "id": "NOOA-01",
+    "title": "[Configuración] Sistema de configuración por capas: ExecutionConfig, ModelConfig, StrategyConfig, TruncationConfig (resolución jerárquica)",
+    "description": "Diseñar e implementar un sistema unificado y jerárquico de configuración para el framework que permita combinar opciones globales, específicas del modelo, de la estrategia y parámetros de truncado de contexto. El sistema debe resolver la configuración con el siguiente orden de precedencia (cascada): Archivo de configuración local (nooa.json / pyproject.toml) -> Variables de Entorno -> Configuración por defecto de la aplicación.",
+    "acceptance_criteria": [
+      "Definición de modelos Pydantic v2 para ExecutionConfig, ModelConfig, StrategyConfig y TruncationConfig.",
+      "Implementación de una clase ConfigurationManager que resuelva de manera jerárquica las configuraciones superpuestas.",
+      "Soporte para cargar la configuración desde un archivo nooa.json o sección [tool.nooa] de pyproject.toml.",
+      "Pruebas unitarias que verifiquen el orden de precedencia estricto de la resolución en cascada."
+    ],
+    "category": "Configuración",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-02",
+    "title": "[LLM Integration] UnifiedLLM sobre litellm: interfaz multi-proveedor con registry de modelos/alias",
+    "description": "Implementar la interfaz centralizada UnifiedLLM que sirva como envoltorio genérico sobre la librería litellm. Debe proveer una API homogénea e interoperable para interactuar con múltiples proveedores de LLM (Ollama, OpenAI, Anthropic, etc.) y gestionar un registro (registry) global de modelos y alias simplificados.",
+    "acceptance_criteria": [
+      "Clase UnifiedLLM con métodos asíncronos para generación simple y en streaming que exponga una interfaz consistente.",
+      "Soporte para un diccionario de alias que traduzca identificadores lógicos (p. ej., 'codex.local') a modelos específicos en el proveedor.",
+      "Cobertura de pruebas unitarias usando mocks para llamadas de múltiples proveedores.",
+      "Integración del Registry de modelos permitiendo añadir nuevos modelos dinámicamente."
+    ],
+    "category": "LLM Integration",
+    "priority": "alta",
+    "dependencies": ["NOOA-01"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-03",
+    "title": "[LLM Integration] Resiliencia: reintentos y gestión de configuración HTTP",
+    "description": "Añadir una capa robusta de resiliencia y tolerancia a fallos sobre la interfaz UnifiedLLM. Esto incluye políticas de reintento exponencial (exponential backoff) para errores de Rate Limiting (HTTP 429), errores temporales del servidor (HTTP 5xx), gestión de timeouts personalizados, y límites de concurrencia en llamadas salientes.",
+    "acceptance_criteria": [
+      "Configuración de reintentos mediante la librería tenacity asociada a UnifiedLLM.",
+      "Manejo controlado de excepciones de red y timeouts, lanzando excepciones de dominio claras.",
+      "Configuración parametrizable de backoff exponencial, jitter y número máximo de intentos.",
+      "Pruebas que simulen fallos intermitentes de red para comprobar que la lógica de reintento se ejecuta correctamente."
+    ],
+    "category": "LLM Integration",
+    "priority": "alta",
+    "dependencies": ["NOOA-02"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-04",
+    "title": "[Paradigma Core] Contratos tipados: enforcement de salida estructurada vía anotaciones de tipo (incl. Pydantic)",
+    "description": "Diseñar e implementar el motor de enforcement de tipos para salidas estructuradas. Al declarar tipos de retorno (incluyendo modelos Pydantic y tipos primitivos de Python) en los métodos de generación del agente, el framework debe garantizar que la salida del LLM se valide y se convierta al tipo especificado de manera estricta.",
+    "acceptance_criteria": [
+      "Capacidad de extraer firmas de tipo de Python y convertirlas dinámicamente a esquemas JSON para inyectar en las llamadas de API de LLM.",
+      "Mecanismo de re-intento de parsing automático de JSON cuando la salida no cumple con el esquema definido.",
+      "Lanzamiento de errores estructurados de validación si el LLM falla persistentemente en cumplir con el contrato.",
+      "Pruebas unitarias con modelos de Pydantic complejos (incluyendo tipos anidados y opcionales)."
+    ],
+    "category": "Paradigma Core",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-05",
+    "title": "[Testing LLM] Clientes fake/replay para pruebas deterministas sin costo de API",
+    "description": "Implementar un sistema de clientes 'Fake/Replay' para facilitar pruebas deterministas y reproducibles de agentes sin realizar llamadas reales a APIs de LLM. Debe permitir pre-registrar respuestas simuladas y grabar ejecuciones interactivas reales en archivos JSONL (replays) para su posterior reproducción.",
+    "acceptance_criteria": [
+      "Implementación de FakeLLMClient que herede de la interfaz de UnifiedLLM.",
+      "Capacidad de cargar cassettes/archivos de replay para simular una secuencia exacta de interacciones LLM.",
+      "Modo de grabación que registre las respuestas reales en un archivo cuando esté habilitado.",
+      "Pruebas de integración de un mini-agente que use el cliente Fake y demuestre determinismo absoluto."
+    ],
+    "category": "Testing LLM",
+    "priority": "alta",
+    "dependencies": ["NOOA-02"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-06",
+    "title": "[Paradigma Core] Metaclase de detección de métodos de generación (`...`) vs métodos deterministas, con wrapping automático a ejecución LLM",
+    "description": "Crear la metaclase core de NOOA que inspeccione la clase del Agente al instanciarse. Debe distinguir entre métodos deterministas convencionales (con implementación en código) y métodos de generación especificados únicamente con el elipsis (`...`). Los métodos de generación deben ser envueltos (wrapped) automáticamente para transformarse en llamadas asíncronas de LLM.",
+    "acceptance_criteria": [
+      "Metaclase NOOAMeta que herede de type.",
+      "Detección automática de métodos cuyo cuerpo es únicamente el elipsis (`...`) o un docstring sin código.",
+      "Generación automática del wrapper que recupera el contexto, instancia UnifiedLLM y procesa la solicitud del LLM en base a la firma y tipo de salida.",
+      "Pruebas unitarias de clases que implementan NOOAMeta demostrando la conversión exitosa de métodos elípticos a llamadas LLM estructuradas."
+    ],
+    "category": "Paradigma Core",
+    "priority": "alta",
+    "dependencies": ["NOOA-02", "NOOA-04"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-07",
+    "title": "[Paradigma Core] Sistema de visibilidad selectiva (`@hidden`, convención `_private`) para controlar qué ve el LLM del entorno Python",
+    "description": "Desarrollar un decorador @hidden y un sistema de filtros basados en convenciones de nomenclatura (como el prefijo de guión bajo `_`) para ocultar de manera selectiva métodos, atributos o propiedades de la clase del agente de la vista del LLM en los prompts y catálogos de herramientas.",
+    "acceptance_criteria": [
+      "Implementación del decorador @hidden.",
+      "Implementación de un analizador de contexto que filtre los métodos y atributos del Agente, excluyendo aquellos decorados o que comiencen con guión bajo.",
+      "Pruebas unitarias donde un Agente declare métodos públicos, privados y decorados con @hidden, y se verifique que los métodos ocultos no aparezcan en la interfaz expuesta para el LLM."
+    ],
+    "category": "Paradigma Core",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-08",
+    "title": "[Memoria corta] EventManager: registro secuencial de eventos como memoria de corto plazo",
+    "description": "Implementar el gestor secuencial de eventos EventManager para actuar como el registro cronológico del agente durante la ejecución de sus tareas. Este componente es el núcleo de la memoria de corto plazo, registrando trazas, llamadas a herramientas, pensamientos de LLM y observaciones del entorno en un log ordenado e inmutable.",
+    "acceptance_criteria": [
+      "Clase EventManager que mantenga una lista secuencial de objetos de tipo Event.",
+      "Soporte para persistencia en memoria y persistencia opcional serializada en disco (JSONL ordenado por tiempo).",
+      "Métodos para consultar eventos recientes, filtrar por tipo de evento y resumir eventos pasados para alimentar el contexto del LLM.",
+      "Cobertura de pruebas que garanticen la consistencia de los eventos ante inserciones concurrentes."
+    ],
+    "category": "Memoria corta",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-09",
+    "title": "[Contexto] Sistema de ContextBlocks/DynamicContext: inyección de datos vivos en el prompt (XML/Markdown según proveedor)",
+    "description": "Desarrollar un sistema de inyección dinámica de datos vivos en el prompt conocido como ContextBlocks. Permite registrar funciones o fuentes de datos que se evalúan en caliente al enviar un prompt al LLM, formateando el resultado en XML o Markdown adaptado según los requisitos de cada proveedor de modelos.",
+    "acceptance_criteria": [
+      "Clase ContextBlock y DynamicContextManager para definir e inyectar datos vivos.",
+      "Soporte de formateadores automáticos para XML (tipo <block name='sys_info'>...</block>) y Markdown estructurado.",
+      "Integración fluida que garantice la inyección en el prompt justo antes de la llamada de UnifiedLLM.",
+      "Pruebas de inyección dinámica simulando un cambio de contexto en caliente (por ejemplo, el contenido de un archivo que cambia en disco)."
+    ],
+    "category": "Contexto",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-10",
+    "title": "[Documentación dinámica] AgentDoc: generación automática de documentación de API a partir de firmas y docstrings para el contexto del LLM",
+    "description": "Implementar el motor AgentDoc para generar dinámicamente documentación legible por máquinas y humanos a partir de las firmas, anotaciones de tipo y docstrings de los métodos expuestos de un Agente. Esta documentación se inyecta en el prompt del LLM para que este entienda su propio ecosistema de herramientas y métodos de generación.",
+    "acceptance_criteria": [
+      "Clase AgentDocGenerator que use introspección de Python (módulo inspect) para analizar clases de agente.",
+      "Respeto absoluto a la visibilidad selectiva (no documentar elementos decorados con @hidden o que empiecen con guión bajo).",
+      "Formateo de salida personalizable (Markdown, JSON Schema o texto plano estructurado).",
+      "Pruebas unitarias de inspección y aserciones de que el contenido del docstring y firmas tipadas coinciden con la documentación autogenerada."
+    ],
+    "category": "Documentación dinámica",
+    "priority": "media",
+    "dependencies": ["NOOA-07"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-11",
+    "title": "[Seguridad] SandboxedExecutor: aislamiento de ejecución en proceso worker, límites de recursos, timeouts, restricciones de filesystem (Landlock)",
+    "description": "Desarrollar el entorno de ejecución seguro SandboxedExecutor para aislar código y scripts generados por el LLM. El aislamiento debe realizarse en un proceso worker dedicado, aplicando límites estrictos de CPU, consumo de memoria máxima, timeouts rígidos de ejecución, y restricciones de acceso al sistema de archivos mediante tecnologías como Landlock (en sistemas Linux que lo soporten) o entornos de contenedores locales ligeros.",
+    "acceptance_criteria": [
+      "Clase SandboxedExecutor que ejecute comandos o scripts de Python en un entorno controlado y asilado.",
+      "Implementación de límites de recursos de hardware (vía módulo resource de Python) y timeouts (usando asyncio.wait_for).",
+      "Políticas restrictivas de lectura/escritura en el sistema de archivos (limitar a un directorio temporal de trabajo).",
+      "Pruebas unitarias de denegación de accesos prohibidos (p. ej. leer /etc/passwd o escribir fuera del área de trabajo) y de parada por exceso de recursos."
+    ],
+    "category": "Seguridad",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "cognito-worker"
+  },
+  {
+    "id": "NOOA-12",
+    "title": "[Runtime] ActorRuntime: orquestación del ciclo de vida de llamadas a métodos de generación (EventManager, ContextBlocks, loop LLM-sandbox, hooks `intercept()`)",
+    "description": "Implementar el orquestador central ActorRuntime responsable de manejar el ciclo de vida completo de un agente de NOOA. Debe coordinar el flujo de ejecución, evaluar bloques de contexto, registrar trazas en el EventManager, ejecutar las llamadas del LLM, invocar el sandbox y gestionar ganchos (hooks) de tipo intercept() para depuración y control en tiempo de ejecución.",
+    "acceptance_criteria": [
+      "Clase ActorRuntime que reciba una clase de Agente e inicie su ciclo de vida.",
+      "Implementación del bucle principal de ejecución y llamadas a herramientas/métodos elípticos.",
+      "Registro de hooks intercept() ejecutables antes y después de cada llamada de LLM o herramienta.",
+      "Pruebas de integración simulando una ejecución interactiva completa con interceptores activos."
+    ],
+    "category": "Runtime",
+    "priority": "alta",
+    "dependencies": ["NOOA-06", "NOOA-08", "NOOA-09"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-13",
+    "title": "[Runtime] Estrategia Predict: generación estructurada en un solo turno",
+    "description": "Diseñar e implementar la estrategia de ejecución PredictStrategy, la cual realiza la resolución de una tarea mediante generación directa y estructurada en un único turno con el LLM. Es idónea para tareas deterministas que no requieren llamadas iterativas al sandbox o uso interactivo de herramientas.",
+    "acceptance_criteria": [
+      "Clase PredictStrategy que herede de una interfaz base ExecutionStrategy.",
+      "Implementación del prompt de un solo turno y formateo estricto del JSON de salida que cumpla con el tipo de retorno esperado.",
+      "Control y formateo automático de errores si el modelo no puede responder estructuradamente en un solo intento.",
+      "Cobertura de pruebas unitarias que validen la rapidez y fiabilidad de respuestas estructuradas usando mocks de LLM."
+    ],
+    "category": "Runtime",
+    "priority": "alta",
+    "dependencies": ["NOOA-12"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-14",
+    "title": "[Runtime] Estrategia CodeAct: REPL Python iterativo para que el LLM actúe escribiendo/ejecutando código",
+    "description": "Implementar la estrategia estrella CodeActStrategy. Esta estrategia habilita un bucle iterativo (REPL de Python) donde el LLM interactúa de forma activa escribiendo y ejecutando pequeños fragmentos de código o llamadas del sistema en el SandboxedExecutor, analizando los resultados secuencialmente en el EventManager hasta lograr el objetivo de la tarea.",
+    "acceptance_criteria": [
+      "Clase CodeActStrategy interactiva y asíncrona.",
+      "Conexión nativa con un shell REPL persistente y aislado vía SandboxedExecutor.",
+      "Gestión del bucle de turnos: Generar código -> Ejecutar en Sandbox -> Leer salida/error -> Registrar en EventManager -> Iterar.",
+      "Pruebas unitarias que simulen la resolución interactiva de un cálculo matemático complejo que requiere iteración y uso del shell Python."
+    ],
+    "category": "Runtime",
+    "priority": "alta",
+    "dependencies": ["NOOA-11", "NOOA-12"],
+    "component": "cognito-worker"
+  },
+  {
+    "id": "NOOA-15",
+    "title": "[Tools] Toolset incorporado: ShellTools (sesión bash persistente), TodoTools, herramientas de escritura de librerías/métodos, Web Publisher",
+    "description": "Desarrollar el juego de herramientas (tools) básicas incorporadas en el framework. Esto incluye ShellTools para mantener sesiones de Bash persistentes, TodoTools para gestionar listas de tareas locales, herramientas avanzadas de escritura y edición de archivos de código en disco, y un WebPublisher para exportar reportes HTML simples.",
+    "acceptance_criteria": [
+      "Módulo nooa.tools con la suite de herramientas estándar incorporada.",
+      "ShellTools con sesión de terminal persistente en segundo plano (manteniendo el estado/variables del shell entre ejecuciones consecutivas).",
+      "Herramientas de escritura de archivos con protecciones contra sobreescrituras accidentales de archivos protegidos.",
+      "Pruebas unitarias exhaustivas de cada herramienta simulando su uso interactivo."
+    ],
+    "category": "Tools",
+    "priority": "media",
+    "dependencies": ["NOOA-11"],
+    "component": "cognito-worker"
+  },
+  {
+    "id": "NOOA-16",
+    "title": "[Skills] Sistema de Skills basado en `SKILL.md`: TextSkill, SkillRegistry, inyección de contexto curado sin bloatear la clase del agente",
+    "description": "Diseñar e implementar el sistema modular de 'Skills' que permita extender las habilidades del agente sin saturar la definición de la clase base con excesivos métodos. Basado en una definición de archivo descriptivo (p. ej., SKILL.md), permite empaquetar conjuntos curados de prompts, fragmentos de código y herramientas y registrarlos dinámicamente.",
+    "acceptance_criteria": [
+      "Clases TextSkill, SkillRegistry y soporte de inyección dinámica.",
+      "Mecanismo para buscar e inyectar el contexto de la Skill seleccionada en el espacio de nombres de un agente al vuelo.",
+      "Soporte para cargar definiciones de Skills declaradas en un formato amigable Markdown/YAML.",
+      "Pruebas de registro, carga e inyección de una Skill específica (p. ej., 'SQLQueryingSkill')."
+    ],
+    "category": "Skills",
+    "priority": "media",
+    "dependencies": ["NOOA-09"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-17",
+    "title": "[Integraciones externas] Soporte MCP (Model Context Protocol): wrapping automático de tools MCP, autenticación OAuth, ecosistema extensible",
+    "description": "Implementar soporte nativo para el protocolo estándar de la industria MCP (Model Context Protocol). El framework de NOOA debe ser capaz de conectarse a cualquier mcp-server compatible, descubrir herramientas dinámicamente y envolverlas automáticamente como herramientas nativas del agente, incluyendo soporte para flujos de autenticación OAuth si el servidor lo requiere.",
+    "acceptance_criteria": [
+      "Cliente MCP asíncrono para negociar esquemas y capacidades con servidores MCP externos.",
+      "Wrapping automático de las herramientas expuestas por el servidor MCP en objetos de tipo AgentTool.",
+      "Gestión de flujos OAuth para servidores MCP que requieran autenticación de usuario.",
+      "Pruebas de integración conectando el framework a un mock de servidor MCP y llamando a una herramienta descubierta."
+    ],
+    "category": "Integraciones externas",
+    "priority": "media",
+    "dependencies": ["NOOA-12"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-18",
+    "title": "[Memoria largo plazo] nooa-memory: asociación espontánea de recuerdos, codificación dirigida por eventos, MemoryToolsMixin (recall/search/remember), backends SQLite + vectoriales",
+    "description": "Desarrollar el módulo de memoria persistente a largo plazo nooa-memory. Este componente debe admitir la codificación de recuerdos a partir de eventos clave de ejecución, indexación mediante embeddings vectoriales (usando un backend de Qdrant o bases vectoriales ligeras en SQLite) y proporcionar un mixin MemoryToolsMixin que dote a los agentes de capacidades cognitivas de tipo recall/search/remember en lenguaje natural.",
+    "acceptance_criteria": [
+      "Implementación del módulo de base de datos e indexación vectorial (Soporte SQLite + SQLite-Vec o Qdrant).",
+      "Implementación de MemoryToolsMixin para inyectar los métodos cognitivos recall, search y remember en el agente.",
+      "Lógica de codificación y consolidación de memoria a partir del flujo de eventos del EventManager.",
+      "Pruebas unitarias que demuestren que un agente recuerda un hecho introducido en una sesión pasada tras consultar su memoria."
+    ],
+    "category": "Memoria largo plazo",
+    "priority": "media",
+    "dependencies": ["NOOA-08"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-19",
+    "title": "[Observabilidad] Tracing basado en OpenInference/OpenTelemetry con exportadores múltiples (OTLP, Langfuse, Arize Phoenix)",
+    "description": "Diseñar e implementar el motor de instrumentación y trazabilidad (Tracing) nativo de NOOA. Debe basarse en el estándar OpenInference (extensión de OpenTelemetry para IA) para capturar de forma detallada llamadas a modelos, tiempos de latencia, inputs/outputs de herramientas y flujos de razonamiento, permitiendo configurar múltiples exportadores de trazas estándar.",
+    "acceptance_criteria": [
+      "Auto-instrumentación de UnifiedLLM y ActorRuntime mediante especificaciones de OpenInference.",
+      "Configuración de exportadores para OTLP genérico, Langfuse y Arize Phoenix.",
+      "Garantía de rendimiento: la exportación de trazas no debe bloquear la ejecución del agente por latencias de red.",
+      "Pruebas que validen que se generan los spans correspondientes a una llamada del agente y se envían al colector simulado."
+    ],
+    "category": "Observabilidad",
+    "priority": "alta",
+    "dependencies": ["NOOA-12"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-20",
+    "title": "[Observabilidad] Scrubbing automático de secretos en las trazas",
+    "description": "Implementar un componente de seguridad crítico de tipo Middleware o Filtro de Trazas que realice el scrubbing (limpieza y enmascaramiento) automático de secretos, tokens de API, contraseñas y datos sensibles presentes en las entradas, salidas y payloads de las trazas antes de ser enviadas a colectores externos.",
+    "acceptance_criteria": [
+      "Filtro de exportador que escanee diccionarios y textos buscando patrones sensibles comunes (regex para tokens, contraseñas, etc.).",
+      "Enmascaramiento de valores con la cadena estándar [REDACTED].",
+      "Integración transparente en la canalización de exportación de OpenTelemetry/OpenInference.",
+      "Pruebas que demuestren el correcto enmascaramiento de claves de API (p. ej., sk-... o variables de base de datos) en las trazas generadas."
+    ],
+    "category": "Observabilidad",
+    "priority": "media",
+    "dependencies": ["NOOA-19"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-21",
+    "title": "[Observabilidad] Gestión de sesiones de trazas",
+    "description": "Añadir soporte para agrupar e identificar de manera lógica las trazas según sesiones de agente individuales y ejecuciones específicas de tareas. El framework debe inyectar de manera consistente el session_id y task_id en el contexto de propagación de OpenTelemetry (baggage/attributes) para permitir la correlación de trazas distribuidas.",
+    "acceptance_criteria": [
+      "Propagación de contextos en el loop del agente asociando todas las trazas de una misma ejecución de tarea a un ID unificado de sesión.",
+      "Posibilidad de consultar y filtrar trazas locales en base al identificador de sesión.",
+      "Pruebas unitarias de propagación de contexto asíncrono (contextvars de Python) comprobando que múltiples agentes concurrentes no mezclan sus IDs de trazas."
+    ],
+    "category": "Observabilidad",
+    "priority": "media",
+    "dependencies": ["NOOA-19"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-22",
+    "title": "[Interoperabilidad] Exportación ATIF (Agent Trajectory Interchange Format v1.7) vía `install_atif()`/`atif_scope()`",
+    "description": "Diseñar e implementar exportación de trayectorias de agentes compatibles con el estándar abierto ATIF v1.7. Debe permitir capturar de manera uniforme la trayectoria de razonamiento, acciones ejecutadas y observaciones recibidas del agente, facilitando exportaciones limpias para análisis, compartición de datos y depuración externa.",
+    "acceptance_criteria": [
+      "Implementación de los helpers install_atif() y el gestor de contexto atif_scope().",
+      "Serialización completa de la trayectoria al formato JSON especificado por el estándar ATIF v1.7.",
+      "Pruebas unitarias que validen que las trayectorias resultantes de una tarea de dos turnos cumplen estrictamente con la especificación de esquema ATIF."
+    ],
+    "category": "Interoperabilidad",
+    "priority": "media",
+    "dependencies": ["NOOA-19"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-23",
+    "title": "[Dev Tooling] Trace Viewer (FastAPI/React) lanzado vía `nooa start-dev`",
+    "description": "Implementar una interfaz web interactiva de desarrollo local denominada Trace Viewer. Consiste en una aplicación SPA en React con un servidor FastAPI de backend local que lee los logs de trazas y sesiones, proporcionando una visualización amigable de turnos de LLM, ejecuciones de código y timelines.",
+    "acceptance_criteria": [
+      "Servidor API mínimo en FastAPI que sirva los endpoints de consulta de sesiones y trazas locales.",
+      "Interfaz web interactiva en React que renderice con claridad las llamadas, ejecuciones en sandbox y logs.",
+      "Comando CLI nooa start-dev para arrancar simultáneamente el backend FastAPI y levantar la interfaz de usuario.",
+      "Pruebas básicas del servidor FastAPI garantizando la correcta devolución de la lista de trazas en formato JSON."
+    ],
+    "category": "Dev Tooling",
+    "priority": "baja",
+    "dependencies": ["NOOA-21"],
+    "component": "cognito-backend"
+  },
+  {
+    "id": "NOOA-24",
+    "title": "[Análisis] TraceExplorer: agente para analizar trazas de otros agentes (debugging 'agent-in-the-loop', regresiones automatizadas)",
+    "description": "Desarrollar TraceExplorer, un Agente especializado de NOOA diseñado para inspeccionar, analizar y depurar las trazas de ejecución generadas por otros agentes. Este enfoque 'agent-in-the-loop' permite la identificación automática de bucles de error infinitos, ineficiencia en el uso de herramientas, regresiones de rendimiento y análisis post-mortem automatizado de fallas.",
+    "acceptance_criteria": [
+      "Clase TraceExplorerAgent con prompts especializados para auditar trazas.",
+      "Herramientas nativas para cargar archivos ATIF o consultar trazas mediante la API de observabilidad.",
+      "Reporte final estructurado con análisis de causas raíz de fallos detectados en el agente auditado.",
+      "Pruebas unitarias donde TraceExplorer analice con éxito una traza sintética con fallos e identifique correctamente la causa."
+    ],
+    "category": "Análisis",
+    "priority": "baja",
+    "dependencies": ["NOOA-19"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-25",
+    "title": "[CLI] nooa-cli: comandos de entorno de desarrollo, ejection de configuración, shell completion",
+    "description": "Implementar la interfaz de comandos de consola del framework (nooa-cli). Debe proveer comandos interactivos para inicializar proyectos (nooa init), expulsar o exportar configuraciones avanzadas (nooa eject), levantar servidores locales de desarrollo y dar soporte completo para autocompletado en Bash, Zsh y PowerShell.",
+    "acceptance_criteria": [
+      "Punto de entrada CLI nooa mediante la librería click o typer.",
+      "Comandos nooa init, nooa config eject y nooa dev.",
+      "Generación dinámica de scripts de autocompletado de comandos para las shells principales.",
+      "Pruebas de la CLI simulando la invocación de comandos y comprobando los códigos de salida (exit codes)."
+    ],
+    "category": "CLI",
+    "priority": "media",
+    "dependencies": ["NOOA-01"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-26",
+    "title": "[Evaluación] eval_pipeline: evaluaciones batch YAML-driven, scorers (ExactMatchScorer y custom), salida `.noo-eval.jsonl`, concurrencia via subprocess workers",
+    "description": "Diseñar e implementar el framework de evaluación automatizada eval_pipeline. El motor debe permitir definir baterías de pruebas a agentes mediante archivos YAML, ejecutar las tareas de forma concurrente utilizando workers multiproceso independientes, evaluar los resultados con scoreres estándar (ExactMatch, heurísticas o basados en LLM), y exportar los reportes detallados en archivos append-only .noo-eval.jsonl.",
+    "acceptance_criteria": [
+      "Parsing de archivos YAML que especifican sets de evaluación (input, expected outputs, scorers a usar).",
+      "Orquestación asíncrona concurrente con ProcessPoolExecutor o subprocess workers para aislar las ejecuciones evaluadas.",
+      "Implementación de ExactMatchScorer y una clase base flexible para scorers customizados de usuario.",
+      "Pruebas unitarias que ejecuten una suite de evaluación mínima con 2 casos simulados y verifiquen el formato correcto de salida en .noo-eval.jsonl."
+    ],
+    "category": "Evaluación",
+    "priority": "media",
+    "dependencies": ["NOOA-12"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-27",
+    "title": "[Evaluación externa] Harbor Adapter: integración con SWE-bench Verified y Terminal-Bench 2.0 vía `harbor_adapter.py` y CLI `nemo-harbor`, ejecución en contenedores Docker/Apptainer",
+    "description": "Implementar el módulo Harbor Adapter para conectar los agentes desarrollados en NOOA directamente con benchmarks externos estándar y exigentes, específicamente SWE-bench Verified y Terminal-Bench 2.0. El adaptador debe envolver el entorno de estos benchmarks y lanzar contenedores Docker o Apptainer de manera transparente para aislar las pruebas de rendimiento complejas.",
+    "acceptance_criteria": [
+      "Script y módulo harbor_adapter.py y pasarela para la CLI nemo-harbor.",
+      "Lógica para orquestar contenedores que sirvan el entorno aislado del SWE-bench / Terminal-Bench de forma automática.",
+      "Mapeo y traducción de los formatos de datasets externos a inputs nativos del agente de NOOA y viceversa.",
+      "Pruebas simuladas (mocking Docker) que comprueben la correcta generación de llamadas para arrancar un contenedor de benchmark."
+    ],
+    "category": "Evaluación externa",
+    "priority": "baja",
+    "dependencies": ["NOOA-26"],
+    "component": "cognito-worker"
+  },
+  {
+    "id": "NOOA-28",
+    "title": "[Benchmarking] nooa-bench: BenchAgent y Runner para ejecución concurrente de tareas de benchmark",
+    "description": "Desarrollar la herramienta específica nooa-bench. Consta del agente especializado BenchAgent y un motor de ejecución concurrente Runner diseñado para estresar y medir el desempeño de modelos y estrategias de agentes en tareas concurrentes a gran escala, registrando latencia, consumo de tokens y tasa de éxito.",
+    "acceptance_criteria": [
+      "Clase BenchAgent con métricas de rendimiento embebidas para medir throughput de tokens.",
+      "Motor Runner concurrente usando semáforos asíncronos para limitar el paralelismo de peticiones.",
+      "Generación automatizada de gráficos o resúmenes de rendimiento (consola / CSV) al completar un benchmark.",
+      "Pruebas de ejecución concurrente de múltiples agentes virtuales sin colisionar recursos de red."
+    ],
+    "category": "Benchmarking",
+    "priority": "baja",
+    "dependencies": ["NOOA-26"],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-29",
+    "title": "[Calidad] Infraestructura de testing (unit/integration/stress) y pipeline CI/CD (test, build, frontend-build)",
+    "description": "Desarrollar toda la suite de infraestructura de pruebas automatizadas y aseguramiento de calidad (QA). Esto abarca la creación de configuraciones de pytest robustas (para pruebas unitarias, de integración y de estrés en paralelo) y los flujos de integración y entrega continuas (CI/CD) para compilar el framework, testearlo en múltiples versiones de Python, y construir los artefactos web del Trace Viewer.",
+    "acceptance_criteria": [
+      "Configuración de pytest y organización de carpetas tests/unit, tests/integration, tests/stress.",
+      "Pipeline de GitHub Actions (o similar) definido en YAML para automatizar las fases de testing (en Python 3.10, 3.11 y 3.12), empaquetado de librería y build de la SPA en React.",
+      "Pruebas de estrés que comprueben la resiliencia del framework bajo carga moderada de hilos y procesos."
+    ],
+    "category": "Calidad",
+    "priority": "alta",
+    "dependencies": [],
+    "component": "nooa-framework"
+  },
+  {
+    "id": "NOOA-30",
+    "title": "[Ejemplos] Serie de tutoriales progresivos (quickstart) e implementación de referencia ARC-AGI-3",
+    "description": "Diseñar y programar los materiales didácticos y demostraciones prácticas de NOOA. Incluye guías rápidas de inicio paso a paso (quickstart) para cada paradigma del framework, junto a una implementación de producción de referencia para resolver tareas en el exigente benchmark ARC-AGI (versión 3) usando la combinación de agentes iterativos, REPL y herramientas complejas.",
+    "acceptance_criteria": [
+      "Carpeta examples/ con código comentado y ejecutable de inicio rápido (Predict, CodeAct, memoria).",
+      "Implementación de Agente de referencia para resolver desafíos del set de datos ARC-AGI.",
+      "Documentación detallada en Markdown de la arquitectura de la solución ARC-AGI.",
+      "Scripts listos para correr y validar los tutoriales asegurando que no se rompen con nuevas versiones del framework."
+    ],
+    "category": "Ejemplos",
+    "priority": "baja",
+    "dependencies": ["NOOA-13", "NOOA-14"],
+    "component": "nooa-framework"
+  }
+]

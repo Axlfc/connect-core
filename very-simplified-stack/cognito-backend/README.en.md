@@ -63,6 +63,61 @@ Settings are loaded in the following order of priority:
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
 
+## 🤖 Cognito Agent (Phase 1)
+
+The backend now includes native support for autonomous agents capable of calling system and local tools.
+
+### Endpoints
+- `POST /api/agent/loop`: SSE endpoint that executes the reasoning and tool execution loop.
+  - **Body**: `{ "messages": [...], "cwd": "path/to/repo", "model_params": {} }`
+  - **Events**: `text_delta`, `tool_call`, `tool_result`, `done`, `error`.
+
+### Sessions & Persistence (Phase 2)
+Conversations are persisted in `~/.cognito/sessions/` as append-only JSONL files with a global index in `index.json`.
+
+- **Auto-Compaction**: When a session exceeds the maximum token limit (default: 8000), the system triggers compaction by generating a summary and clearing historical context.
+- **Continuity**: Pass `session_id: "latest"` to dynamically pick up and continue the most recent session under the specified `cwd`.
+- **Forking**: Allows cloning an existing session to explore alternative execution branches without altering the original timeline.
+
+### Python CLI (Phase 3)
+A lightweight command-line Python client is included with three specialized modes:
+
+- **`print` Mode** (default): Streamed delta outputs mapped in real-time with TrueColor ANSI colors based on Shannon entropy.
+  ```bash
+  python -m cli.cognito_cli "Explain photosynthesis" --session-id latest
+  ```
+- **`json` Mode**: Formatted NDJSON output for seamless integration with downstream shell tools and pipelines.
+  ```bash
+  python -m cli.cognito_cli "List workspace files" --mode json
+  ```
+- **`rpc` Mode**: JSON-RPC 2.0 interface over stdin/stdout, ideal for integration with persistent processes.
+  ```bash
+  python -m cli.cognito_cli --mode rpc
+  ```
+
+### Available Tools
+1. `read`: Safe read file utility strictly contained under the workspace root (`cwd`).
+2. `write`: Safe creation and overwrite tool (requires project `trust`).
+3. `edit`: Block-based search-and-replace editor (requires project `trust`).
+4. `bash`: Execute non-privileged bash commands (requires project `trust`, forbids `sudo`).
+
+### Security and Trust
+- **Protected Files**: High-priority credential or auth files (e.g. `auth.js`) are protected from edits or writes.
+- **Project Trust**: Destructive and write-based tools require active project workspace trust endorsement.
+- **AGENTS.md**: Automatically inyected and merged as high-priority system context when detected under the `cwd`.
+
+### Extension System (Phase 4)
+Provides seamless extensibility without modifications to source files via custom Python plug-in modules loaded at runtime.
+
+- **Scopes**: Global (`~/.cognito/extensions/`), Config (`config.json`), and Project Local (`.cognito/extensions/`).
+- **Capabilites**: Register tools, customized routing, backends, and subscribe to events (hooks).
+
+### Adaptive Escalation (Phase 5)
+Detects subtasks generated with high uncertainty and automatically escalates them to higher-capacity LLM models.
+
+- **Escalation Threshold**: Controlled via `COGNITO_ESCALATION_UNCERTAINTY_THRESHOLD` (default: 0.6).
+- **Escalation Router**: Configured under `app/services/escalation_routing.py`.
+
 ## 🧪 Testing
 
 To test the uncertainty features:
