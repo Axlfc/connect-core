@@ -206,7 +206,16 @@ class PerformanceOptimizer:
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get performance summary"""
         if not self.metrics:
-            return {'metrics_count': 0}
+            return {
+                'total_executions': 0,
+                'cache_hits': 0,
+                'cache_hit_rate': 0,
+                'avg_execution_time': 0,
+                'min_execution_time': 0,
+                'max_execution_time': 0,
+                'cache_size': len(self.query_cache),
+                'metrics_count': 0
+            }
         
         execution_times = [m.execution_time for m in self.metrics]
         cache_hits = sum(1 for m in self.metrics if m.cache_hit)
@@ -218,7 +227,8 @@ class PerformanceOptimizer:
             'avg_execution_time': sum(execution_times) / len(execution_times) if execution_times else 0,
             'min_execution_time': min(execution_times) if execution_times else 0,
             'max_execution_time': max(execution_times) if execution_times else 0,
-            'cache_size': len(self.query_cache)
+            'cache_size': len(self.query_cache),
+            'metrics_count': len(self.metrics)
         }
     
     def optimize_allocation(self) -> Dict[str, Any]:
