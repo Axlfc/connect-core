@@ -59,6 +59,7 @@ La plataforma està dissenyada per a desenvolupadors, científics de dades i equ
 
 - [**simplified-stack**](simplified-stack/README.ca.md): Versió lleugera optimitzada per al desenvolupament local que integra Drupal, Obsidian i Forgejo per a fluxos de treball d'IA aïllats.
 - [**very-simplified-stack**](very-simplified-stack/README.ca.md): Versió minimalista que elimina l'orquestració de n8n i es centra en serveis de veu i l'API d'agent Cognito, dissenyada per connectar amb una instància d'Ollama externa.
+- [**AGI Agents & NOOA Framework**](agents/README.md): Mòdul d'agents cognitius que implementa el Roadmap de 5 fases (Chain-of-Thought, Autovalidació i iteració, Memòria a llarg termini amb SQLite + Vectorial, Multi-agent, i Autonomia) integrat de manera nativa amb suport per al paradigma NOOA (NVIDIA-labs Object Oriented Agents).
 
 ---
 
