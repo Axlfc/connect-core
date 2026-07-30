@@ -11,6 +11,7 @@
 [![Status](https://img.shields.io/badge/Status-Actiu-brightgreen)](https://github.com/Axlfc/connect-core)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)](https://nodejs.org/)
+[![Pregunta a DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Axlfc/connect-core)
 
 **connect-core**, o **cognito-stack** és una plataforma modular d'orquestració d'IA containeritzada que integra automatització de workflows, generació d'imatges i intel·ligència artificial local en un únic stack Docker Compose reproduïble i escalable. Suporta múltiples runtimes de contenidors (Docker i Podman) i perfils de maquinari (CPU, NVIDIA GPU, AMD GPU).
 
