@@ -63,6 +63,61 @@ Settings are loaded in the following order of priority:
 - `Install-CognitoProfile.ps1`: Installer for the PowerShell environment.
 - `config.example.json`: Template for the user configuration file.
 
+## 🤖 Agent Cognito (Fase 1)
+
+El backend ara inclou suport natiu per a agents autònoms capaços d'executar eines del sistema i locals.
+
+### Endpoints
+- `POST /api/agent/loop`: Endpoint SSE que executa el bucle de raonament i execució d'eines.
+  - **Body**: `{ "messages": [...], "cwd": "path/to/repo", "model_params": {} }`
+  - **Esdeveniments**: `text_delta`, `tool_call`, `tool_result`, `done`, `error`.
+
+### Sessions i Persistència (Fase 2)
+Les converses es guarden a `~/.cognito/sessions/` en format JSONL (append-only) amb un índex global a `index.json`.
+
+- **Compactat Automàtic**: Quan una sessió supera el límit màxim de tokens (default: 8000), el sistema genera automàticament un resum i compacta l'historial.
+- **Continuïtat**: Passa `session_id: "latest"` per continuar la sessió més recent sota el `cwd` actual.
+- **Forking**: Permet clonar una sessió existent per explorar branques alternatives de raonament.
+
+### CLI de Python (Fase 3)
+S'inclou un client de línia de comandes de Python amb tres modes de funcionament:
+
+- **Mode `print`** (default): Sortida intermitent de paraules en temps real pintades amb colors ANSI TrueColor segons la incertesa de Shannon.
+  ```bash
+  python -m cli.cognito_cli "Explica la fotosíntesi" --session-id latest
+  ```
+- **Mode `json`**: Sortida estructurada en format NDJSON per a canalitzacions o scripts.
+  ```bash
+  python -m cli.cognito_cli "Llista fitxers del repositori" --mode json
+  ```
+- **Mode `rpc`**: Interfície JSON-RPC 2.0 sobre stdin/stdout per a automatitzacions complexes de llarga durada.
+  ```bash
+  python -m cli.cognito_cli --mode rpc
+  ```
+
+### Eines Disponibles
+1. `read`: Lectura segura de fitxers continguts estrictament dins del directori de treball (`cwd`).
+2. `write`: Creació o escriptura segura de fitxers (requereix confiança `trust`).
+3. `edit`: Editor quirúrgic basat en blocs de cerca i reemplaçament (requereix `trust`).
+4. `bash`: Execució de comandes bash no privilegiades (requereix `trust`, sense `sudo`).
+
+### Seguretat i Confiança
+- **Fitxers Protegits**: Certs fitxers d'alta prioritat i credencials (p. ej. `auth.js`) estan totalment protegits contra escriptures o modificacions.
+- **Project Trust**: Les eines destructives d'escriptura o execució de terminals requereixen que el directori hagi estat marcat expressament com a confiable.
+- **AGENTS.md**: Si existeix un fitxer d'instruccions d'agent a la de l'arrel de `cwd`, s'injecta automàticament com a context d'alt rang del sistema.
+
+### Sistema d'Extensions (Fase 4)
+Permet estendre les funcionalitats de l'agent en temps d'execució mitjançant mòduls personalitzats de Python carregats dinàmicament.
+
+- **Àmbits**: Global (`~/.cognito/extensions/`), Configuració (`config.json`), i Local del Projecte (`.cognito/extensions/`).
+- **Capacitats**: Afegir eines personalitzades, rutes del orquestrador, i subscriure's a esdeveniments (hooks).
+
+### Escalabilitat Adaptativa (Fase 5)
+Detecta automàticament si una subtarea s'ha generat amb una incertesa inacceptablement alta i l'escala de manera transparent cap a models de major capacitat de raonament.
+
+- **Llindar d'Escalat**: Parametritzable via `COGNITO_ESCALATION_UNCERTAINTY_THRESHOLD` (default: 0.6).
+- **Ruta d'Escalat**: Definit a `app/services/escalation_routing.py`.
+
 ## 🧪 Testing
 
 To test the uncertainty features:
