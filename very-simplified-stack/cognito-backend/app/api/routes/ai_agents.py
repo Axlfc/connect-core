@@ -21,6 +21,7 @@ from app.core.compaction import should_compact, compact
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.events import SessionInfoEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent
 from app.core.extensions.registry import extension_registry
+from app.core.steering import steering_manager
 import logging
 
 from typing import Literal
@@ -42,6 +43,9 @@ class AgentLoopRequest(BaseModel):
     cwd: str
     session_id: Optional[str] = None
     model_params: Optional[Dict[str, Any]] = None
+
+class SteerRequest(BaseModel):
+    message: str
 
 @router.post("/agent", response_model=AIResponse)
 async def run_ai_agent(request: AIRequest):
@@ -138,12 +142,16 @@ async def run_agent_loop(request: AgentLoopRequest):
     total_tokens = estimate_messages_tokens(full_messages_for_loop, model=model_name)
     logger.info(f"Agent loop prompt token budget estimate: {total_tokens} tokens for model '{model_name or 'default'}'")
 
+    steering_queue = steering_manager.get_queue(session_id)
+    history_lock = steering_manager.get_lock(session_id)
+
     # REDESIGN: To persist assistant messages correctly, we need to capture them.
     # The current agent_loop yields events but doesn't return the full objects.
     async def event_generator_v2():
         # Persist incoming new messages from request
-        for msg in new_messages:
-            session_manager.append_message(session_id, msg["role"], msg["content"])
+        async with history_lock:
+            for msg in new_messages:
+                session_manager.append_message(session_id, msg["role"], msg["content"])
 
         yield f"data: {SessionInfoEvent(session_id=session_id, is_new=is_new).model_dump_json()}\n\n"
 
@@ -151,13 +159,27 @@ async def run_agent_loop(request: AgentLoopRequest):
         current_tool_calls = []
 
         try:
-            async for event in agent_loop(
-                messages=full_messages_for_loop,
-                tools=tools,
-                context=context,
-                backend_router=backend_router,
-                model_params=request.model_params
-            ):
+            try:
+                loop_iter = agent_loop(
+                    messages=full_messages_for_loop,
+                    tools=tools,
+                    context=context,
+                    backend_router=backend_router,
+                    model_params=request.model_params,
+                    steering_queue=steering_queue,
+                    history_lock=history_lock,
+                    session_manager=session_manager,
+                    session_id=session_id,
+                )
+            except TypeError:
+                loop_iter = agent_loop(
+                    messages=full_messages_for_loop,
+                    tools=tools,
+                    context=context,
+                    backend_router=backend_router,
+                    model_params=request.model_params,
+                )
+            async for event in loop_iter:
                 if isinstance(event, TextDeltaEvent):
                     assistant_content += event.content
                 elif isinstance(event, ToolCallEvent):
@@ -168,31 +190,33 @@ async def run_agent_loop(request: AgentLoopRequest):
                     })
                 elif isinstance(event, ToolResultEvent):
                     # Before persisting tool result, we MUST persist the assistant message that called it
-                    if assistant_content or current_tool_calls:
-                        session_manager.append_message(
-                            session_id,
-                            role="assistant",
-                            content=assistant_content,
-                            tool_calls=current_tool_calls if current_tool_calls else None
-                        )
-                        assistant_content = ""
-                        current_tool_calls = []
+                    async with history_lock:
+                        if assistant_content or current_tool_calls:
+                            session_manager.append_message(
+                                session_id,
+                                role="assistant",
+                                content=assistant_content,
+                                tool_calls=current_tool_calls if current_tool_calls else None
+                            )
+                            assistant_content = ""
+                            current_tool_calls = []
 
-                    session_manager.append_message(
-                        session_id,
-                        role="tool",
-                        content=event.output,
-                        tool_name=event.tool_name,
-                        tool_call_id=event.tool_call_id
-                    )
-                elif isinstance(event, DoneEvent):
-                    if assistant_content or current_tool_calls:
                         session_manager.append_message(
                             session_id,
-                            role="assistant",
-                            content=assistant_content,
-                            tool_calls=current_tool_calls if current_tool_calls else None
+                            role="tool",
+                            content=event.output,
+                            tool_name=event.tool_name,
+                            tool_call_id=event.tool_call_id
                         )
+                elif isinstance(event, DoneEvent):
+                    async with history_lock:
+                        if assistant_content or current_tool_calls:
+                            session_manager.append_message(
+                                session_id,
+                                role="assistant",
+                                content=assistant_content,
+                                tool_calls=current_tool_calls if current_tool_calls else None
+                            )
 
                 yield f"data: {event.model_dump_json()}\n\n"
         except Exception as e:
@@ -243,6 +267,27 @@ async def fork_session(session_id: str):
         return {"session_id": new_id}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+@router.post("/agent/sessions/{session_id}/steer")
+async def steer_session(session_id: str, request: SteerRequest):
+    """
+    Enqueue a steering message for an active agent loop session.
+    """
+    if not request.message or not request.message.strip():
+        raise HTTPException(status_code=400, detail="Steering message cannot be empty")
+
+    session_manager = SessionManager()
+    try:
+        session_manager.open(session_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    await steering_manager.post_steering_message(session_id, request.message)
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "message": request.message
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
