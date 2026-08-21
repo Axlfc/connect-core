@@ -18,6 +18,7 @@ from app.core.project_trust import ProjectTrustStore
 from app.core.resource_loader import ResourceLoader
 from app.core.session_manager import SessionManager
 from app.core.compaction import should_compact, compact
+from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.events import SessionInfoEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent
 from app.core.extensions.registry import extension_registry
 import logging
@@ -129,7 +130,13 @@ async def run_agent_loop(request: AgentLoopRequest):
 
     history = list(effective_messages)
     new_messages = list(request.messages)
-    full_messages_for_loop = [system_msg] + history + new_messages
+
+    # Token budget calculation and reminder injection before constructing full_messages_for_loop
+    model_name = (request.model_params or {}).get("model", "")
+    candidate_messages = [system_msg] + history + new_messages
+    full_messages_for_loop = apply_token_budget_reminder(candidate_messages, model=model_name)
+    total_tokens = estimate_messages_tokens(full_messages_for_loop, model=model_name)
+    logger.info(f"Agent loop prompt token budget estimate: {total_tokens} tokens for model '{model_name or 'default'}'")
 
     # REDESIGN: To persist assistant messages correctly, we need to capture them.
     # The current agent_loop yields events but doesn't return the full objects.

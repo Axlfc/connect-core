@@ -1,9 +1,11 @@
 import asyncio
 import os
 import sys
+import shutil
 import tempfile
 import logging
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, List
 from app.core.exec_policy import default_exec_policy, session_approval_cache, ExecPolicy, SessionApprovalCache
 
 logger = logging.getLogger(__name__)
@@ -50,11 +52,13 @@ class SandboxedExecutor:
         self,
         working_dir: Optional[str] = None,
         timeout: int = 30,
+        allowed_network: bool = False,
         exec_policy: ExecPolicy = default_exec_policy,
         approval_cache: SessionApprovalCache = session_approval_cache
     ):
         self.working_dir = working_dir or tempfile.gettempdir()
         self.timeout = timeout
+        self.allowed_network = allowed_network
         self.exec_policy = exec_policy
         self.approval_cache = approval_cache
 
