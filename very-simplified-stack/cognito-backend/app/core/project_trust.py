@@ -2,7 +2,9 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
+
+from app.core.exec_policy import default_exec_policy, ExecPolicy
 
 DEFAULT_LEGACY_TRUSTED = {
     "read": True,
@@ -47,8 +49,15 @@ DEFAULT_NEW_UNTRUSTED = {
 }
 
 class ProjectTrustStore:
-    def __init__(self, store_path: Path | None = None):
-        self.store_path = store_path or (Path.home() / ".cognito" / "trust.json")
+    def __init__(self, store_path: Optional[Union[str, Path]] = None, exec_policy: Optional[ExecPolicy] = None):
+        if store_path is None:
+            self.store_path = Path.home() / ".cognito" / "trust.json"
+        elif isinstance(store_path, str):
+            self.store_path = Path(store_path)
+        else:
+            self.store_path = store_path
+
+        self.exec_policy = exec_policy or default_exec_policy
         self._ensure_dir()
         self._load_and_migrate()
 
@@ -151,3 +160,11 @@ class ProjectTrustStore:
             data[path] = DEFAULT_NEW_UNTRUSTED.copy()
         data[path][permission] = value
         self._save(data)
+
+    def evaluates_command_approval(self, repo_path: str, command: str) -> bool:
+        """
+        Evaluates whether a command requires explicit human approval for the given project path.
+        Returns True if approval is required, False if it can run automatically.
+        """
+        trusted = self.is_trusted(repo_path)
+        return self.exec_policy.requires_explicit_approval(command, project_trusted=trusted)
