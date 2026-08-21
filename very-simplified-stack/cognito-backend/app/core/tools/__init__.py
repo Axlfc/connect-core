@@ -4,6 +4,7 @@ from app.core.tools.write_tool import WriteTool
 from app.core.tools.edit_tool import EditTool
 from app.core.tools.bash_tool import BashTool
 from app.core.tools.unified_patch_tool import UnifiedPatchTool
+from app.core.tools.persistent_shell_tool import PersistentShellTool
 
 __all__ = [
     "AgentTool",
@@ -14,4 +15,5 @@ __all__ = [
     "EditTool",
     "BashTool",
     "UnifiedPatchTool",
+    "PersistentShellTool",
 ]
