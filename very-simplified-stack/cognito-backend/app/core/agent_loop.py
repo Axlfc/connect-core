@@ -8,6 +8,7 @@ from app.core.events import (
 )
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.uncertainty import compute_uncertainty
+from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +43,14 @@ async def agent_loop(
     ]
 
     turn = 0
+    model_name = (model_params or {}).get("model", "")
+
     while turn < max_turns:
         turn += 1
-        logger.info(f"Starting agent turn {turn}/{max_turns}")
+        # Calculate prompt tokens and apply token budget reminder if tokens exceed 80% of model limit
+        current_messages = apply_token_budget_reminder(current_messages, model=model_name)
+        total_tokens = estimate_messages_tokens(current_messages, model=model_name)
+        logger.info(f"Starting agent turn {turn}/{max_turns} | prompt_tokens={total_tokens} | model={model_name or 'default'}")
 
         assistant_content = ""
         tool_calls_to_exec = []
