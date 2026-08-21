@@ -2,6 +2,7 @@ import json
 import uuid
 import logging
 import fcntl
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -43,12 +44,14 @@ class SessionManager:
                 self._unlock_file(f)
 
     def _save_index(self, index: Dict[str, Dict[str, Any]]):
-        with open(self.index_path, "w") as f:
+        temp_index_path = self.sessions_dir / f".index_{uuid.uuid4().hex}.tmp"
+        with open(temp_index_path, "w") as f:
             self._lock_file(f)
             try:
                 json.dump(index, f, indent=2)
             finally:
                 self._unlock_file(f)
+        temp_index_path.replace(self.index_path)
 
     def create(self, cwd: str) -> str:
         session_id = str(uuid.uuid4())
@@ -241,3 +244,107 @@ class SessionManager:
             for line in f:
                 if line.strip(): line_count += 1
         return line_count - 1
+
+    def rollback_turns(self, session_id: str, num_turns: int) -> None:
+        if num_turns <= 0:
+            return
+
+        session_file = self.sessions_dir / f"{session_id}.jsonl"
+        index = self._get_index()
+
+        if session_id not in index and not session_file.exists():
+            raise FileNotFoundError(f"Session {session_id} not found")
+
+        if not session_file.exists():
+            raise FileNotFoundError(f"Session file for {session_id} not found")
+
+        lines = []
+        user_turn_indices = []
+
+        with open(session_file, "r") as f:
+            for idx, line in enumerate(f):
+                lines.append(line)
+                line_str = line.strip()
+                if line_str:
+                    try:
+                        data = json.loads(line_str)
+                        if isinstance(data, dict) and data.get("type") == "message" and data.get("role") == "user":
+                            user_turn_indices.append(idx)
+                    except json.JSONDecodeError:
+                        pass
+
+        total_turns = len(user_turn_indices)
+        if total_turns == 0:
+            return
+
+        if num_turns >= total_turns:
+            cutoff_index = user_turn_indices[0]
+        else:
+            keep_count = total_turns - num_turns
+            cutoff_index = user_turn_indices[keep_count]
+
+        kept_lines = lines[:cutoff_index]
+
+        temp_file = self.sessions_dir / f".{session_id}_{uuid.uuid4().hex}.tmp"
+        try:
+            with open(temp_file, "w") as f:
+                self._lock_file(f)
+                try:
+                    f.writelines(kept_lines)
+                finally:
+                    self._unlock_file(f)
+            temp_file.replace(session_file)
+        except Exception:
+            if temp_file.exists():
+                temp_file.unlink()
+            raise
+
+        new_message_count = 0
+        for line in kept_lines:
+            if line.strip():
+                try:
+                    data = json.loads(line)
+                    if isinstance(data, dict) and data.get("type") == "message":
+                        new_message_count += 1
+                except json.JSONDecodeError:
+                    pass
+
+        index = self._get_index()
+        if session_id in index:
+            index[session_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+            index[session_id]["message_count"] = new_message_count
+            self._save_index(index)
+
+    def archive_session(self, session_id: str) -> Path:
+        session_file = self.sessions_dir / f"{session_id}.jsonl"
+        index = self._get_index()
+
+        if session_id not in index and not session_file.exists():
+            raise FileNotFoundError(f"Session {session_id} not found")
+
+        archive_dir = self.sessions_dir / "archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        target_path = archive_dir / f"{session_id}.jsonl"
+
+        if session_file.exists():
+            shutil.move(str(session_file), str(target_path))
+
+        if session_id in index:
+            index.pop(session_id)
+            self._save_index(index)
+
+        return target_path
+
+    def delete_session(self, session_id: str) -> None:
+        session_file = self.sessions_dir / f"{session_id}.jsonl"
+        index = self._get_index()
+
+        if session_id not in index and not session_file.exists():
+            raise FileNotFoundError(f"Session {session_id} not found")
+
+        if session_file.exists():
+            session_file.unlink()
+
+        if session_id in index:
+            index.pop(session_id)
+            self._save_index(index)
