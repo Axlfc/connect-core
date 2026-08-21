@@ -2,12 +2,18 @@ import sys
 import asyncio
 import argparse
 import os
+import json
 import logging
+from typing import Optional
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
+
 from cli.config import load_config
 from cli.http_client import CognitoClient
 from cli.modes.print_mode import print_mode
 from cli.modes.json_mode import json_mode
 from cli.modes.rpc_mode import rpc_mode
+from cli.slash_commands import handle_slash_command
 
 # Configure logging to stderr
 logging.basicConfig(
@@ -16,6 +22,50 @@ logging.basicConfig(
     stream=sys.stderr
 )
 logger = logging.getLogger("cognito-cli")
+
+async def interactive_loop(client: CognitoClient, config, cwd: str, session_id: Optional[str] = None) -> int:
+    prompt_session = PromptSession(history=InMemoryHistory())
+    current_session_id = session_id
+
+    sys.stdout.write("Cognito CLI - Modo Interactivo\n")
+    sys.stdout.write("Escribe tus consultas o comandos slash (/status, /trust, /compact, /clear). Usa Ctrl+C o Ctrl+D para salir.\n\n")
+    sys.stdout.flush()
+
+    while True:
+        try:
+            user_input = await prompt_session.prompt_async("cognito> ")
+        except (KeyboardInterrupt, EOFError):
+            sys.stdout.write("\n[Saliendo de Cognito CLI...]\n")
+            sys.stdout.flush()
+            break
+
+        line = user_input.strip()
+        if not line:
+            continue
+
+        if line in ("/exit", "/quit"):
+            sys.stdout.write("[Saliendo de Cognito CLI...]\n")
+            sys.stdout.flush()
+            break
+
+        # 1. Intercept slash commands
+        handled, current_session_id = await handle_slash_command(line, cwd, current_session_id)
+        if handled:
+            continue
+
+        # 2. Non-slash input -> send to LLM agent_loop via API
+        messages = [{"role": "user", "content": line}]
+        event_iterator = client.agent_loop(
+            messages=messages,
+            cwd=cwd,
+            session_id=current_session_id
+        )
+
+        code, new_session_id = await print_mode(event_iterator, config)
+        if new_session_id:
+            current_session_id = new_session_id
+
+    return 0
 
 async def main():
     parser = argparse.ArgumentParser(description="Cognito CLI Client")
@@ -46,39 +96,52 @@ async def main():
             if args.mode == "rpc":
                 return await rpc_mode(client, config)
 
-            # For print and json mode, we need a prompt
+            # Determine prompt if provided via arg or stdin pipe
             prompt = args.prompt
-            if not prompt:
-                if not sys.stdin.isatty():
-                    prompt = sys.stdin.read()
+            is_piped = not sys.stdin.isatty()
 
-            if not prompt:
-                sys.stderr.write("Error: No prompt provided.\n")
-                return 1
+            if not prompt and is_piped:
+                prompt = sys.stdin.read().strip()
 
-            messages = [{"role": "user", "content": prompt}]
-            event_iterator = client.agent_loop(
-                messages=messages,
-                cwd=cwd,
-                session_id=args.session_id
-            )
-
+            # If mode is json, we must have a prompt
             if args.mode == "json":
+                if not prompt:
+                    sys.stderr.write("Error: No prompt provided.\n")
+                    return 1
+                messages = [{"role": "user", "content": prompt}]
+                event_iterator = client.agent_loop(
+                    messages=messages,
+                    cwd=cwd,
+                    session_id=args.session_id
+                )
                 return await json_mode(event_iterator, config)
-            else: # print
-                return await print_mode(event_iterator, config)
+
+            # If print mode and a prompt was provided
+            if prompt:
+                handled, new_session_id = await handle_slash_command(prompt, cwd, args.session_id)
+                if handled:
+                    return 0
+
+                messages = [{"role": "user", "content": prompt}]
+                event_iterator = client.agent_loop(
+                    messages=messages,
+                    cwd=cwd,
+                    session_id=args.session_id
+                )
+                code, _ = await print_mode(event_iterator, config)
+                return code
+
+            # Interactive print mode
+            return await interactive_loop(client, config, cwd, args.session_id)
 
     except Exception as e:
         if args.mode == "rpc":
-            # For RPC, we already handle errors inside rpc_mode mostly,
-            # but if it fails before starting the loop:
             print(json.dumps({
                 "jsonrpc": "2.0",
                 "error": {"code": -32000, "message": "Internal error", "data": {"detail": str(e)}},
                 "id": None
             }))
         else:
-            # Check for network errors specifically
             import httpx
             if isinstance(e, (httpx.ConnectError, httpx.TimeoutException)):
                 sys.stderr.write(f"Error: no se pudo conectar con {config.endpoint}: {str(e)}\n")

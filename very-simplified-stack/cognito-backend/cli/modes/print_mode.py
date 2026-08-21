@@ -1,6 +1,6 @@
 import sys
 from cli.config import CognitoConfig
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, Optional
 
 RESET = "\x1b[0m"
 
@@ -19,12 +19,14 @@ def get_uncertainty_color(score: float) -> str:
         b = int(60 + t * (40 - 60))
     return f"\x1b[38;2;{r};{g};{b}m"
 
-async def print_mode(event_iterator, config: CognitoConfig):
+async def print_mode(event_iterator, config: CognitoConfig) -> Tuple[int, Optional[str]]:
+    session_id = None
     async for event in event_iterator:
         event_type = event.get("type")
 
         if event_type == "session_info":
-            sys.stderr.write(f"[session: {event.get('session_id')}]\n")
+            session_id = event.get("session_id")
+            sys.stderr.write(f"[session: {session_id}]\n")
             sys.stderr.flush()
 
         elif event_type == "text_delta":
@@ -61,11 +63,15 @@ async def print_mode(event_iterator, config: CognitoConfig):
                 if event.get("error_message"):
                     sys.stderr.write(f"Error: {event.get('error_message')}\n")
                 sys.stderr.flush()
-            return 0 if stop_reason == "end_turn" else 1
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return (0 if stop_reason == "end_turn" else 1), session_id
 
         elif event_type == "error":
             sys.stderr.write(f"Error: {event.get('message')}\n")
             sys.stderr.flush()
-            return 1
+            return 1, session_id
 
-    return 0
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    return 0, session_id
