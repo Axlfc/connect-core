@@ -19,16 +19,42 @@ async def agent_loop(
     backend_router,
     model_params: Optional[Dict[str, Any]] = None,
     max_turns: int = 10,
+    steering_queue: Optional[Any] = None,
+    history_lock: Optional[Any] = None,
+    session_manager: Optional[Any] = None,
+    session_id: Optional[str] = None,
 ) -> AsyncIterator[AgentEvent]:
     """
     Main Agent Loop:
     1. Call backend with tools.
     2. Stream text deltas.
     3. Handle tool calls: execute tool, emit ToolResultEvent, add to messages.
-    4. Repeat until end_turn or max_turns.
+    4. Check steering queue before calling LLM or executing tools.
+    5. Repeat until end_turn or max_turns.
     """
 
     current_messages = list(messages)
+
+    async def process_steering():
+        if steering_queue is None:
+            return
+        while not steering_queue.empty():
+            try:
+                steering_msg = steering_queue.get_nowait()
+            except Exception:
+                break
+            steering_content = f"[STEERING INPUT] {steering_msg}"
+            steering_user_msg = {"role": "user", "content": steering_content}
+            if history_lock:
+                async with history_lock:
+                    current_messages.append(steering_user_msg)
+                    if session_manager and session_id:
+                        session_manager.append_message(session_id, role="user", content=steering_content)
+            else:
+                current_messages.append(steering_user_msg)
+                if session_manager and session_id:
+                    session_manager.append_message(session_id, role="user", content=steering_content)
+            logger.info(f"Injected steering message into session {session_id}: {steering_content}")
     # Convert AgentTool list to JSON Schema format for the backend
     tools_schema = [
         {
@@ -47,6 +73,7 @@ async def agent_loop(
 
     while turn < max_turns:
         turn += 1
+        await process_steering()
         # Calculate prompt tokens and apply token budget reminder if tokens exceed 80% of model limit
         current_messages = apply_token_budget_reminder(current_messages, model=model_name)
         total_tokens = estimate_messages_tokens(current_messages, model=model_name)
@@ -117,6 +144,7 @@ async def agent_loop(
 
             # Execute tools
             for tc in tool_calls_to_exec:
+                await process_steering()
                 tool = next((t for t in tools if t.name == tc["name"]), None)
                 if not tool:
                     result = ToolResult(is_error=True, output=f"Tool '{tc['name']}' not found.")
