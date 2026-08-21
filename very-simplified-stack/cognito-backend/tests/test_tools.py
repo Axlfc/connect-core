@@ -8,6 +8,7 @@ from app.core.tools.read_tool import ReadTool
 from app.core.tools.write_tool import WriteTool
 from app.core.tools.edit_tool import EditTool
 from app.core.tools.bash_tool import BashTool
+from app.core.tools.unified_patch_tool import UnifiedPatchTool
 
 @pytest.fixture
 def temp_workspace():
@@ -93,3 +94,109 @@ async def test_bash_tool(temp_workspace, tool_context):
     result = await tool.execute({"command": "sleep 2", "timeout_seconds": 1}, tool_context)
     assert result.is_error
     assert "timed out" in result.output
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_success(temp_workspace, tool_context):
+    test_file = Path(temp_workspace) / "file.txt"
+    test_file.write_text("line 1\nline 2\nline 3\n")
+
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- a/file.txt\n"
+        "+++ b/file.txt\n"
+        "@@ -1,3 +1,3 @@\n"
+        " line 1\n"
+        "-line 2\n"
+        "+line two\n"
+        " line 3\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert not result.is_error
+    assert "Patch applied successfully" in result.output
+    assert test_file.read_text() == "line 1\nline two\nline 3\n"
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_create_file(temp_workspace, tool_context):
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- /dev/null\n"
+        "+++ b/created.txt\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+first line\n"
+        "+second line\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert not result.is_error
+    new_file = Path(temp_workspace) / "created.txt"
+    assert new_file.exists()
+    assert new_file.read_text() == "first line\nsecond line\n"
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_path_traversal(temp_workspace, tool_context):
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- a/../secret.txt\n"
+        "+++ b/../secret.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert result.is_error
+    assert "outside of workspace" in result.output
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_protected_file(temp_workspace, tool_context):
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- a/protected.txt\n"
+        "+++ b/protected.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert result.is_error
+    assert "Archivo protegido" in result.output
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_untrusted(temp_workspace, tool_context):
+    tool = UnifiedPatchTool()
+    tool_context.trusted = False
+    patch = (
+        "--- a/file.txt\n"
+        "+++ b/file.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert result.is_error
+    assert "no confiado" in result.output
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_outdated_context(temp_workspace, tool_context):
+    test_file = Path(temp_workspace) / "file.txt"
+    test_file.write_text("line A\nline B\nline C\n")
+
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- a/file.txt\n"
+        "+++ b/file.txt\n"
+        "@@ -1,3 +1,3 @@\n"
+        " line A\n"
+        "-line NON_EXISTENT\n"
+        "+line replaced\n"
+        " line C\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert result.is_error
+    assert "Error checking patch" in result.output
+    # Detailed line error check from git apply
+    assert "patch failed" in result.output or "file.txt" in result.output

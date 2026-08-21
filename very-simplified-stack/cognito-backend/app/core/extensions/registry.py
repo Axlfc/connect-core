@@ -38,12 +38,13 @@ class ExtensionRegistry:
 
     def tools_for(self, cwd: str) -> List[Any]:
         # Merge Global and project-local tools. Project-local wins.
-        from app.core.tools import ReadTool, WriteTool, EditTool, BashTool
+        from app.core.tools import ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool
         tools = {
             "read": ReadTool(),
             "write": WriteTool(),
             "edit": EditTool(),
             "bash": BashTool(),
+            "unified_patch": UnifiedPatchTool(),
         }
         tools.update(self._global_tools)
         if cwd in self._project_tools:
