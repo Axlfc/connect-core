@@ -9,6 +9,7 @@ from app.core.events import (
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.uncertainty import compute_uncertainty
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
+from app.core.guardrails.tool_loop_detector import ToolLoopDetector
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ async def agent_loop(
 
     turn = 0
     model_name = (model_params or {}).get("model", "")
+    tool_loop_detector = ToolLoopDetector(window_size=4, threshold=3)
 
     while turn < max_turns:
         turn += 1
@@ -166,6 +168,19 @@ async def agent_loop(
                     "name": tc["name"],
                     "content": result.output
                 })
+
+                # Check for tool call repetition loop guardrail
+                warning_msg = tool_loop_detector.record_and_check(tc["name"], tc["arguments"])
+                if warning_msg:
+                    logger.warning(f"Tool loop detected for '{tc['name']}'. Injecting system warning message.")
+                    system_warning_msg = {"role": "system", "content": warning_msg}
+                    current_messages.append(system_warning_msg)
+                    if session_manager and session_id:
+                        if history_lock:
+                            async with history_lock:
+                                session_manager.append_message(session_id, role="system", content=warning_msg)
+                        else:
+                            session_manager.append_message(session_id, role="system", content=warning_msg)
 
         except Exception as e:
             logger.error(f"Error in agent loop turn {turn}: {e}", exc_info=True)
