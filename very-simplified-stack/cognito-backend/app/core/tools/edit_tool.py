@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 from typing import Any, Dict
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.fs_observation_policy import FSObservationPolicy
 
 class EditTool(AgentTool):
     name = "edit"
@@ -23,40 +25,40 @@ class EditTool(AgentTool):
         if not path or old_str is None or new_str is None:
             return ToolResult(is_error=True, output="Error: path, old_str and new_str are required.")
 
-        abs_cwd = os.path.realpath(context.cwd)
-        norm_path = os.path.normpath(path)
-        target_path = os.path.realpath(os.path.join(abs_cwd, norm_path))
+        policy = FSObservationPolicy(
+            cwd=context.cwd,
+            protected_files=getattr(context, "protected_files", None),
+        )
 
-        # Path traversal protection
-        from app.core.path_safety import is_path_contained
-        if not is_path_contained(target_path, abs_cwd):
-            return ToolResult(is_error=True, output=f"Error: Access denied. Path '{path}' is outside of workspace.")
+        target_path = Path(context.cwd) / path
 
-        # Protected files check
-        if norm_path in context.protected_files:
-            return ToolResult(is_error=True, output=f"Archivo protegido: {norm_path}. No se puede modificar vía agente.")
+        if policy.is_path_ignored(target_path):
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
+
+        resolved_target = target_path.resolve()
 
         # Trust check
         if not context.trusted:
             return ToolResult(is_error=True, output="Proyecto no confiado (untrusted). Ejecuta project-trust set antes de escribir.")
 
-        if not os.path.exists(target_path):
-            return ToolResult(is_error=True, output=f"Error: File '{path}' not found.")
+        if not resolved_target.exists():
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
 
         try:
-            with open(target_path, "r", encoding="utf-8") as f:
+            with open(resolved_target, "r", encoding="utf-8") as f:
                 content = f.read()
 
             count = content.count(old_str)
+            norm_path = os.path.normpath(path)
             if count == 0:
-                return ToolResult(is_error=True, output=f"Error: old_str not found in '{path}'.")
+                return ToolResult(is_error=True, output=f"Error: old_str not found in '{norm_path}'.")
             if count > 1:
-                return ToolResult(is_error=True, output=f"Error: old_str appears {count} times in '{path}'. Must be unique.")
+                return ToolResult(is_error=True, output=f"Error: old_str appears {count} times in '{norm_path}'. Must be unique.")
 
             new_content = content.replace(old_str, new_str)
-            with open(target_path, "w", encoding="utf-8") as f:
+            with open(resolved_target, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
             return ToolResult(output=f"File '{norm_path}' edited successfully.")
-        except Exception as e:
-            return ToolResult(is_error=True, output=f"Error editing file: {str(e)}")
+        except Exception:
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())

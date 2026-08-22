@@ -37,7 +37,7 @@ async def test_read_tool(temp_workspace, tool_context):
     # Path traversal
     result = await tool.execute({"path": "../test.txt"}, tool_context)
     assert result.is_error
-    assert "outside of workspace" in result.output
+    assert "Archivo o directorio no encontrado o no accesible" in result.output
 
 @pytest.mark.asyncio
 async def test_write_tool(temp_workspace, tool_context):

@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 from typing import Any, Dict
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.path_safety import is_path_contained
 
 class WriteTool(AgentTool):
     name = "write"
@@ -26,7 +28,6 @@ class WriteTool(AgentTool):
         target_path = os.path.realpath(os.path.join(abs_cwd, norm_path))
 
         # Path traversal protection
-        from app.core.path_safety import is_path_contained
         if not is_path_contained(target_path, abs_cwd):
             return ToolResult(is_error=True, output=f"Error: Access denied. Path '{path}' is outside of workspace.")
 

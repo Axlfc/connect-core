@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 from typing import Any, Dict
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.fs_observation_policy import FSObservationPolicy
 
 class ReadTool(AgentTool):
     name = "read"
@@ -23,24 +25,29 @@ class ReadTool(AgentTool):
         if not path:
             return ToolResult(is_error=True, output="Error: path is required.")
 
-        # Path traversal protection
-        abs_cwd = os.path.realpath(context.cwd)
-        target_path = os.path.realpath(os.path.join(abs_cwd, path))
+        policy = FSObservationPolicy(
+            cwd=context.cwd,
+            protected_files=getattr(context, "protected_files", None),
+        )
 
-        from app.core.path_safety import is_path_contained
-        if not is_path_contained(target_path, abs_cwd):
-            return ToolResult(is_error=True, output=f"Error: Access denied. Path '{path}' is outside of workspace.")
+        target_path = Path(context.cwd) / path
 
-        if not os.path.exists(target_path):
-            return ToolResult(is_error=True, output=f"Error: File '{path}' not found.")
+        # Check observation policy and path safety
+        if policy.is_path_ignored(target_path):
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
 
-        if os.path.isdir(target_path):
-            return ToolResult(is_error=True, output=f"Error: '{path}' is a directory.")
+        resolved_target = target_path.resolve()
+
+        if not resolved_target.exists():
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
+
+        if resolved_target.is_dir():
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
 
         try:
-            with open(target_path, "r", encoding="utf-8") as f:
+            with open(resolved_target, "r", encoding="utf-8") as f:
                 f.seek(offset)
                 content = f.read(limit)
                 return ToolResult(output=content)
-        except Exception as e:
-            return ToolResult(is_error=True, output=f"Error reading file: {str(e)}")
+        except Exception:
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
