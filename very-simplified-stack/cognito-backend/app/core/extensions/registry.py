@@ -38,9 +38,15 @@ class ExtensionRegistry:
 
     def tools_for(self, cwd: str) -> List[Any]:
         # Merge Global and project-local tools. Project-local wins.
-        from app.core.tools import ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool, CodeReviewTool
+        from app.core.tools import (
+            ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool,
+            CodeReviewTool, ListDirectoryTool, SearchFilesTool
+        )
         tools = {
             "read": ReadTool(),
+            "read_file": ReadTool(),
+            "list_directory": ListDirectoryTool(),
+            "search_files": SearchFilesTool(),
             "write": WriteTool(),
             "edit": EditTool(),
             "bash": BashTool(),
