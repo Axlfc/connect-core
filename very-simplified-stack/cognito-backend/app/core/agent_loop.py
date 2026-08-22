@@ -152,7 +152,10 @@ async def agent_loop(
                     result = ToolResult(is_error=True, output=f"Tool '{tc['name']}' not found.")
                 else:
                     logger.info(f"Executing tool {tool.name} with args {tc['arguments']}")
-                    result = await tool.execute(tc["arguments"], context)
+                    if isinstance(tool, AgentTool):
+                        result = await tool.validate_and_execute(tc["arguments"], context)
+                    else:
+                        result = await tool.execute(tc["arguments"], context)
 
                 yield ToolResultEvent(
                     tool_call_id=tc["id"],

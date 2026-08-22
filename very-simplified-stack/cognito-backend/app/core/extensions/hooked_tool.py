@@ -26,7 +26,10 @@ class HookedTool(AgentTool):
         if veto:
             return ToolResult(is_error=True, output=f"Llamada bloqueada por extensión: {veto}")
 
-        result = await self._inner.execute(arguments, context)
+        if isinstance(self._inner, AgentTool):
+            result = await self._inner.validate_and_execute(arguments, context)
+        else:
+            result = await self._inner.execute(arguments, context)
 
         await self._registry.fire(
             "after_tool_call",
