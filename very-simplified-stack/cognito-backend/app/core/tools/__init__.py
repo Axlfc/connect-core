@@ -7,6 +7,7 @@ from app.core.tools.unified_patch_tool import UnifiedPatchTool
 from app.core.tools.persistent_shell_tool import PersistentShellTool
 from app.core.tools.code_review_tool import CodeReviewTool
 from app.core.tools.fs_tools import ListDirectoryTool, SearchFilesTool
+from app.core.tools.query_spill_tool import QuerySpillTool
 
 __all__ = [
     "AgentTool",
@@ -21,4 +22,5 @@ __all__ = [
     "CodeReviewTool",
     "ListDirectoryTool",
     "SearchFilesTool",
+    "QuerySpillTool",
 ]
