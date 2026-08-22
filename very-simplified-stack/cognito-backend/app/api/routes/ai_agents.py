@@ -20,6 +20,7 @@ from app.core.session_manager import SessionManager
 from app.core.compaction import should_compact, compact
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.events import SessionInfoEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent
+from app.core.session.message_deriver import derive_messages_for_llm, DerivationConfig
 from app.core.extensions.registry import extension_registry
 from app.core.steering import steering_manager
 import logging
@@ -110,7 +111,6 @@ async def run_agent_loop(request: AgentLoopRequest):
             last_line = session_manager.get_last_line_index(session_id)
             summary = await compact(effective_messages, backend_router=backend_router)
             session_manager.append_compaction(session_id, summary, last_line)
-            effective_messages = session_manager.get_effective_messages(session_id)
         except Exception as e:
             logger.warning(f"Compaction failed for session {session_id}, continuing anyway: {e}")
 
@@ -126,19 +126,17 @@ async def run_agent_loop(request: AgentLoopRequest):
     extension_registry.refresh("project_local", request.cwd, backend_router, semantic_orchestrator)
     tools = extension_registry.tools_for(request.cwd)
 
-    # Generar y anteponer el base system message dinámicamente en caliente,
-    # sin persistirlo nunca en el .jsonl de la sesión.
-    from app.core.system_prompt import build_system_message
-    system_prompt = build_system_message(request.cwd)
-    system_msg = {"role": "system", "content": system_prompt}
-
-    history = list(effective_messages)
     new_messages = list(request.messages)
-
-    # Token budget calculation and reminder injection before constructing full_messages_for_loop
     model_name = (request.model_params or {}).get("model", "")
-    candidate_messages = [system_msg] + history + new_messages
-    full_messages_for_loop = apply_token_budget_reminder(candidate_messages, model=model_name)
+
+    # Derivar el array completo de mensajes usando el patron Event Log vs. Derived Messages
+    derivation_config = DerivationConfig(
+        cwd=request.cwd,
+        model_name=model_name,
+        sessions_dir=session_manager.sessions_dir,
+        extra_messages=new_messages
+    )
+    full_messages_for_loop = await derive_messages_for_llm(session_id, config=derivation_config)
     total_tokens = estimate_messages_tokens(full_messages_for_loop, model=model_name)
     logger.info(f"Agent loop prompt token budget estimate: {total_tokens} tokens for model '{model_name or 'default'}'")
 
