@@ -4,6 +4,7 @@ from app.core.exec_policy import ExecPolicy, SessionApprovalCache
 from app.core.project_trust import ProjectTrustStore
 from app.core.tools.bash_tool import BashTool
 from app.core.tools.base import ToolContext
+from unittest.mock import patch, AsyncMock
 from app.core.sandbox import SandboxedExecutor
 
 def test_exec_policy_dangerous_commands():
@@ -107,16 +108,23 @@ async def test_sandboxed_executor_cmd_policy_and_cache(tmp_path):
     cache = SessionApprovalCache()
     executor = SandboxedExecutor(working_dir=str(tmp_path), exec_policy=policy, approval_cache=cache)
 
-    # Untrusted without approval
-    res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False)
-    assert res["approval_required"] is True
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"sandbox\n", b"")
+        mock_proc.returncode = 0
+        mock_exec.return_value = mock_proc
 
-    # User approved -> succeeds and cached
-    res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False, user_approved=True)
-    assert res["approval_required"] is False
-    assert "sandbox" in res["stdout"]
+        # Untrusted without approval
+        res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False)
+        assert res["approval_required"] is True
 
-    # Auto-approved next time
-    res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False)
-    assert res["approval_required"] is False
-    assert "sandbox" in res["stdout"]
+        # User approved -> succeeds and cached
+        res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False, user_approved=True)
+        assert res["approval_required"] is False
+        assert "sandbox" in res["stdout"]
+
+        # Auto-approved next time
+        res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False)
+        assert res["approval_required"] is False
+        assert "sandbox" in res["stdout"]

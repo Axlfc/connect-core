@@ -11,6 +11,13 @@ from app.core.exec_policy import default_exec_policy, session_approval_cache, Ex
 logger = logging.getLogger(__name__)
 
 
+class SandboxUnavailableError(RuntimeError):
+    """
+    Exception raised when bubblewrap ('bwrap') is not installed or available on the host system.
+    """
+    pass
+
+
 def is_bwrap_available() -> bool:
     """
     Checks if bubblewrap ('bwrap') binary is available on the host system.
@@ -62,6 +69,19 @@ class SandboxedExecutor:
         self.exec_policy = exec_policy
         self.approval_cache = approval_cache
 
+    async def _verify_bwrap(self) -> None:
+        """
+        Verifies that bubblewrap ('bwrap') is available. If not, logs a CRITICAL security error
+        and raises SandboxUnavailableError.
+        """
+        if not is_bwrap_available():
+            msg = (
+                "Error de Seguridad: Bubblewrap (bwrap) no está instalado en el host. "
+                "La ejecución de código no está aislada. Instala bwrap o contacta al administrador."
+            )
+            logger.critical(msg)
+            raise SandboxUnavailableError(msg)
+
     async def execute_cmd(
         self,
         command: str,
@@ -71,7 +91,10 @@ class SandboxedExecutor:
     ) -> Dict[str, Any]:
         """
         Evaluates ExecPolicy and session cache before executing a shell command inside the sandbox.
+        Requires bwrap to be installed; raises SandboxUnavailableError if missing.
         """
+        await self._verify_bwrap()
+
         is_cache_approved = self.approval_cache.is_approved(session_id, command)
 
         if user_approved:
@@ -89,12 +112,15 @@ class SandboxedExecutor:
                     "approval_required": True
                 }
 
+        cwd_path = Path(self.working_dir).resolve()
+        cmd = build_bwrap_args(cwd=cwd_path, allowed_network=self.allowed_network) + ["sh", "-c", command]
+
         try:
-            proc = await asyncio.create_subprocess_shell(
-                command,
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=self.working_dir
+                cwd=cwd_path
             )
 
             try:
@@ -119,6 +145,8 @@ class SandboxedExecutor:
                     "approval_required": False
                 }
 
+        except SandboxUnavailableError:
+            raise
         except Exception as e:
             return {
                 "stdout": "",
@@ -130,33 +158,27 @@ class SandboxedExecutor:
 
     async def execute_code(self, code: str, allowed_network: Optional[bool] = None) -> Dict[str, Any]:
         """
-        Executes raw Python code inside a separate python subprocess, capturing output.
-        Uses bubblewrap (bwrap) sandbox if available, falling back to standard subprocess execution.
+        Executes raw Python code inside a separate python subprocess wrapped in bubblewrap (bwrap).
+        Requires bwrap to be installed; raises SandboxUnavailableError if missing.
         """
+        await self._verify_bwrap()
+
         net_allowed = self.allowed_network if allowed_network is None else allowed_network
         cwd_path = Path(self.working_dir).resolve()
 
         # Save temporary file inside our safe working directory
-        temp_file = os.path.join(str(cwd_path), f"sandbox_{os.getpid()}_{id(code)}.py")
-        with open(temp_file, "w", encoding="utf-8") as f:
-            f.write(code)
+        temp_file = cwd_path / f"sandbox_{os.getpid()}_{id(code)}.py"
+        temp_file.write_text(code, encoding="utf-8")
 
-        bwrap_active = is_bwrap_available()
-
-        if bwrap_active:
-            cmd = build_bwrap_args(cwd=cwd_path, allowed_network=net_allowed) + [sys.executable, temp_file]
-            context = "bwrap"
-        else:
-            logger.warning("bwrap is not available on host system. Falling back to unverified subprocess execution.")
-            cmd = [sys.executable, temp_file]
-            context = "unverified_sandbox"
+        cmd = build_bwrap_args(cwd=cwd_path, allowed_network=net_allowed) + [sys.executable, str(temp_file)]
+        context = "bwrap"
 
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=str(cwd_path)
+                cwd=cwd_path
             )
 
             try:
@@ -185,8 +207,8 @@ class SandboxedExecutor:
 
         finally:
             # Cleanup temp file
-            if os.path.exists(temp_file):
+            if temp_file.exists():
                 try:
-                    os.remove(temp_file)
+                    temp_file.unlink()
                 except Exception:
                     pass

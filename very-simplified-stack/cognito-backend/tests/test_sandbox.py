@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, AsyncMock
-from app.core.sandbox import is_bwrap_available, build_bwrap_args, SandboxedExecutor
+from app.core.sandbox import is_bwrap_available, build_bwrap_args, SandboxedExecutor, SandboxUnavailableError
 
 
 def test_is_bwrap_available():
@@ -30,14 +30,26 @@ def test_build_bwrap_args():
 
 
 @pytest.mark.asyncio
-async def test_sandboxed_executor_fallback_when_bwrap_unavailable():
-    with patch("app.core.sandbox.is_bwrap_available", return_value=False):
-        executor = SandboxedExecutor()
-        res = await executor.execute_code("print('fallback test')")
+async def test_sandboxed_executor_raises_when_bwrap_unavailable():
+    with patch("app.core.sandbox.is_bwrap_available", return_value=False), \
+         patch("app.core.sandbox.logger.critical") as mock_log:
 
-        assert res["exit_code"] == 0
-        assert "fallback test" in res["stdout"]
-        assert res["context"] == "unverified_sandbox"
+        executor = SandboxedExecutor()
+
+        with pytest.raises(SandboxUnavailableError) as exc_info:
+            await executor.execute_code("print('bwrap test')")
+
+        expected_msg = (
+            "Error de Seguridad: Bubblewrap (bwrap) no está instalado en el host. "
+            "La ejecución de código no está aislada. Instala bwrap o contacta al administrador."
+        )
+        assert expected_msg in str(exc_info.value)
+
+        with pytest.raises(SandboxUnavailableError) as exc_info_cmd:
+            await executor.execute_cmd("echo test")
+
+        assert expected_msg in str(exc_info_cmd.value)
+        mock_log.assert_called()
 
 
 @pytest.mark.asyncio
