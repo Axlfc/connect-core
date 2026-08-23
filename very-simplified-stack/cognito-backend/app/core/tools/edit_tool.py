@@ -6,7 +6,7 @@ from app.core.fs_observation_policy import FSObservationPolicy
 
 class EditTool(AgentTool):
     name = "edit"
-    description = "Edit a file by replacing a specific string with a new one."
+    description = "DEPRECADA: Usa 'apply_unified_patch' en su lugar. Esta herramienta ya no se recomienda."
     parameters_schema = {
         "type": "object",
         "properties": {

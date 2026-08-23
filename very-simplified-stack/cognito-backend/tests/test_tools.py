@@ -59,6 +59,10 @@ async def test_write_tool(temp_workspace, tool_context):
     assert result.is_error
     assert "no confiado" in result.output
 
+def test_edit_tool_deprecated_description():
+    tool = EditTool()
+    assert tool.description == "DEPRECADA: Usa 'apply_unified_patch' en su lugar. Esta herramienta ya no se recomienda."
+
 @pytest.mark.asyncio
 async def test_edit_tool(temp_workspace, tool_context):
     test_file = Path(temp_workspace) / "edit.txt"
@@ -162,6 +166,21 @@ async def test_unified_patch_tool_protected_file(temp_workspace, tool_context):
     result = await tool.execute({"patch": patch}, tool_context)
     assert result.is_error
     assert "Archivo protegido" in result.output
+
+@pytest.mark.asyncio
+async def test_unified_patch_tool_ignored_file(temp_workspace, tool_context):
+    tool = UnifiedPatchTool()
+    patch = (
+        "--- a/.env\n"
+        "+++ b/.env\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-SECRET=123\n"
+        "+SECRET=456\n"
+    )
+
+    result = await tool.execute({"patch": patch}, tool_context)
+    assert result.is_error
+    assert "no encontrado o no accesible" in result.output
 
 @pytest.mark.asyncio
 async def test_unified_patch_tool_untrusted(temp_workspace, tool_context):

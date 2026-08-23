@@ -42,6 +42,7 @@ class ExtensionRegistry:
             ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool,
             CodeReviewTool, ListDirectoryTool, SearchFilesTool
         )
+        patch_tool = UnifiedPatchTool()
         tools = {
             "read": ReadTool(),
             "read_file": ReadTool(),
@@ -50,7 +51,8 @@ class ExtensionRegistry:
             "write": WriteTool(),
             "edit": EditTool(),
             "bash": BashTool(),
-            "unified_patch": UnifiedPatchTool(),
+            "apply_unified_patch": patch_tool,
+            "unified_patch": patch_tool,
             "code_review": CodeReviewTool(),
         }
         tools.update(self._global_tools)

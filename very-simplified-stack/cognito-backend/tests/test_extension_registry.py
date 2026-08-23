@@ -22,6 +22,8 @@ async def test_registry_tool_isolation():
     tools_a = registry.tools_for("/repo/a")
     assert any(t.name == "t1" for t in tools_a)
     assert any(t.name == "t2" for t in tools_a)
+    assert any(getattr(t, "name", None) == "apply_unified_patch" for t in tools_a)
+    assert any(getattr(t, "name", None) == "edit" for t in tools_a)
 
     # tools_for B should only have global
     tools_b = registry.tools_for("/repo/b")
