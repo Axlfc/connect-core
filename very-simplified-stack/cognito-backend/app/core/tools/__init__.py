@@ -8,6 +8,7 @@ from app.core.tools.persistent_shell_tool import PersistentShellTool
 from app.core.tools.code_review_tool import CodeReviewTool
 from app.core.tools.fs_tools import ListDirectoryTool, SearchFilesTool
 from app.core.tools.query_spill_tool import QuerySpillTool
+from app.core.tools.read_spill_tool import ReadSpillTool
 
 __all__ = [
     "AgentTool",
@@ -23,4 +24,5 @@ __all__ = [
     "ListDirectoryTool",
     "SearchFilesTool",
     "QuerySpillTool",
+    "ReadSpillTool",
 ]
