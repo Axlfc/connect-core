@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.fs_observation_policy import FSObservationPolicy
-from app.core.context_spill import default_spill_manager, SpillManager
+from app.core.context_spill import default_spill_manager, SpillManager, spill_large_content
 
 class ReadTool(AgentTool):
     name = "read"
@@ -53,15 +53,21 @@ class ReadTool(AgentTool):
                 f.seek(offset)
                 content = f.read(limit)
 
-                if self.spill_manager.should_spill(content):
-                    spill_id = self.spill_manager.spill(content, metadata={"path": str(path)})
-                    msg = (
-                        "El archivo es demasiado grande para el contexto. "
-                        "Su contenido ha sido almacenado en la memoria externa. "
-                        f"Usa la herramienta 'query_spill' con el ID: {spill_id} para consultar secciones específicas."
+                spill_dir = getattr(self.spill_manager, "spill_dir", None)
+                if self.spill_manager and self.spill_manager.should_spill(content):
+                    output_content = spill_large_content(
+                        content,
+                        cwd=Path(context.cwd),
+                        threshold=0,
+                        spill_dir=spill_dir,
                     )
-                    return ToolResult(output=msg)
+                else:
+                    output_content = spill_large_content(
+                        content,
+                        cwd=Path(context.cwd),
+                        spill_dir=spill_dir,
+                    )
 
-                return ToolResult(output=content)
+                return ToolResult(output=output_content)
         except Exception:
             return ToolResult(is_error=True, output=policy.get_generic_error_message())

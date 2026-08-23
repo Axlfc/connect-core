@@ -10,8 +10,69 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SPILL_DIR = Path.home() / ".cognito" / "spill"
 DEFAULT_TOKEN_THRESHOLD = 2000
+DEFAULT_CHAR_THRESHOLD = 4000
 DEFAULT_TTL_SECONDS = 24 * 3600  # 24 hours
 DEFAULT_MAX_STORAGE_BYTES = 50 * 1024 * 1024  # 50 MB
+
+
+def clean_old_spills(spill_dir: Optional[Path] = None, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> int:
+    """
+    Cleans up spill files older than ttl_seconds using pathlib.
+    Returns the number of deleted files.
+    """
+    target_dir = Path(spill_dir) if spill_dir else DEFAULT_SPILL_DIR
+    if not target_dir.exists():
+        return 0
+
+    now = time.time()
+    deleted_count = 0
+
+    for file_path in target_dir.glob("*.txt"):
+        if not file_path.is_file():
+            continue
+        try:
+            mtime = file_path.stat().st_mtime
+            if now - mtime > ttl_seconds:
+                file_path.unlink(missing_ok=True)
+                deleted_count += 1
+        except Exception as e:
+            logger.warning(f"Error cleaning up old spill file {file_path}: {e}")
+
+    return deleted_count
+
+
+def spill_large_content(
+    content: str,
+    cwd: Optional[Path] = None,
+    threshold: int = DEFAULT_CHAR_THRESHOLD,
+    spill_dir: Optional[Path] = None,
+) -> str:
+    """
+    Evaluates the content length. If it exceeds threshold (e.g. 4000 chars),
+    saves it to a secure temp file in ~/.cognito/spill/ with a UUID,
+    and returns a reference string.
+    """
+    if not content or len(content) <= threshold:
+        return content
+
+    target_dir = Path(spill_dir) if spill_dir else DEFAULT_SPILL_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # Basic cleanup on spill
+    clean_old_spills(spill_dir=target_dir)
+
+    spill_id = f"spill_{uuid.uuid4().hex}"
+    file_path = target_dir / f"{spill_id}.txt"
+
+    try:
+        file_path.write_text(content, encoding="utf-8")
+        logger.info(f"Spilled large content to {file_path} (ID: {spill_id})")
+    except Exception as e:
+        logger.error(f"Failed to write spill file {file_path}: {e}")
+        raise
+
+    return f"[SPILL: contenido almacenado en {spill_id}. Usa la herramienta 'read_spill' para consultarlo.]"
+
 
 class SpillManager:
     """
@@ -157,7 +218,7 @@ class SpillManager:
         files = []
         total_size = 0
 
-        for file_path in self.spill_dir.glob("spill_*.txt"):
+        for file_path in self.spill_dir.glob("*.txt"):
             if not file_path.is_file():
                 continue
             try:

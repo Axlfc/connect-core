@@ -1,8 +1,9 @@
 import time
 import pytest
 from pathlib import Path
-from app.core.context_spill import SpillManager
+from app.core.context_spill import SpillManager, spill_large_content, clean_old_spills
 from app.core.tools.query_spill_tool import QuerySpillTool
+from app.core.tools.read_spill_tool import ReadSpillTool
 from app.core.tools.read_tool import ReadTool
 from app.core.tools.base import ToolContext
 
@@ -20,6 +21,34 @@ def spill_manager(temp_spill_dir):
         ttl_seconds=3600,
         max_storage_bytes=10000,
     )
+
+def test_spill_large_content_below_threshold(temp_spill_dir):
+    short_text = "This is a short text."
+    result = spill_large_content(short_text, threshold=4000, spill_dir=temp_spill_dir)
+    assert result == short_text
+
+def test_spill_large_content_above_threshold(temp_spill_dir):
+    large_text = "A" * 5000
+    result = spill_large_content(large_text, threshold=4000, spill_dir=temp_spill_dir)
+    assert "[SPILL: contenido almacenado en spill_" in result
+    assert "Usa la herramienta 'read_spill' para consultarlo.]" in result
+
+    # Check file was written to spill_dir
+    spill_files = list(temp_spill_dir.glob("spill_*.txt"))
+    assert len(spill_files) == 1
+    assert spill_files[0].read_text(encoding="utf-8") == large_text
+
+def test_clean_old_spills_pathlib(temp_spill_dir):
+    old_file = temp_spill_dir / "old_spill.txt"
+    old_file.write_text("old content", encoding="utf-8")
+
+    import os
+    old_mtime = time.time() - 100
+    os.utime(old_file, (old_mtime, old_mtime))
+
+    deleted = clean_old_spills(spill_dir=temp_spill_dir, ttl_seconds=50)
+    assert deleted == 1
+    assert not old_file.exists()
 
 def test_spill_manager_should_spill(spill_manager):
     small_text = "Hello world"
@@ -86,6 +115,35 @@ def test_spill_manager_cleanup_max_bytes(temp_spill_dir):
     assert sm.read_spill(id2) == "B" * 40
 
 @pytest.mark.asyncio
+async def test_read_spill_tool(temp_spill_dir):
+    tool = ReadSpillTool(spill_dir=temp_spill_dir)
+    content = "Line 1: Alpha\nLine 2: Beta\nLine 3: Gamma\nLine 4: Delta"
+    spill_ref = spill_large_content(content, threshold=10, spill_dir=temp_spill_dir)
+    spill_id = spill_ref.split("en ")[1].split(".")[0]
+
+    ctx = ToolContext(cwd="/tmp", trusted=True, protected_files=set())
+
+    # Read full content
+    res_full = await tool.execute({"spill_id": spill_id}, ctx)
+    assert not res_full.is_error
+    assert res_full.output == content
+
+    # Read line range
+    res_range = await tool.execute({"spill_id": spill_id, "line_range": [2, 3]}, ctx)
+    assert not res_range.is_error
+    assert res_range.output == "Line 2: Beta\nLine 3: Gamma"
+
+    # Read start_line/end_line
+    res_lines = await tool.execute({"spill_id": spill_id, "start_line": 1, "end_line": 2}, ctx)
+    assert not res_lines.is_error
+    assert res_lines.output == "Line 1: Alpha\nLine 2: Beta"
+
+    # Query with invalid spill_id
+    res_err = await tool.execute({"spill_id": "spill_nonexistent"}, ctx)
+    assert res_err.is_error
+    assert "no encontrado o expirado" in res_err.output
+
+@pytest.mark.asyncio
 async def test_query_spill_tool(spill_manager):
     tool = QuerySpillTool(spill_manager=spill_manager)
     content = "First line\nSecond line\nThird line"
@@ -117,13 +175,12 @@ async def test_read_tool_spill_integration(tmp_path, temp_spill_dir):
     assert not res_small.is_error
     assert res_small.output == "Hello small world"
 
-    # Large file (> 50 tokens)
+    # Large file (> threshold)
     large_file = tmp_path / "large.txt"
-    large_content = "word " * 300
+    large_content = "word " * 1000
     large_file.write_text(large_content, encoding="utf-8")
     res_large = await read_tool.execute({"path": "large.txt"}, ctx)
 
     assert not res_large.is_error
-    assert "El archivo es demasiado grande para el contexto." in res_large.output
-    assert "Su contenido ha sido almacenado en la memoria externa." in res_large.output
-    assert "Usa la herramienta 'query_spill' con el ID: spill_" in res_large.output
+    assert "[SPILL: contenido almacenado en spill_" in res_large.output
+    assert "Usa la herramienta 'read_spill' para consultarlo.]" in res_large.output

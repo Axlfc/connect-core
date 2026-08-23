@@ -40,12 +40,13 @@ class ExtensionRegistry:
         # Merge Global and project-local tools. Project-local wins.
         from app.core.tools import (
             ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool,
-            CodeReviewTool, ListDirectoryTool, SearchFilesTool
+            CodeReviewTool, ListDirectoryTool, SearchFilesTool, ReadSpillTool
         )
         patch_tool = UnifiedPatchTool()
         tools = {
             "read": ReadTool(),
             "read_file": ReadTool(),
+            "read_spill": ReadSpillTool(),
             "list_directory": ListDirectoryTool(),
             "search_files": SearchFilesTool(),
             "write": WriteTool(),
