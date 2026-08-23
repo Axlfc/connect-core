@@ -2,6 +2,8 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.fs_observation_policy import FSObservationPolicy
+from app.core.path_safety import is_path_contained
 
 
 def extract_diff_paths(patch_content: str) -> List[str]:
@@ -44,8 +46,8 @@ def validate_patch_security(patch_content: str, context: ToolContext) -> Tuple[b
     """
     Validates security constraints before applying a patch:
     1. Project trust status.
-    2. Path traversal check ensuring all paths resolve inside context.cwd.
-    3. Protected files check ensuring no modified path is in context.protected_files.
+    2. Path traversal check using path_safety.is_path_contained.
+    3. Protected and ignored files check using FSObservationPolicy.
 
     Args:
         patch_content: Unified diff content.
@@ -56,6 +58,11 @@ def validate_patch_security(patch_content: str, context: ToolContext) -> Tuple[b
     """
     if not context.trusted:
         return False, "Proyecto no confiado (untrusted). Ejecuta project-trust set antes de escribir."
+
+    policy = FSObservationPolicy(
+        cwd=context.cwd,
+        protected_files=getattr(context, "protected_files", None),
+    )
 
     cwd_path = Path(context.cwd).resolve()
     candidate_paths = extract_diff_paths(patch_content)
@@ -71,23 +78,22 @@ def validate_patch_security(patch_content: str, context: ToolContext) -> Tuple[b
         else:
             target_path = (cwd_path / path_obj).resolve()
 
-        # Path traversal prevention using pathlib
-        try:
-            if not target_path.is_relative_to(cwd_path):
-                return False, f"Error: Access denied. Path '{raw_path}' is outside of workspace."
-        except ValueError:
+        # Path traversal protection via path_safety module
+        if not is_path_contained(str(target_path), str(cwd_path)):
             return False, f"Error: Access denied. Path '{raw_path}' is outside of workspace."
 
-        # Check protected files
-        try:
-            rel_path = target_path.relative_to(cwd_path).as_posix()
-        except ValueError:
-            return False, f"Error: Access denied. Path '{raw_path}' is outside of workspace."
+        # FS observation policy check (protected/ignored files)
+        if policy.is_path_ignored(target_path):
+            try:
+                rel_path = target_path.relative_to(cwd_path).as_posix()
+            except ValueError:
+                rel_path = str(raw_path)
 
-        norm_raw = Path(raw_path).as_posix()
+            norm_raw = Path(raw_path).as_posix()
+            if rel_path in policy.protected_files or norm_raw in policy.protected_files:
+                return False, f"Archivo protegido: {rel_path}. No se puede modificar vía agente."
 
-        if rel_path in context.protected_files or norm_raw in context.protected_files:
-            return False, f"Archivo protegido: {rel_path}. No se puede modificar vía agente."
+            return False, policy.get_generic_error_message()
 
     return True, ""
 
@@ -173,7 +179,7 @@ class UnifiedPatchTool(AgentTool):
     Agent tool that applies standard Unified Diff patches to workspace files securely and atomically.
     Prevents path traversal and modification of protected files.
     """
-    name = "unified_patch"
+    name = "apply_unified_patch"
     description = (
         "Apply a unified diff patch (with ---/+++ headers and @@ hunks) to workspace files. "
         "Validates path safety and protected files prior to application."
