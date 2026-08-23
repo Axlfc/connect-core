@@ -8,6 +8,7 @@ from app.services.unified_llm import UnifiedLLM, FakeLLMClient
 from app.core.meta import NOOAMeta
 from app.core.event_manager import EventManager
 from app.core.context_blocks import DynamicContextManager
+from unittest.mock import patch, AsyncMock
 from app.core.sandbox import SandboxedExecutor
 from app.core.runtime import ActorRuntime
 from app.core.strategies import PredictStrategy, CodeActStrategy
@@ -99,10 +100,17 @@ def test_context_blocks():
 
 @pytest.mark.asyncio
 async def test_sandbox_executor():
-    box = SandboxedExecutor()
-    res = await box.execute_code("print('hello sandbox')")
-    assert "hello sandbox" in res["stdout"]
-    assert res["exit_code"] == 0
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"hello sandbox\n", b"")
+        mock_proc.returncode = 0
+        mock_exec.return_value = mock_proc
+
+        box = SandboxedExecutor()
+        res = await box.execute_code("print('hello sandbox')")
+        assert "hello sandbox" in res["stdout"]
+        assert res["exit_code"] == 0
 
 @pytest.mark.asyncio
 async def test_actor_runtime_and_predict_strategy():
