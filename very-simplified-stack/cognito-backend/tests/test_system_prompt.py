@@ -43,8 +43,8 @@ def test_system_prompt_version_loading():
     assert config_v1["version"] == "1.0.0"
     assert "Identidad" in config_v1["prompt"]
 
-    prompt_v1 = get_system_prompt("v1")
-    assert prompt_v1 == COGNITO_SYSTEM_PROMPT
+    prompt_v1_1 = get_system_prompt("v1.1")
+    assert prompt_v1_1 == COGNITO_SYSTEM_PROMPT
 
 @pytest.mark.asyncio
 async def test_agent_loop_system_message_integration(monkeypatch):

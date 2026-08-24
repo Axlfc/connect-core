@@ -157,10 +157,12 @@ async def agent_loop(
                     else:
                         result = await tool.execute(tc["arguments"], context)
 
+                formatted_output = f'<tool_output source="{tc["name"]}">\n{result.output}\n</tool_output>'
+
                 yield ToolResultEvent(
                     tool_call_id=tc["id"],
                     tool_name=tc["name"],
-                    output=result.output,
+                    output=formatted_output,
                     is_error=result.is_error
                 )
 
@@ -169,7 +171,7 @@ async def agent_loop(
                     "role": "tool",
                     "tool_call_id": tc["id"],
                     "name": tc["name"],
-                    "content": result.output
+                    "content": formatted_output
                 })
 
                 # Check for tool call repetition loop guardrail
