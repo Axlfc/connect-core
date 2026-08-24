@@ -33,20 +33,55 @@ def test_tool_loop_detector_trigger():
 
     tool_name = "read_file"
     args = {"filepath": "main.py"}
+    output = "file content"
 
     # Call 1: No warning
-    res1 = detector.record_and_check(tool_name, args)
+    res1 = detector.record_and_check(tool_name, args, output=output)
     assert res1 is None
 
     # Call 2: No warning
-    res2 = detector.record_and_check(tool_name, args)
+    res2 = detector.record_and_check(tool_name, args, output=output)
     assert res2 is None
 
     # Call 3: Exceeds threshold (3 consecutive calls) -> Trigger warning
-    res3 = detector.record_and_check(tool_name, args)
+    res3 = detector.record_and_check(tool_name, args, output=output)
     assert res3 is not None
     assert "ADVERTENCIA DEL SISTEMA: Has intentado ejecutar la herramienta 'read_file'" in res3
     assert "con los mismos parámetros múltiples veces sin éxito." in res3
+
+
+def test_tool_loop_detector_legitimate_reads_growing_file_no_warning():
+    """
+    Simulates 5 consecutive legitimate reads of a file that grows (result changes).
+    Confirms that NO warning is triggered.
+    """
+    detector = ToolLoopDetector(window_size=10, threshold=3)
+    tool_name = "read"
+    args = {"path": "log.txt"}
+
+    for i in range(1, 6):
+        file_content = f"Log content line 1 to {i}"
+        res = detector.record_and_check(tool_name, args, output=file_content)
+        assert res is None, f"Warning should not trigger on call {i} because output changed"
+
+
+def test_tool_loop_detector_identical_side_effect_calls_triggers_warning():
+    """
+    Simulates 5 identical calls with no change in result on a tool with side effects (or any tool).
+    Confirms that warning IS triggered starting at threshold (call 3).
+    """
+    detector = ToolLoopDetector(window_size=10, threshold=3)
+    tool_name = "bash"
+    args = {"command": "echo hello"}
+    output = "hello\n"
+
+    for i in range(1, 6):
+        res = detector.record_and_check(tool_name, args, output=output)
+        if i < 3:
+            assert res is None, f"Call {i} should not trigger warning"
+        else:
+            assert res is not None, f"Call {i} should trigger warning"
+            assert "ADVERTENCIA DEL SISTEMA" in res
 
 
 def test_tool_loop_detector_different_args_resets_consecutive_count():

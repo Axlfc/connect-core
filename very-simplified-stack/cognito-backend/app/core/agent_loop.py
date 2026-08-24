@@ -175,7 +175,7 @@ async def agent_loop(
                 })
 
                 # Check for tool call repetition loop guardrail
-                warning_msg = tool_loop_detector.record_and_check(tc["name"], tc["arguments"])
+                warning_msg = tool_loop_detector.record_and_check(tc["name"], tc["arguments"], output=result.output)
                 if warning_msg:
                     logger.warning(f"Tool loop detected for '{tc['name']}'. Injecting system warning message.")
                     system_warning_msg = {"role": "system", "content": warning_msg}

@@ -29,13 +29,28 @@ def normalize_args(args: Any) -> str:
     return str(args)
 
 
-def compute_tool_call_hash(tool_name: str, args: Any) -> str:
+def compute_tool_call_hash(tool_name: str, args: Any, output: Optional[str] = None) -> str:
     """
-    Computes a SHA-256 hash of (tool_name, normalized_args).
+    Computes a SHA-256 hash of (tool_name, normalized_args, output).
+    If output is provided, includes output hash to distinguish calls that yield different results.
     """
     normalized = normalize_args(args)
-    payload = f"{tool_name}:{normalized}"
+    if output is not None:
+        out_hash = hashlib.sha256(str(output).encode("utf-8")).hexdigest()
+        payload = f"{tool_name}:{normalized}:{out_hash}"
+    else:
+        payload = f"{tool_name}:{normalized}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+READ_ONLY_TOOLS = {
+    "read",
+    "read_file",
+    "list_directory",
+    "search_files",
+    "query_spill",
+    "read_spill",
+}
 
 
 class ToolLoopDetector:
@@ -51,24 +66,25 @@ class ToolLoopDetector:
         "Reevalúa tu estrategia, verifica los mensajes de error anteriores o solicita ayuda al usuario."
     )
 
-    def __init__(self, window_size: int = 4, threshold: int = 3):
+    def __init__(self, window_size: int = 10, threshold: int = 3):
         """
-        :param window_size: Size of the rolling window of recent tool call hashes (default N=4).
+        :param window_size: Size of the rolling window of recent tool call hashes (default N=10).
         :param threshold: Number of identical consecutive tool calls required to activate guardrail (default 3).
         """
         self.window_size = window_size
         self.threshold = threshold
         self.history: deque[Tuple[str, str]] = deque(maxlen=window_size)  # stores (tool_name, hash)
 
-    def record_and_check(self, tool_name: str, arguments: Any) -> Optional[str]:
+    def record_and_check(self, tool_name: str, arguments: Any, output: Optional[str] = None) -> Optional[str]:
         """
         Records a tool call into the rolling window and checks if the loop threshold is exceeded.
 
         :param tool_name: Name of the executed tool.
         :param arguments: Tool arguments.
+        :param output: Execution result of the tool call. If provided, used to determine if output changed.
         :return: Optional warning string to inject as system message if guardrail triggers, else None.
         """
-        call_hash = compute_tool_call_hash(tool_name, arguments)
+        call_hash = compute_tool_call_hash(tool_name, arguments, output=output)
         self.history.append((tool_name, call_hash))
 
         # Check consecutive matches from the end of history
