@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import secrets
 import httpx
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -17,12 +18,20 @@ def load_mcp_config() -> Dict[str, Any]:
     Loads hierarchically resolved configuration for the Cognito MCP server.
     Layered resolution: Defaults -> ~/.cognito/config.json -> Environment Variables.
     """
+    insecure_dev = os.getenv("COGNITO_MCP_INSECURE_DEV", "false").lower() in ("true", "1", "yes")
+    if insecure_dev:
+        logger.warning("WARNING: MCP Server running in INSECURE DEV MODE. Authentication is disabled!")
+        require_auth = False
+    else:
+        require_auth = True
+
     config = {
         "Endpoint": os.getenv("COGNITO_ENDPOINT", "http://localhost:8000"),
         "AuthToken": os.getenv("COGNITO_AUTH_TOKEN", ""),
         "APIKey": os.getenv("COGNITO_API_KEY", ""),
         "MaxExecutionDepth": int(os.getenv("COGNITO_MCP_MAX_DEPTH", "3")),
-        "RequireAuth": os.getenv("COGNITO_MCP_REQUIRE_AUTH", "false").lower() in ("true", "1", "yes"),
+        "RequireAuth": require_auth,
+        "InsecureDev": insecure_dev,
         "OllamaURL": os.getenv("OLLAMA_URL", "http://localhost:11434"),
         "QdrantURL": os.getenv("QDRANT_URL", "http://localhost:6333"),
         "N8nURL": os.getenv("N8N_URL", "http://localhost:5678"),
@@ -35,7 +44,7 @@ def load_mcp_config() -> Dict[str, Any]:
             with open(config_path, "r", encoding="utf-8") as f:
                 file_config = json.load(f)
                 for k, v in file_config.items():
-                    if k in config:
+                    if k in config and k != "RequireAuth":
                         config[k] = v
                     elif k.lower() in ("auth_token", "authtoken"):
                         config["AuthToken"] = v
@@ -52,24 +61,30 @@ def load_mcp_config() -> Dict[str, Any]:
     if os.getenv("COGNITO_API_KEY"):
         config["APIKey"] = os.getenv("COGNITO_API_KEY")
 
+    # Generate random token if none is provided
+    if not config["AuthToken"] and not config["APIKey"]:
+        config["AuthToken"] = secrets.token_urlsafe(32)
+
     return config
 
 def verify_mcp_auth(auth_token: Optional[str] = None) -> bool:
     """
     Verifies authentication against layered configuration.
+    Fail-closed by default: requires valid non-empty authentication token matching expected token.
     """
     config = load_mcp_config()
-    expected_token = config.get("AuthToken") or config.get("APIKey")
-    require_auth = config.get("RequireAuth", False)
+    require_auth = config.get("RequireAuth", True)
 
-    if not require_auth and not expected_token:
+    if not require_auth:
         return True
+
+    expected_token = config.get("AuthToken") or config.get("APIKey")
 
     if not auth_token:
         auth_token = os.getenv("COGNITO_AUTH_TOKEN") or os.getenv("COGNITO_API_KEY")
 
-    if expected_token and auth_token != expected_token:
-        logger.warning("MCP authentication failed: token mismatch.")
+    if not auth_token or auth_token != expected_token:
+        logger.warning("MCP authentication failed: invalid or missing auth token.")
         return False
 
     return True
