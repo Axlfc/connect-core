@@ -197,28 +197,10 @@ class SessionManager:
 
         if compaction:
             summary = compaction.get("summary", "")
-            messages.append({"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"})
             start_line = compaction.get("covers_through_line", -1)
-
+            messages = [{"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"}]
             for i, data in all_entries:
-                if i > compaction_line_index: # Only messages after the compaction record itself
-                     messages.append(self._to_ai_message(data))
-                elif i > start_line and i < compaction_line_index:
-                    # Actually, wait. Rule says: discard all messages anterior a covers_through_line.
-                    # Covers through line might be the line INDEX in the file.
-                    # If I have:
-                    # 0: msg
-                    # 1: msg
-                    # 2: compaction {covers_through_line: 1}
-                    # 3: msg
-                    # Then effective messages are [System(summary), msg(3)]
-                    pass # Handled by the logic below
-
-            # Revised logic for get_effective_messages with compaction:
-            messages = []
-            messages.append({"role": "system", "content": f"[Resumen de la conversación anterior]: {compaction.get('summary', '')}"})
-            for i, data in all_entries:
-                if i > compaction_line_index and data.get("type") == "message":
+                if i > start_line and data.get("type") == "message":
                     messages.append(self._to_ai_message(data))
             return messages
 

@@ -156,3 +156,37 @@ def test_nonexistent_session_errors(session_manager):
 
     with pytest.raises(FileNotFoundError):
         session_manager.delete_session(bad_id)
+
+def test_get_effective_messages_compaction_preserves_intermediate_messages(session_manager):
+    cwd = "/tmp/repo"
+    session_id = session_manager.create(cwd)
+
+    # Line 0
+    session_manager.append_message(session_id, "user", "msg 0 - should be compacted")
+    # Line 1
+    session_manager.append_message(session_id, "assistant", "msg 1 - should be compacted")
+
+    # Line 2 (intermediate before compaction event)
+    session_manager.append_message(session_id, "user", "msg 2 - intermediate message after cut")
+
+    # Line 3 (compaction event covering lines 0 and 1: covers_through_line = 1)
+    session_manager.append_compaction(session_id, "Summary of turns 0 and 1", covers_through_line=1)
+
+    # Line 4 (post-compaction event message)
+    session_manager.append_message(session_id, "assistant", "msg 4 - after compaction event")
+
+    msgs = session_manager.get_effective_messages(session_id)
+
+    # Total effective messages should be 3:
+    # 0: system summary
+    # 1: msg 2 (intermediate)
+    # 2: msg 4 (post-compaction)
+    assert len(msgs) == 3
+    assert msgs[0]["role"] == "system"
+    assert "Summary of turns 0 and 1" in msgs[0]["content"]
+
+    assert msgs[1]["role"] == "user"
+    assert msgs[1]["content"] == "msg 2 - intermediate message after cut"
+
+    assert msgs[2]["role"] == "assistant"
+    assert msgs[2]["content"] == "msg 4 - after compaction event"
