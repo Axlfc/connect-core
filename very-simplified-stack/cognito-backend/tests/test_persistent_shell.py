@@ -162,7 +162,7 @@ async def test_persistent_shell_sudo_rejection(tool_context, shell_tool):
         tool_context,
     )
     assert res.is_error
-    assert "strictly forbidden" in res.output
+    assert "forbidden by shell policy" in res.output or "strictly forbidden" in res.output
 
 
 @pytest.mark.asyncio

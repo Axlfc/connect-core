@@ -97,8 +97,8 @@ def classify_simple_command(cmd_str: str) -> CommandClassification:
             is_denied=True
         )
 
-    # Read-only inspection
-    if exe in ["ls", "cat", "grep", "pwd", "head", "tail", "less", "more", "find", "echo", "whoami", "hostname", "date"]:
+    # Read-only inspection & safe shell builtins
+    if exe in ["ls", "cat", "grep", "pwd", "head", "tail", "less", "more", "find", "echo", "whoami", "hostname", "date", "cd", "sleep", "env", "printenv", "which", "type", "id", "uname", "export", "unset", "alias", "unalias", "set", "true", "false", "exit"]:
         return CommandClassification(
             command=cmd_str,
             category="read_only_inspection",

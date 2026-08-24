@@ -95,22 +95,25 @@ class SandboxedExecutor:
         """
         await self._verify_bwrap()
 
-        is_cache_approved = self.approval_cache.is_approved(session_id, command)
+        from app.core.exec_policy import evaluate_command_execution
+        allowed, reason = evaluate_command_execution(
+            command=command,
+            cwd=self.working_dir,
+            trusted=project_trusted,
+            session_id=session_id,
+            user_approved=user_approved,
+            exec_policy=self.exec_policy,
+            approval_cache=self.approval_cache,
+        )
 
-        if user_approved:
-            self.approval_cache.approve(session_id, command)
-
-        auto_approved = is_cache_approved or user_approved
-
-        if not auto_approved:
-            if self.exec_policy.requires_explicit_approval(command, project_trusted=project_trusted):
-                return {
-                    "stdout": "",
-                    "stderr": f"ExecPolicy: Command '{command}' requires explicit approval.",
-                    "exit_code": 1,
-                    "timed_out": False,
-                    "approval_required": True
-                }
+        if not allowed:
+            return {
+                "stdout": "",
+                "stderr": reason,
+                "exit_code": 1,
+                "timed_out": False,
+                "approval_required": True
+            }
 
         cwd_path = Path(self.working_dir).resolve()
         cmd = build_bwrap_args(cwd=cwd_path, allowed_network=self.allowed_network) + ["sh", "-c", command]

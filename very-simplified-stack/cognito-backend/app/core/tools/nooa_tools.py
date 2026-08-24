@@ -4,27 +4,29 @@ from app.core.tools.base import AgentTool, ToolContext, ToolResult
 
 class ShellTools(AgentTool):
     """
-    Persistent Bash session runner (NOOA-15).
+    Persistent Bash session runner (NOOA-15). Delegating to PersistentShellTool pipeline.
     """
     name = "shell_run"
     description = "Executes shell commands inside a persistent bash session."
     parameters_schema = {
         "type": "object",
         "properties": {
-            "command": {"type": "string", "description": "The command to run."}
+            "command": {"type": "string", "description": "The command to run."},
+            "user_approved": {"type": "boolean", "description": "Explicit user approval flag for execution.", "default": False}
         },
         "required": ["command"]
     }
 
+    def __init__(self, persistent_shell_tool=None):
+        super().__init__()
+        if persistent_shell_tool is None:
+            from app.core.tools.persistent_shell_tool import PersistentShellTool
+            self.persistent_shell_tool = PersistentShellTool()
+        else:
+            self.persistent_shell_tool = persistent_shell_tool
+
     async def execute(self, arguments: dict[str, Any], context: ToolContext) -> ToolResult:
-        import subprocess
-        cmd = arguments.get("command", "")
-        try:
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=context.cwd, timeout=30)
-            output = f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}\nEXIT CODE: {res.returncode}"
-            return ToolResult(output=output, is_error=res.returncode != 0)
-        except Exception as e:
-            return ToolResult(output=str(e), is_error=True)
+        return await self.persistent_shell_tool.execute(arguments, context)
 
 class TodoTools(AgentTool):
     """

@@ -36,33 +36,19 @@ class BashTool(AgentTool):
         if not command:
             return ToolResult(is_error=True, output="Error: command is required.")
 
-        # Rejection for sudo
-        if re.search(r"\bsudo\b", command, re.IGNORECASE):
-            return ToolResult(is_error=True, output="Error: Use of 'sudo' is strictly forbidden.")
+        from app.core.exec_policy import evaluate_command_execution
+        allowed, reason = evaluate_command_execution(
+            command=command,
+            cwd=context.cwd,
+            trusted=context.trusted,
+            session_id=session_id,
+            user_approved=user_approved,
+            exec_policy=self.exec_policy,
+            approval_cache=self.approval_cache,
+        )
 
-        # Check session approval cache first (Auto-approval reuse)
-        is_cache_approved = self.approval_cache.is_approved(session_id, command)
-
-        if user_approved:
-            # Store in cache upon user explicit approval
-            self.approval_cache.approve(session_id, command)
-
-        auto_approved = is_cache_approved or user_approved
-
-        if not auto_approved:
-            # Evaluate execution policy
-            requires_approval = self.exec_policy.requires_explicit_approval(
-                command, project_trusted=context.trusted
-            )
-
-            if requires_approval:
-                return ToolResult(
-                    is_error=True,
-                    output=(
-                        f"Command requires explicit user approval due to ExecPolicy or untrusted project context. "
-                        f"Command: '{command}'. Pass user_approved=True or approve in current session."
-                    )
-                )
+        if not allowed:
+            return ToolResult(is_error=True, output=f"Error: {reason}")
 
         try:
             # Run the command with a timeout
