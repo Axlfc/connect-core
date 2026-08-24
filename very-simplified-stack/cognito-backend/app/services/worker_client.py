@@ -17,7 +17,7 @@ class WorkerClient:
     def __init__(self):
         self.worker_url = os.getenv("COGNITO_WORKER_URL", "http://host.docker.internal:8765")
         self.worker_id = os.getenv("COGNITO_WORKER_ID", "local-worker-01")
-        self.secret = os.getenv("COGNITO_WORKER_SECRET", "super-secret-key-123")
+        self.secret = os.getenv("COGNITO_WORKER_SECRET", "")
 
     def _get_headers(self, method: str, path: str, body: bytes = b"") -> Dict[str, str]:
         timestamp = str(time.time())

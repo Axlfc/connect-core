@@ -32,7 +32,13 @@ app = FastAPI(
 # ══════════════════════════════════════════════════════════════════════════════
 
 WORKER_ID = os.getenv("COGNITO_WORKER_ID", "local-worker-01")
-SHARED_SECRETS = os.getenv("COGNITO_WORKER_SECRETS", "super-secret-key-123").split(",")
+raw_secrets = os.getenv("COGNITO_WORKER_SECRETS")
+if not raw_secrets or not raw_secrets.strip():
+    raise RuntimeError("COGNITO_WORKER_SECRETS environment variable is required but not set.")
+SHARED_SECRETS = [s.strip() for s in raw_secrets.split(",") if s.strip()]
+if not SHARED_SECRETS:
+    raise RuntimeError("COGNITO_WORKER_SECRETS environment variable is required but empty.")
+
 ALLOWED_ROOTS = [
     os.path.realpath(p.strip())
     for p in os.getenv("ALLOWED_REPOSITORY_ROOTS", "/tmp").split(",")
