@@ -187,8 +187,9 @@ async def agent_loop(
 
         except Exception as e:
             logger.error(f"Error in agent loop turn {turn}: {e}", exc_info=True)
-            yield ErrorEvent(message=str(e))
-            yield DoneEvent(stop_reason="error", error_message=str(e))
+            err_msg = f"No se pudo completar tras reintentos: {e}"
+            yield ErrorEvent(message=err_msg)
+            yield DoneEvent(stop_reason="error", error_message=err_msg)
             return
 
     yield DoneEvent(stop_reason="max_turns")
