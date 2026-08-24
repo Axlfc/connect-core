@@ -190,3 +190,39 @@ def test_get_effective_messages_compaction_preserves_intermediate_messages(sessi
 
     assert msgs[2]["role"] == "assistant"
     assert msgs[2]["content"] == "msg 4 - after compaction event"
+
+def test_concurrent_index_writes(session_manager):
+    import concurrent.futures
+
+    num_threads = 20
+    cwd = "/tmp/repo"
+
+    def worker(i):
+        # Create a session
+        sid = session_manager.create(cwd)
+        # Append messages
+        for j in range(5):
+            session_manager.append_message(sid, "user", f"msg {i}-{j}")
+            session_manager.append_message(sid, "assistant", f"reply {i}-{j}")
+        # Rollback 1 turn (removes user + assistant = 2 messages)
+        session_manager.rollback_turns(sid, 1)
+        return sid
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(worker, i) for i in range(num_threads)]
+        session_ids = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    # Check index integrity
+    index = session_manager._get_index()
+    assert len(index) == num_threads
+
+    for sid in session_ids:
+        assert sid in index
+        meta = session_manager.open(sid)
+        # 5 pairs = 10 messages - 1 turn (2 msgs) = 8 messages
+        assert meta.message_count == 8
+
+    # Verify JSON file is valid JSON and not corrupt
+    with open(session_manager.index_path, "r") as f:
+        data = json.load(f)
+        assert len(data) == num_threads
