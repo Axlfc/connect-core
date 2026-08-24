@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-from app.core.system_prompt import build_system_message, COGNITO_SYSTEM_PROMPT
+from app.core.system_prompt import build_system_message, COGNITO_SYSTEM_PROMPT, load_system_prompt_config, get_system_prompt
 from app.api.routes.ai_agents import AgentLoopRequest, run_agent_loop
 from app.core.session_manager import SessionManager
 
@@ -37,6 +37,14 @@ def test_build_system_message_present():
             f"Contexto específico de este repositorio (AGENTS.md):\n\nCustom instruction."
         )
         assert msg == expected
+
+def test_system_prompt_version_loading():
+    config_v1 = load_system_prompt_config("v1")
+    assert config_v1["version"] == "1.0.0"
+    assert "Identidad" in config_v1["prompt"]
+
+    prompt_v1 = get_system_prompt("v1")
+    assert prompt_v1 == COGNITO_SYSTEM_PROMPT
 
 @pytest.mark.asyncio
 async def test_agent_loop_system_message_integration(monkeypatch):
@@ -101,7 +109,7 @@ async def test_agent_loop_system_message_integration(monkeypatch):
         async for _ in response_continue.body_iterator:
             pass
 
-        # El primer mensaje debe seguir siendo el system_prompt calculado en caliente
+        # El primer mensaje debe seguir siendo el system_prompt calculated en caliente
         assert len(captured_messages) == 4 # system_prompt + user(how are you) + assistant(hello world) + user(tell me more)
         assert captured_messages[0]["role"] == "system"
         assert "Only test here." in captured_messages[0]["content"]
