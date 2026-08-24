@@ -96,12 +96,18 @@ class BackendClient:
         Yields dicts with "token" and optionally "logprobs".
         The caller (openai_compat) wraps each chunk in SSE format.
         """
-        if self.config.backend_type == BackendType.OLLAMA:
-            async for chunk in self._stream_ollama(prompt, model_params):
-                yield chunk
-        else:
-            async for chunk in self._stream_openai(prompt, model_params):
-                yield chunk
+        from app.core.retry import retry_transient_stream
+
+        async def _stream_raw():
+            if self.config.backend_type == BackendType.OLLAMA:
+                async for chunk in self._stream_ollama(prompt, model_params):
+                    yield chunk
+            else:
+                async for chunk in self._stream_openai(prompt, model_params):
+                    yield chunk
+
+        async for chunk in retry_transient_stream(_stream_raw):
+            yield chunk
 
     async def generate_with_tools(
         self,
@@ -114,41 +120,47 @@ class BackendClient:
         If tools aren't supported, yields an error event or signals failure.
         Uses POST /api/chat for Ollama.
         """
+        from app.core.retry import retry_transient_stream
+
         cache_key = (self.config.name, self.config.model)
         if _TOOL_SUPPORT_CACHE.get(cache_key) is False:
             raise NotImplementedError(f"Backend '{self.config.name}' does not support tool calling.")
 
-        try:
-            if self.config.backend_type == BackendType.OLLAMA:
-                async for chunk in self._stream_ollama_chat(messages, tools, model_params):
-                    yield chunk
-            else:
-                async for chunk in self._stream_openai_chat(messages, tools, model_params):
-                    yield chunk
+        async def _stream_tools_raw():
+            try:
+                if self.config.backend_type == BackendType.OLLAMA:
+                    async for chunk in self._stream_ollama_chat(messages, tools, model_params):
+                        yield chunk
+                else:
+                    async for chunk in self._stream_openai_chat(messages, tools, model_params):
+                        yield chunk
 
-            # If we reached here without error, mark as supported
-            if cache_key not in _TOOL_SUPPORT_CACHE:
-                _TOOL_SUPPORT_CACHE[cache_key] = True
+                # If we reached here without error, mark as supported
+                if cache_key not in _TOOL_SUPPORT_CACHE:
+                    _TOOL_SUPPORT_CACHE[cache_key] = True
 
-        except (httpx.HTTPStatusError, httpx.RequestError, NotImplementedError) as e:
-            # Detect if it's a "tool calling not supported" error
-            is_unsupported = False
-            if isinstance(e, httpx.HTTPStatusError):
-                try:
-                    error_data = e.response.json()
-                    error_msg = str(error_data).lower()
-                    if "tool" in error_msg or "schema" in error_msg:
-                        is_unsupported = True
-                except:
-                    pass
-            elif isinstance(e, NotImplementedError):
-                is_unsupported = True
+            except (httpx.HTTPStatusError, httpx.RequestError, NotImplementedError) as e:
+                # Detect if it's a "tool calling not supported" error
+                is_unsupported = False
+                if isinstance(e, httpx.HTTPStatusError):
+                    try:
+                        error_data = e.response.json()
+                        error_msg = str(error_data).lower()
+                        if "tool" in error_msg or "schema" in error_msg:
+                            is_unsupported = True
+                    except:
+                        pass
+                elif isinstance(e, NotImplementedError):
+                    is_unsupported = True
 
-            if is_unsupported:
-                _TOOL_SUPPORT_CACHE[cache_key] = False
-                logger.warning("Backend '%s' marked as NO TOOL SUPPORT.", self.config.name)
+                if is_unsupported:
+                    _TOOL_SUPPORT_CACHE[cache_key] = False
+                    logger.warning("Backend '%s' marked as NO TOOL SUPPORT.", self.config.name)
 
-            raise e
+                raise e
+
+        async for chunk in retry_transient_stream(_stream_tools_raw):
+            yield chunk
 
     async def check_health(self) -> bool:
         """

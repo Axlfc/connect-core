@@ -344,12 +344,13 @@ async def _stream_response(
 
     except Exception as e:
         logger.error("[OpenAI-compat] Streaming error: %s", e, exc_info=True)
+        user_err_msg = f"No se pudo completar tras varios intentos: {e}"
         error_payload = {
             "id": completion_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model_id,
-            "choices": [{"index": 0, "delta": {"content": f"\n\n[Error: {e}]"}, "finish_reason": "error"}],
+            "choices": [{"index": 0, "delta": {"content": f"\n\n[Error: {user_err_msg}]"}, "finish_reason": "error"}],
         }
         yield f"data: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
