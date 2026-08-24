@@ -7,6 +7,7 @@ import signal
 import uuid
 from typing import Any, Dict, List, Optional
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.exec_policy import default_exec_policy, session_approval_cache, ExecPolicy, SessionApprovalCache
 
 
 def get_descendant_pids(parent_pid: int) -> List[int]:
@@ -298,9 +299,16 @@ class PersistentShellTool(AgentTool):
         "required": ["command"],
     }
 
-    def __init__(self, manager: Optional[PersistentShellSessionManager] = None):
+    def __init__(
+        self,
+        manager: Optional[PersistentShellSessionManager] = None,
+        exec_policy: ExecPolicy = default_exec_policy,
+        approval_cache: SessionApprovalCache = session_approval_cache,
+    ):
         super().__init__()
         self.manager = manager or _global_session_manager
+        self.exec_policy = exec_policy
+        self.approval_cache = approval_cache
 
     async def execute(self, arguments: Dict[str, Any], context: ToolContext) -> ToolResult:
         command = arguments.get("command")
@@ -314,6 +322,7 @@ class PersistentShellTool(AgentTool):
             or "default_session"
         )
         timeout_seconds = min(int(arguments.get("timeout_seconds", 30)), 120)
+        user_approved = bool(arguments.get("user_approved", False))
 
         # Internal management command: __get_state__
         if command.strip() == "__get_state__":
@@ -342,9 +351,19 @@ class PersistentShellTool(AgentTool):
             status = "Session terminated successfully." if killed else "Session not found or already closed."
             return ToolResult(output=status)
 
-        # Rejection for sudo
-        if re.search(r"\bsudo\b", command, re.IGNORECASE):
-            return ToolResult(is_error=True, output="Error: Use of 'sudo' is strictly forbidden.")
+        from app.core.exec_policy import evaluate_command_execution
+        allowed, reason = evaluate_command_execution(
+            command=command,
+            cwd=context.cwd,
+            trusted=getattr(context, "trusted", False),
+            session_id=session_id,
+            user_approved=user_approved,
+            exec_policy=self.exec_policy,
+            approval_cache=self.approval_cache,
+        )
+
+        if not allowed:
+            return ToolResult(is_error=True, output=f"Error: {reason}")
 
         try:
             session = await self.manager.get_or_create_session(

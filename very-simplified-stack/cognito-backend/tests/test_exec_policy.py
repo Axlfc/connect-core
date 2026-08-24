@@ -100,7 +100,7 @@ async def test_bash_tool_exec_policy_and_cache(tmp_path):
     # 4. Dangerous command on trusted project without explicit approval -> fails
     res = await tool.execute({"command": "rm -rf /tmp/nonexistent_test_folder"}, ctx_trusted)
     assert res.is_error
-    assert "requires explicit user approval" in res.output
+    assert "forbidden by shell policy" in res.output or "requires explicit user approval" in res.output
 
 @pytest.mark.asyncio
 async def test_sandboxed_executor_cmd_policy_and_cache(tmp_path):
@@ -128,3 +128,40 @@ async def test_sandboxed_executor_cmd_policy_and_cache(tmp_path):
         res = await executor.execute_cmd("echo 'sandbox'", session_id="s1", project_trusted=False)
         assert res["approval_required"] is False
         assert "sandbox" in res["stdout"]
+
+@pytest.mark.asyncio
+async def test_unified_shell_policy_denied_across_all_tools(tmp_path):
+    from app.core.tools.persistent_shell_tool import PersistentShellTool
+    from app.core.tools.nooa_tools import ShellTools
+
+    policy = ExecPolicy()
+    cache = SessionApprovalCache()
+    bash_tool = BashTool(exec_policy=policy, approval_cache=cache)
+    persistent_tool = PersistentShellTool(exec_policy=policy, approval_cache=cache)
+    shell_run_tool = ShellTools(persistent_shell_tool=persistent_tool)
+    sandbox_executor = SandboxedExecutor(working_dir=str(tmp_path), exec_policy=policy, approval_cache=cache)
+
+    ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
+
+    blocked_cmd = "sudo rm -rf /"
+
+    # 1. BashTool rejects
+    res_bash = await bash_tool.execute({"command": blocked_cmd, "user_approved": True}, ctx)
+    assert res_bash.is_error
+    assert "forbidden by shell policy" in res_bash.output or "unconditional deny pattern" in res_bash.output
+
+    # 2. PersistentShellTool rejects
+    res_ps = await persistent_tool.execute({"command": blocked_cmd, "user_approved": True}, ctx)
+    assert res_ps.is_error
+    assert "forbidden by shell policy" in res_ps.output or "unconditional deny pattern" in res_ps.output
+
+    # 3. ShellTools (shell_run) rejects
+    res_sr = await shell_run_tool.execute({"command": blocked_cmd, "user_approved": True}, ctx)
+    assert res_sr.is_error
+    assert "forbidden by shell policy" in res_sr.output or "unconditional deny pattern" in res_sr.output
+
+    # 4. SandboxedExecutor rejects
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True):
+        res_sb = await sandbox_executor.execute_cmd(blocked_cmd, project_trusted=True, user_approved=True)
+        assert res_sb["approval_required"] is True
+        assert "forbidden by shell policy" in res_sb["stderr"] or "unconditional deny pattern" in res_sb["stderr"]

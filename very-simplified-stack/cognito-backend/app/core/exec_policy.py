@@ -124,6 +124,67 @@ class SessionApprovalCache:
             self._in_memory_cache.pop(session_id, None)
 
 
+def evaluate_command_execution(
+    command: str,
+    cwd: Optional[str] = None,
+    trusted: bool = False,
+    session_id: str = "default_session",
+    user_approved: bool = False,
+    exec_policy: Optional[ExecPolicy] = None,
+    approval_cache: Optional[SessionApprovalCache] = None,
+) -> tuple[bool, str]:
+    """
+    Unified evaluator for shell command execution.
+    Combines evaluate_shell_command_policy, ExecPolicy, ProjectTrustStore permissions,
+    and SessionApprovalCache.
+
+    Returns:
+        (allowed, reason)
+        If allowed is True, execution proceeds.
+        If allowed is False, reason explains why (denied unconditionally or requires explicit approval).
+    """
+    from app.core.shell_policy import evaluate_shell_command_policy
+    from app.core.project_trust import ProjectTrustStore
+
+    policy = exec_policy or default_exec_policy
+    cache = approval_cache or session_approval_cache
+
+    # 1. Obtain granular permissions for cwd or fallback to simple trust boolean
+    if cwd:
+        trust_store = ProjectTrustStore()
+        permissions = trust_store.get_permissions(cwd)
+    else:
+        from app.core.project_trust import DEFAULT_LEGACY_TRUSTED, DEFAULT_NEW_UNTRUSTED
+        permissions = DEFAULT_LEGACY_TRUSTED.copy() if trusted else DEFAULT_NEW_UNTRUSTED.copy()
+
+    # 2. Evaluate against granular shell command policy
+    classification = evaluate_shell_command_policy(command, permissions)
+
+    # Hard rejection for unconditional deny patterns (e.g. sudo, rm -rf /, etc.)
+    if classification.is_denied:
+        return False, f"Command forbidden by shell policy: {classification.reason}"
+
+    # 3. Check session cache or explicit user approval
+    is_cache_approved = cache.is_approved(session_id, command)
+    if user_approved:
+        cache.approve(session_id, command)
+
+    auto_approved = is_cache_approved or user_approved
+    if auto_approved:
+        return True, "Approved by session cache or user approval"
+
+    # 4. Check whether ExecPolicy or shell policy requires explicit approval
+    exec_policy_requires = policy.requires_explicit_approval(command, project_trusted=trusted)
+    if classification.requires_approval or exec_policy_requires:
+        reason_msg = (
+            f"Command requires explicit user approval ({classification.reason}). "
+            f"Command: '{command}'. Pass user_approved=True or approve in current session."
+        )
+        return False, reason_msg
+
+    return True, "Auto-approved by policy"
+
+
 # Default global instances
 default_exec_policy = ExecPolicy()
 session_approval_cache = SessionApprovalCache()

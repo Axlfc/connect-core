@@ -92,7 +92,7 @@ async def test_bash_tool(temp_workspace, tool_context):
     # sudo rejection
     result = await tool.execute({"command": "sudo ls"}, tool_context)
     assert result.is_error
-    assert "strictly forbidden" in result.output
+    assert "forbidden by shell policy" in result.output or "strictly forbidden" in result.output
 
     # Timeout (mocking or using sleep)
     result = await tool.execute({"command": "sleep 2", "timeout_seconds": 1}, tool_context)
