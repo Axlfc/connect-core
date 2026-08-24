@@ -3,9 +3,10 @@ import uuid
 import logging
 import fcntl
 import shutil
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,30 @@ class SessionManager:
         self.sessions_dir = sessions_dir or (Path.home() / ".cognito" / "sessions")
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
         self.index_path = self.sessions_dir / "index.json"
+        self.lock_path = self.sessions_dir / "index.json.lock"
         self._ensure_index()
 
+    @contextmanager
+    def _lock_index(self, shared: bool = False):
+        flags = fcntl.LOCK_SH if shared else fcntl.LOCK_EX
+        lock_file = open(self.lock_path, "a+")
+        try:
+            fcntl.flock(lock_file.fileno(), flags)
+            yield
+        finally:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+            lock_file.close()
+
     def _ensure_index(self):
-        if not self.index_path.exists():
-            with open(self.index_path, "w") as f:
-                json.dump({}, f)
+        with self._lock_index(shared=False):
+            if not self.index_path.exists():
+                temp_index_path = self.sessions_dir / f".index_{uuid.uuid4().hex}.tmp"
+                with open(temp_index_path, "w") as f:
+                    json.dump({}, f)
+                temp_index_path.replace(self.index_path)
 
     def _lock_file(self, f):
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -36,22 +55,34 @@ class SessionManager:
         fcntl.flock(f, fcntl.LOCK_UN)
 
     def _get_index(self) -> Dict[str, Dict[str, Any]]:
-        with open(self.index_path, "r") as f:
-            self._lock_file(f)
-            try:
-                return json.load(f)
-            finally:
-                self._unlock_file(f)
+        with self._lock_index(shared=True):
+            if not self.index_path.exists():
+                return {}
+            with open(self.index_path, "r") as f:
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError:
+                    return {}
 
     def _save_index(self, index: Dict[str, Dict[str, Any]]):
         temp_index_path = self.sessions_dir / f".index_{uuid.uuid4().hex}.tmp"
         with open(temp_index_path, "w") as f:
-            self._lock_file(f)
-            try:
-                json.dump(index, f, indent=2)
-            finally:
-                self._unlock_file(f)
+            json.dump(index, f, indent=2)
         temp_index_path.replace(self.index_path)
+
+    def _mutate_index(self, update_fn: Callable[[Dict[str, Dict[str, Any]]], None]):
+        with self._lock_index(shared=False):
+            if not self.index_path.exists():
+                index = {}
+            else:
+                with open(self.index_path, "r") as f:
+                    try:
+                        index = json.load(f)
+                    except json.JSONDecodeError:
+                        index = {}
+
+            update_fn(index)
+            self._save_index(index)
 
     def create(self, cwd: str) -> str:
         session_id = str(uuid.uuid4())
@@ -61,16 +92,17 @@ class SessionManager:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
         session_file.touch()
 
-        # Update index
-        index = self._get_index()
-        index[session_id] = {
-            "cwd": str(Path(cwd).resolve()),
-            "created_at": now,
-            "updated_at": now,
-            "message_count": 0
-        }
-        self._save_index(index)
+        resolved_cwd = str(Path(cwd).resolve())
 
+        def _update(index: Dict[str, Dict[str, Any]]):
+            index[session_id] = {
+                "cwd": resolved_cwd,
+                "created_at": now,
+                "updated_at": now,
+                "message_count": 0
+            }
+
+        self._mutate_index(_update)
         return session_id
 
     def open(self, session_id: str) -> SessionMetadata:
@@ -89,20 +121,20 @@ class SessionManager:
         target_file = self.sessions_dir / f"{target_session_id}.jsonl"
 
         # Copy file
-        import shutil
         shutil.copy2(source_file, target_file)
 
         # Register in index
         now = datetime.now(timezone.utc).isoformat()
-        index = self._get_index()
-        index[target_session_id] = {
-            "cwd": source_meta.cwd,
-            "created_at": now,
-            "updated_at": now,
-            "message_count": source_meta.message_count
-        }
-        self._save_index(index)
 
+        def _update(index: Dict[str, Dict[str, Any]]):
+            index[target_session_id] = {
+                "cwd": source_meta.cwd,
+                "created_at": now,
+                "updated_at": now,
+                "message_count": source_meta.message_count
+            }
+
+        self._mutate_index(_update)
         return target_session_id
 
     def continue_recent(self, cwd: str) -> Optional[str]:
@@ -166,11 +198,12 @@ class SessionManager:
                 self._unlock_file(f)
 
     def _update_index_metrics(self, session_id: str, message_delta: int = 0):
-        index = self._get_index()
-        if session_id in index:
-            index[session_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
-            index[session_id]["message_count"] += message_delta
-            self._save_index(index)
+        def _update(index: Dict[str, Dict[str, Any]]):
+            if session_id in index:
+                index[session_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                index[session_id]["message_count"] += message_delta
+
+        self._mutate_index(_update)
 
     def get_effective_messages(self, session_id: str) -> List[Dict[str, Any]]:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
@@ -291,11 +324,12 @@ class SessionManager:
                 except json.JSONDecodeError:
                     pass
 
-        index = self._get_index()
-        if session_id in index:
-            index[session_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
-            index[session_id]["message_count"] = new_message_count
-            self._save_index(index)
+        def _update(index: Dict[str, Dict[str, Any]]):
+            if session_id in index:
+                index[session_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                index[session_id]["message_count"] = new_message_count
+
+        self._mutate_index(_update)
 
     def archive_session(self, session_id: str) -> Path:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
@@ -311,10 +345,11 @@ class SessionManager:
         if session_file.exists():
             shutil.move(str(session_file), str(target_path))
 
-        if session_id in index:
-            index.pop(session_id)
-            self._save_index(index)
+        def _update(index: Dict[str, Dict[str, Any]]):
+            if session_id in index:
+                index.pop(session_id)
 
+        self._mutate_index(_update)
         return target_path
 
     def delete_session(self, session_id: str) -> None:
@@ -327,6 +362,8 @@ class SessionManager:
         if session_file.exists():
             session_file.unlink()
 
-        if session_id in index:
-            index.pop(session_id)
-            self._save_index(index)
+        def _update(index: Dict[str, Dict[str, Any]]):
+            if session_id in index:
+                index.pop(session_id)
+
+        self._mutate_index(_update)
