@@ -1,9 +1,15 @@
 import pytest
 import os
+import sys
+import importlib
 import time
 import hashlib
 import tempfile
 from pathlib import Path
+
+# Ensure environment secret is set for general test loading
+os.environ["COGNITO_WORKER_SECRETS"] = "test-secret-key-1,test-secret-key-2"
+
 from fastapi.testclient import TestClient
 
 from worker_app.main import app, worktree_manager, ALLOWED_ROOTS, WORKER_ID, SHARED_SECRETS
@@ -98,3 +104,24 @@ def test_nonce_replay_protection(client):
     resp2 = client.get("/v1/models", headers=headers)
     assert resp2.status_code == 401
     assert "nonce has already been used" in resp2.json()["detail"]
+
+def test_missing_secrets_fail_fast():
+    original_env = os.environ.get("COGNITO_WORKER_SECRETS")
+    try:
+        if "COGNITO_WORKER_SECRETS" in os.environ:
+            del os.environ["COGNITO_WORKER_SECRETS"]
+
+        # Importing or reloading worker_app.main should raise RuntimeError
+        with pytest.raises(RuntimeError, match="COGNITO_WORKER_SECRETS environment variable is required"):
+            if "worker_app.main" in sys.modules:
+                importlib.reload(sys.modules["worker_app.main"])
+            else:
+                importlib.import_module("worker_app.main")
+    finally:
+        if original_env is not None:
+            os.environ["COGNITO_WORKER_SECRETS"] = original_env
+        else:
+            os.environ["COGNITO_WORKER_SECRETS"] = "test-secret-key-1,test-secret-key-2"
+        # Reload main module to restore state
+        if "worker_app.main" in sys.modules:
+            importlib.reload(sys.modules["worker_app.main"])

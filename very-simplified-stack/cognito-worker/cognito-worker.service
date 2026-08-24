@@ -10,7 +10,7 @@ Restart=on-failure
 RestartSec=5
 Environment=PYTHONPATH=.
 Environment=ALLOWED_REPOSITORY_ROOTS=/tmp,%h/connect-core
-Environment=COGNITO_WORKER_SECRETS=super-secret-key-123
+# Environment=COGNITO_WORKER_SECRETS=<your-secret-key>
 Environment=COGNITO_WORKER_ID=local-worker-01
 Environment=USE_MOCK_CODEX=true
 
