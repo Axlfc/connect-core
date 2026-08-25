@@ -1,4 +1,5 @@
 import json
+import anyio
 from typing import List, Optional, Any, Dict
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
@@ -104,13 +105,13 @@ async def run_agent_loop(request: AgentLoopRequest):
             media_type="text/event-stream"
         )
 
-    # 2. Cargar historial y compactar si es necesario
-    effective_messages = session_manager.get_effective_messages(session_id)
+    # 2. Cargar historial y compactar si es necesario (offloaded to thread to avoid blocking event loop on flock)
+    effective_messages = await session_manager.get_effective_messages_async(session_id)
     if await should_compact(effective_messages):
         try:
-            last_line = session_manager.get_last_line_index(session_id)
+            last_line = await anyio.to_thread.run_sync(session_manager.get_last_line_index, session_id)
             summary = await compact(effective_messages, backend_router=backend_router)
-            session_manager.append_compaction(session_id, summary, last_line)
+            await anyio.to_thread.run_sync(session_manager.append_compaction, session_id, summary, last_line)
         except Exception as e:
             logger.warning(f"Compaction failed for session {session_id}, continuing anyway: {e}")
 
@@ -146,10 +147,10 @@ async def run_agent_loop(request: AgentLoopRequest):
     # REDESIGN: To persist assistant messages correctly, we need to capture them.
     # The current agent_loop yields events but doesn't return the full objects.
     async def event_generator_v2():
-        # Persist incoming new messages from request
+        # Persist incoming new messages from request (offloaded to thread to avoid blocking event loop)
         async with history_lock:
             for msg in new_messages:
-                session_manager.append_message(session_id, msg["role"], msg["content"])
+                await session_manager.append_message_async(session_id, msg["role"], msg["content"])
 
         yield f"data: {SessionInfoEvent(session_id=session_id, is_new=is_new).model_dump_json()}\n\n"
 
@@ -190,7 +191,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                     # Before persisting tool result, we MUST persist the assistant message that called it
                     async with history_lock:
                         if assistant_content or current_tool_calls:
-                            session_manager.append_message(
+                            await session_manager.append_message_async(
                                 session_id,
                                 role="assistant",
                                 content=assistant_content,
@@ -199,7 +200,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                             assistant_content = ""
                             current_tool_calls = []
 
-                        session_manager.append_message(
+                        await session_manager.append_message_async(
                             session_id,
                             role="tool",
                             content=event.output,
@@ -209,7 +210,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                 elif isinstance(event, DoneEvent):
                     async with history_lock:
                         if assistant_content or current_tool_calls:
-                            session_manager.append_message(
+                            await session_manager.append_message_async(
                                 session_id,
                                 role="assistant",
                                 content=assistant_content,
@@ -245,8 +246,8 @@ async def get_session(session_id: str):
     """
     session_manager = SessionManager()
     try:
-        metadata = session_manager.open(session_id)
-        messages = session_manager.get_effective_messages(session_id)
+        metadata = await session_manager.open_async(session_id)
+        messages = await session_manager.get_effective_messages_async(session_id)
         return {
             "metadata": metadata,
             "messages": messages

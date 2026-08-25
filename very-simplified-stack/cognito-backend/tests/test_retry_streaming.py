@@ -132,3 +132,33 @@ async def test_agent_loop_retry_and_explicit_error():
 
     assert len(done_events) == 1
     assert done_events[0].stop_reason == "error"
+
+
+@pytest.mark.asyncio
+async def test_backend_router_generate_with_tools_retry_transient():
+    from app.services.backend_router import BackendRouter
+    from app.services.backend_registry import BackendConfig, BackendType
+
+    class DummyClient:
+        def __init__(self):
+            self.config = BackendConfig(name="dummy", priority=1, backend_type=BackendType.OLLAMA, base_url="http://dummy", model="llama3")
+            self.attempts = 0
+
+        async def generate_with_tools(self, messages, tools, model_params=None):
+            self.attempts += 1
+            if self.attempts == 1:
+                res_429 = httpx.Response(429, request=httpx.Request("POST", "http://dummy"))
+                raise httpx.HTTPStatusError("429 Too Many Requests", request=res_429.request, response=res_429)
+            yield {"token": "hello"}
+
+    dummy_client = DummyClient()
+    router = BackendRouter(configs=[])
+    router._clients = [dummy_client]
+
+    chunks = []
+    async for chunk in router.generate_with_tools(messages=[], tools=[]):
+        chunks.append(chunk)
+
+    assert dummy_client.attempts == 2
+    assert len(chunks) == 1
+    assert chunks[0]["token"] == "hello"

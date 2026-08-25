@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
+import anyio
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -180,6 +181,29 @@ class SessionManager:
             if not meta:
                 raise FileNotFoundError(f"Session {session_id} not found")
             return SessionMetadata(session_id=session_id, **meta)
+
+    async def open_async(self, session_id: str) -> SessionMetadata:
+        return await anyio.to_thread.run_sync(self.open, session_id)
+
+    async def append_message_async(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        tool_name: Optional[str] = None,
+        tool_call_id: Optional[str] = None,
+        tool_calls: Optional[List[Dict]] = None
+    ) -> None:
+        await anyio.to_thread.run_sync(
+            self.append_message, session_id, role, content, tool_name, tool_call_id, tool_calls
+        )
+
+    async def get_effective_messages_async(
+        self, session_id: str, cwd: Optional[str] = None, include_system_prompt: bool = False
+    ) -> List[Dict[str, Any]]:
+        return await anyio.to_thread.run_sync(
+            self.get_effective_messages, session_id, cwd, include_system_prompt
+        )
 
     def fork_from(self, source_session_id: str, new_session_id: Optional[str] = None) -> str:
         source_meta = self.open(source_session_id)
