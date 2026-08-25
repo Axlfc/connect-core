@@ -205,14 +205,31 @@ class SessionManager:
 
         self._mutate_index(_update)
 
-    def get_effective_messages(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_effective_messages(self, session_id: str, cwd: Optional[str] = None, include_system_prompt: bool = False) -> List[Dict[str, Any]]:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
         if not session_file.exists():
             return []
 
         messages = []
+
+        if include_system_prompt:
+            resolved_cwd = cwd
+            if not resolved_cwd:
+                try:
+                    meta = self.open(session_id)
+                    resolved_cwd = meta.cwd
+                except Exception:
+                    resolved_cwd = None
+
+            if resolved_cwd:
+                try:
+                    from app.core.system_prompt import build_system_message
+                    system_prompt = build_system_message(resolved_cwd)
+                    messages.append({"role": "system", "content": system_prompt})
+                except Exception as e:
+                    logger.warning(f"Failed to build system message for session {session_id} in {resolved_cwd}: {e}")
+
         compaction = None
-        compaction_line_index = -1
 
         all_entries = []
         with open(session_file, "r") as f:
@@ -223,7 +240,6 @@ class SessionManager:
                     all_entries.append((i, data))
                     if data.get("type") == "compaction":
                         compaction = data
-                        compaction_line_index = i
                 except json.JSONDecodeError:
                     logger.warning(f"Corrupt line {i} in session {session_id}")
                     continue
@@ -231,7 +247,7 @@ class SessionManager:
         if compaction:
             summary = compaction.get("summary", "")
             start_line = compaction.get("covers_through_line", -1)
-            messages = [{"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"}]
+            messages.append({"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"})
             for i, data in all_entries:
                 if i > start_line and data.get("type") == "message":
                     messages.append(self._to_ai_message(data))
