@@ -84,7 +84,11 @@ class ToolLoopDetector:
         :param output: Execution result of the tool call. If provided, used to determine if output changed.
         :return: Optional warning string to inject as system message if guardrail triggers, else None.
         """
-        call_hash = compute_tool_call_hash(tool_name, arguments, output=output)
+        if tool_name in READ_ONLY_TOOLS:
+            call_hash = compute_tool_call_hash(tool_name, arguments, output=output)
+        else:
+            call_hash = compute_tool_call_hash(tool_name, arguments, output=None)
+
         self.history.append((tool_name, call_hash))
 
         # Check consecutive matches from the end of history
