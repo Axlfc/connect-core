@@ -39,6 +39,22 @@ def get_transient_retrier(max_attempts: int = 3, min_wait: float = 0.5, max_wait
         )
     )
 
+async def retry_transient_async(
+    async_func: Callable[..., Any],
+    *args: Any,
+    max_attempts: int = 3,
+    min_wait: float = 0.5,
+    max_wait: float = 4.0,
+    **kwargs: Any
+) -> Any:
+    """
+    Executes an async function with transient retries using exponential backoff.
+    """
+    retrier = get_transient_retrier(max_attempts=max_attempts, min_wait=min_wait, max_wait=max_wait)
+    async for attempt in retrier:
+        with attempt:
+            return await async_func(*args, **kwargs)
+
 async def retry_transient_stream(
     generator_func: Callable[..., Any],
     *args: Any,

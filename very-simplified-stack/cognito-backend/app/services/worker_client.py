@@ -3,15 +3,25 @@ import hashlib
 import hmac
 import time
 import os
+import json
 import logging
 from typing import Dict, Any, Optional, List
 
+from app.core.retry import retry_transient_async
+
 logger = logging.getLogger("cognito.backend.worker_client")
+
+
+class WorkerUnreachableError(Exception):
+    """Raised when the worker service cannot be reached after transient retries."""
+    pass
+
 
 def calculate_signature(secret: str, method: str, path: str, timestamp: str, nonce: str, body_sha256: str, worker_id: str) -> str:
     canonical = f"{method}\n{path}\n{timestamp}\n{nonce}\n{body_sha256}\n{worker_id}"
     h = hmac.new(secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256)
     return h.hexdigest()
+
 
 class WorkerClient:
     def __init__(self):
@@ -74,36 +84,63 @@ class WorkerClient:
         resp = await client.send(req, stream=True)
         return resp
 
-    async def verify_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        import json
+    async def verify_task(
+        self,
+        payload: Dict[str, Any],
+        max_attempts: int = 3,
+        min_wait: float = 0.5,
+        max_wait: float = 4.0,
+    ) -> Dict[str, Any]:
         path = "/v1/verify"
         url = f"{self.worker_url}{path}"
         body_bytes = json.dumps(payload).encode("utf-8")
-        headers = self._get_headers("POST", path, body_bytes)
-        try:
+
+        async def _do_verify():
+            headers = self._get_headers("POST", path, body_bytes)
             async with httpx.AsyncClient(timeout=65.0) as client:
                 resp = await client.post(url, headers=headers, content=body_bytes)
-                if resp.status_code == 200:
-                    return resp.json()
+                resp.raise_for_status()
+                return resp.json()
+
+        try:
+            return await retry_transient_async(
+                _do_verify,
+                max_attempts=max_attempts,
+                min_wait=min_wait,
+                max_wait=max_wait,
+            )
         except Exception as e:
             logger.error(f"Worker verification call failed: {e}")
-        return {"exit_status": -1, "stdout": "", "stderr": f"Verification endpoint error: check logs"}
+            raise WorkerUnreachableError(f"Worker verification failed: {e}") from e
 
-    async def cleanup_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        import json
+    async def cleanup_task(
+        self,
+        payload: Dict[str, Any],
+        max_attempts: int = 3,
+        min_wait: float = 0.5,
+        max_wait: float = 4.0,
+    ) -> Dict[str, Any]:
         path = "/v1/cleanup"
         url = f"{self.worker_url}{path}"
         body_bytes = json.dumps(payload).encode("utf-8")
-        headers = self._get_headers("POST", path, body_bytes)
-        try:
+
+        async def _do_cleanup():
+            headers = self._get_headers("POST", path, body_bytes)
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(url, headers=headers, content=body_bytes)
-                if resp.status_code == 200:
-                    return resp.json()
+                resp.raise_for_status()
+                return resp.json()
+
+        try:
+            return await retry_transient_async(
+                _do_cleanup,
+                max_attempts=max_attempts,
+                min_wait=min_wait,
+                max_wait=max_wait,
+            )
         except Exception as e:
-             logger.error(f"Worker cleanup call failed: {e}")
-        return {"status": "error"}
+            logger.error(f"Worker cleanup call failed: {e}")
+            raise WorkerUnreachableError(f"Worker cleanup failed: {e}") from e
+
 
 worker_client = WorkerClient()
-import json
-from typing import List
