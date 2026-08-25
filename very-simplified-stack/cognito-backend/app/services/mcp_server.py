@@ -61,9 +61,28 @@ def load_mcp_config() -> Dict[str, Any]:
     if os.getenv("COGNITO_API_KEY"):
         config["APIKey"] = os.getenv("COGNITO_API_KEY")
 
-    # Generate random token if none is provided
+    # Generate random token if none is provided, persist it, and log/communicate it
     if not config["AuthToken"] and not config["APIKey"]:
-        config["AuthToken"] = secrets.token_urlsafe(32)
+        generated_token = secrets.token_urlsafe(32)
+        config["AuthToken"] = generated_token
+        try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            file_data = {}
+            if config_path.exists():
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        file_data = json.load(f)
+                except Exception:
+                    file_data = {}
+            file_data["AuthToken"] = generated_token
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(file_data, f, indent=2)
+            logger.warning(
+                f"No auth token configured. Generated ephemeral AuthToken '{generated_token}' and persisted to {config_path}"
+            )
+        except Exception as e:
+            logger.error(f"Could not persist generated AuthToken to {config_path}: {e}")
+            raise RuntimeError(f"Failed to persist generated AuthToken to {config_path}: {e}") from e
 
     return config
 
