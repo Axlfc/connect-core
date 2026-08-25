@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import uuid
 from typing import AsyncIterator, Dict, List, Optional, Any
 
@@ -12,6 +13,25 @@ from app.core.token_budget import apply_token_budget_reminder, estimate_messages
 from app.core.guardrails.tool_loop_detector import ToolLoopDetector
 
 logger = logging.getLogger(__name__)
+
+def sanitize_tool_output(output: str) -> str:
+    """
+    Sanitizes raw tool output to prevent prompt injection / context escaping.
+    Escapes tag sequences like </tool_output> or <system> that could close
+    or spoof system/tool delimiters.
+    """
+    if not isinstance(output, str):
+        return output
+    replacements = [
+        (re.compile(r'</tool_output\s*>', re.IGNORECASE), r'<\/tool_output>'),
+        (re.compile(r'<tool_output(\s|>)', re.IGNORECASE), r'<\\tool_output\1'),
+        (re.compile(r'</system\s*>', re.IGNORECASE), r'<\/system>'),
+        (re.compile(r'<system(\s|>)', re.IGNORECASE), r'<\\system\1'),
+    ]
+    sanitized = output
+    for pattern, repl in replacements:
+        sanitized = pattern.sub(repl, sanitized)
+    return sanitized
 
 async def agent_loop(
     messages: List[Dict[str, Any]],
@@ -157,7 +177,8 @@ async def agent_loop(
                     else:
                         result = await tool.execute(tc["arguments"], context)
 
-                formatted_output = f'<tool_output source="{tc["name"]}">\n{result.output}\n</tool_output>'
+                sanitized_output = sanitize_tool_output(result.output)
+                formatted_output = f'<tool_output source="{tc["name"]}">\n{sanitized_output}\n</tool_output>'
 
                 yield ToolResultEvent(
                     tool_call_id=tc["id"],
