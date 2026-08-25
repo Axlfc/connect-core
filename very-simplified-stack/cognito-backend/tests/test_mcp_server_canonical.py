@@ -23,16 +23,24 @@ async def test_load_mcp_config_and_auth(tmp_path, monkeypatch):
     monkeypatch.delenv("COGNITO_MCP_INSECURE_DEV", raising=False)
 
     # Test default loading generate random token and require_auth True
+    fake_home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
     config = load_mcp_config()
     assert "Endpoint" in config
     assert "AuthToken" in config
     assert len(config["AuthToken"]) > 0
     assert config["RequireAuth"] is True
+    # Verify token was persisted to ~/.cognito/config.json
+    config_file_persisted = fake_home / ".cognito" / "config.json"
+    assert config_file_persisted.exists()
+    persisted_data = json.loads(config_file_persisted.read_text(encoding="utf-8"))
+    assert persisted_data.get("AuthToken") == config["AuthToken"]
 
     # Test ~/.cognito/config.json override
     fake_home = tmp_path / "home"
     fake_cognito = fake_home / ".cognito"
-    fake_cognito.mkdir(parents=True)
+    fake_cognito.mkdir(parents=True, exist_ok=True)
     config_file = fake_cognito / "config.json"
     config_file.write_text(json.dumps({"AuthToken": "secret_token_123"}))
 
@@ -66,6 +74,18 @@ async def test_mcp_unauthenticated_rejected_by_default(tmp_path, monkeypatch):
     status_res = await get_session_status(session_id="some-session")
     assert status_res.get("is_error") is True
     assert "Authentication failed" in status_res.get("output", "")
+
+@pytest.mark.asyncio
+async def test_load_mcp_config_persistence_failure_raises(tmp_path, monkeypatch):
+    fake_home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+    monkeypatch.delenv("COGNITO_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("COGNITO_API_KEY", raising=False)
+    monkeypatch.delenv("COGNITO_MCP_INSECURE_DEV", raising=False)
+
+    with patch("builtins.open", side_effect=OSError("Disk full or permission denied")):
+        with pytest.raises(RuntimeError, match="Failed to persist generated AuthToken"):
+            load_mcp_config()
 
 @pytest.mark.asyncio
 async def test_mcp_insecure_dev_mode_opt_in(tmp_path, monkeypatch, caplog):
