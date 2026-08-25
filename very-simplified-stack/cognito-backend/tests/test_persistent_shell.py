@@ -122,7 +122,9 @@ async def test_persistent_shell_internal_commands(tool_context, shell_tool, temp
     state_data_post = json.loads(res_state_post.output)
     assert state_data_post["is_active"] is False
 
-    # Verify background process was killed
+    # Verify background process was killed (give it a brief moment to reap if needed)
+    import asyncio
+    await asyncio.sleep(0.1)
     try:
         os.kill(child_pid, 0)
         process_alive = True
