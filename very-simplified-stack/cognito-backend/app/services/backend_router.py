@@ -96,13 +96,20 @@ class BackendRouter:
         """
         last_exc: Optional[Exception] = None
 
+        from app.core.retry import retry_transient_stream
+
         for attempt, client in enumerate(self._clients, start=1):
             try:
                 logger.info(
                     "[Tools] Attempt %d/%d → backend '%s'",
                     attempt, len(self._clients), client.config.name,
                 )
-                async for chunk in client.generate_with_tools(messages, tools, model_params):
+
+                async def _stream_raw(target_client=client):
+                    async for chunk in target_client.generate_with_tools(messages, tools, model_params):
+                        yield chunk
+
+                async for chunk in retry_transient_stream(_stream_raw):
                     yield chunk
                 return # Success!
 

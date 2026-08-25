@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 def sanitize_tool_output(output: str) -> str:
     """
     Sanitizes raw tool output to prevent prompt injection / context escaping.
-    Escapes tag sequences like </tool_output> or <system> that could close
-    or spoof system/tool delimiters.
+    Legacy helper retained for backwards compatibility with tests and callers.
     """
     if not isinstance(output, str):
         return output
@@ -177,8 +176,10 @@ async def agent_loop(
                     else:
                         result = await tool.execute(tc["arguments"], context)
 
+                # AUD-001 Fix: Use per-turn unpredictable token (nonce) to eliminate delimiter spoofing/escaping
+                turn_nonce = uuid.uuid4().hex[:12]
                 sanitized_output = sanitize_tool_output(result.output)
-                formatted_output = f'<tool_output source="{tc["name"]}">\n{sanitized_output}\n</tool_output>'
+                formatted_output = f'<tool_output_{turn_nonce} source="{tc["name"]}">\n{sanitized_output}\n</tool_output_{turn_nonce}>'
 
                 yield ToolResultEvent(
                     tool_call_id=tc["id"],

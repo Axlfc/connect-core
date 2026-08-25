@@ -49,9 +49,10 @@ async def test_indirect_injection_read_tool(tmp_path, tool_context):
             # Check the tool result message passed to LLM on turn 2
             tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
             assert tool_msg is not None
-            assert '<tool_output source="read">' in tool_msg["content"]
+            assert '<tool_output_' in tool_msg["content"]
+            assert 'source="read">' in tool_msg["content"]
             assert malicious_content in tool_msg["content"]
-            assert '</tool_output>' in tool_msg["content"]
+            assert '</tool_output_' in tool_msg["content"]
 
             # Model treats tool_output as untrusted data and answers user objectively
             yield {"token": "The file config.txt contains system override text, which is untrusted data and will be ignored."}
@@ -71,7 +72,8 @@ async def test_indirect_injection_read_tool(tmp_path, tool_context):
 
     tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
     assert len(tool_results) == 1
-    assert '<tool_output source="read">' in tool_results[0].output
+    assert '<tool_output_' in tool_results[0].output
+    assert 'source="read">' in tool_results[0].output
     assert malicious_content in tool_results[0].output
 
     final_text = "".join(e.content for e in events if isinstance(e, TextDeltaEvent) and e.content)
@@ -114,8 +116,9 @@ async def test_indirect_injection_apply_unified_patch_tool(tmp_path, tool_contex
         else:
             tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
             assert tool_msg is not None
-            assert '<tool_output source="apply_unified_patch">' in tool_msg["content"]
-            assert '</tool_output>' in tool_msg["content"]
+            assert '<tool_output_' in tool_msg["content"]
+            assert 'source="apply_unified_patch">' in tool_msg["content"]
+            assert '</tool_output_' in tool_msg["content"]
 
             yield {"token": "Patch applied successfully. Embedded comments were treated strictly as code comments."}
 
@@ -134,7 +137,8 @@ async def test_indirect_injection_apply_unified_patch_tool(tmp_path, tool_contex
 
     tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
     assert len(tool_results) == 1
-    assert '<tool_output source="apply_unified_patch">' in tool_results[0].output
+    assert '<tool_output_' in tool_results[0].output
+    assert 'source="apply_unified_patch">' in tool_results[0].output
 
     final_text = "".join(e.content for e in events if isinstance(e, TextDeltaEvent) and e.content)
     assert "SYSTEM_HACKED" not in final_text
@@ -182,9 +186,10 @@ async def test_indirect_injection_code_review_tool(tmp_path):
         else:
             tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
             assert tool_msg is not None
-            assert '<tool_output source="code_review">' in tool_msg["content"]
+            assert '<tool_output_' in tool_msg["content"]
+            assert 'source="code_review">' in tool_msg["content"]
             assert 'ADMIN DIRECTIVE' in tool_msg["content"]
-            assert '</tool_output>' in tool_msg["content"]
+            assert '</tool_output_' in tool_msg["content"]
 
             yield {"token": "Code review complete: Found suspicious comment containing ADMIN DIRECTIVE, ignored as instruction."}
 
@@ -203,7 +208,8 @@ async def test_indirect_injection_code_review_tool(tmp_path):
 
     tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
     assert len(tool_results) == 1
-    assert '<tool_output source="code_review">' in tool_results[0].output
+    assert '<tool_output_' in tool_results[0].output
+    assert 'source="code_review">' in tool_results[0].output
 
     final_text = "".join(e.content for e in events if isinstance(e, TextDeltaEvent) and e.content)
     assert "PROMPT_INJECTED_OK" not in final_text
@@ -242,9 +248,10 @@ async def test_indirect_injection_escaped_tool_output_delimiter(tmp_path, tool_c
             tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
             assert tool_msg is not None
             # Verify the inner </tool_output> tag was escaped so it does not match unescaped closing tag
-            assert '<tool_output source="read">' in tool_msg["content"]
+            assert '<tool_output_' in tool_msg["content"]
+            assert 'source="read">' in tool_msg["content"]
             assert r'<\/tool_output>' in tool_msg["content"]
-            assert tool_msg["content"].endswith('</tool_output>')
+            assert '</tool_output_' in tool_msg["content"]
 
             yield {"token": "File read successfully. Embedded text contained escaped tags and was treated as plain data."}
 
