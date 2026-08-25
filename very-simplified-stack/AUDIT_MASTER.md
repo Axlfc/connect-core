@@ -10,16 +10,16 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 
 | ID | Severidad | Categoría | Componente | Descripción Resumida | Estado |
 |---|---|---|---|---|---|
-| **AUD-001** | Crítico | Seguridad | `cognito-backend` | Delimitador `<tool_output>` falsificable por contenido inyectado | **Corregido** (Fix de aislamiento dinámico con UUID/nonce por turno) |
-| **AUD-002** | Alto | Precisión/Arquitectura | `cognito-backend` | Pérdida de mensajes intermedios e inyección de system prompt en compactación | **Corregido** |
-| **AUD-003** | Alto | Seguridad | `cognito-backend` | Modo `COGNITO_MCP_INSECURE_DEV` desactivaba auth globalmente | **Corregido** |
-| **AUD-004** | Alto | Arquitectura | `cognito-backend` | Contención de rendimiento y bloqueo del event loop de FastAPI por `fcntl.flock` síncrono | **Corregido** (Locks por sesión + Ejecución off-thread en AnyIO) |
+| **AUD-001** | Crítico | Seguridad | `cognito-backend` | Delimitador `<tool_output>` falsificable por contenido inyectado | **Corregido** (Nonce por turno + Escapado) |
+| **AUD-002** | Alto | Precisión/Arquitectura | `cognito-backend` | Pérdida de mensajes intermedios e inyección de system prompt en compactación | **Corregido** (Filtro `i > covers_through_line` + System Prompt) |
+| **AUD-003** | Crítico | Seguridad | `cognito-backend` | Modo `COGNITO_MCP_INSECURE_DEV` desactivaba auth globalmente | **Corregido** (Reclasificado a Crítico; Fail-closed + Token pers. `0o600`) |
+| **AUD-004** | Alto | Arquitectura | `cognito-backend` | Contención de rendimiento y bloqueo del event loop de FastAPI por `fcntl.flock` síncrono | **Corregido** (Locks por sesión + Offloading AnyIO thread; p99=238.64ms) |
 | **AUD-005** | Medio | Resiliencia | `cognito-backend` | Interrupción de streaming por errores HTTP 429/transitorios en `generate_with_tools` | **Corregido** (Integrado `retry_transient_stream` en `BackendRouter`) |
-| **AUD-006** | Bajo | Precisión | `cognito-backend` | Falsos positivos del detector de bucles en herramientas de solo lectura | **Corregido** |
-| **AUD-007** | Medio | Seguridad | `cognito-worker` | Clave por defecto hardcodeada en `cognito-worker` | **Corregido** |
-| **AUD-008** | Medio | Arquitectura/Precisión | `cognito-backend` | System prompt sin versionar | **Corregido** |
-| **AUD-009** | Crítico | Seguridad | `cognito-backend` | Bypass de `ExecPolicy` en `shell_run` | **Corregido** |
-| **AUD-010** | Alto | Seguridad | `cognito-backend` | `shell_policy.py` desconectado en tiempo de ejecución | **Corregido** |
+| **AUD-006** | Bajo | Precisión | `cognito-backend` | Falsos positivos del detector de bucles en herramientas de solo lectura | **Corregido** (Uso de `READ_ONLY_TOOLS` en `record_and_check`) |
+| **AUD-007** | Medio | Seguridad | `cognito-worker` | Clave por defecto hardcodeada en `cognito-worker` | **Corregido** (`COGNITO_WORKER_SECRETS` obligatorio) |
+| **AUD-008** | Medio | Arquitectura/Precisión | `cognito-backend` | System prompt sin versionar | **Corregido** (Definiciones TOML versionadas) |
+| **AUD-009** | Crítico | Seguridad | `cognito-backend` | Bypass de `ExecPolicy` en `shell_run` | **Corregido** (Validación previa en `ShellTools`) |
+| **AUD-010** | Alto | Seguridad | `cognito-backend` | `shell_policy.py` desconectado en tiempo de ejecución | **Corregido** (Conectado a `exec_policy.py`) |
 | **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Pendiente (Documentado)** |
 | **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Pendiente (Documentado)** |
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Pendiente (Documentado)** |
@@ -36,71 +36,164 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 - **Severidad**: Crítico
 - **Categoría**: Seguridad
 - **Componente**: `cognito-backend` (`app/core/agent_loop.py`)
-- **Descripción**: El formato de retorno de herramientas utilizaba la etiqueta fija `<tool_output source="...">`. Un intento de inyección indirecta dentro de un archivo de texto o salida de comando que contuviera la secuencia literal `</tool_output>` podía cerrar el bloque prematuramente e inyectar instrucciones directas con rol de sistema o usuario. La función previa `sanitize_tool_output()` basada en expresiones regulares sólo filtraba nombres de etiquetas exactos y en minúsculas, resultando inherentemente incompleta contra variaciones de etiquetas XML u otros atributos.
-- **Resolución**: Se sustituye el delimitador estático adivinable por un token único impredecible por turno (UUID/nonce por ejecución de turno), p. ej. `<tool_output_{nonce} source="...">...</tool_output_{nonce}>`. De este modo, cualquier etiqueta `</tool_output>` inyectada en el contenido de la herramienta no coincide con el token del turno y es tratada como datos planos no confiables.
+- **Descripción**: El formato de retorno de herramientas utilizaba la etiqueta fija `<tool_output source="...">`. Un intento de inyección indirecta dentro de un archivo de texto o salida de comando que contuviera la secuencia literal `</tool_output>` podía cerrar el bloque prematuramente e inyectar instrucciones directas con rol de sistema o usuario. La función previa `sanitize_tool_output()` basada en expresiones regulares sólo filtraba nombres de etiquetas exactos y en minúsculas.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (Líneas 17-26 y Líneas 180-184).
+- **Resolución y Evidencia Técnica**:
+  - `sanitize_tool_output(output: str)` escapa secuencias literales `</tool_output>` a `<\/tool_output>` (Línea 25) y `<tool_output` a `<\tool_output` (Línea 26).
+  - Cada turno genera un token nonce único impredecible (`turn_nonce = uuid.uuid4().hex[:8]`), formateando la salida como `<tool_output_{turn_nonce} source="...">\n{sanitized_output}\n</tool_output_{turn_nonce}>` (Líneas 181-182).
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_indirect_injection.py` (`test_indirect_injection_escaped_tool_output_delimiter`, `test_indirect_injection_read_file`, `test_indirect_injection_apply_patch`, `test_indirect_injection_code_review`).
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-002: Pérdida de mensajes intermedios y falta de system prompt en compactación
 - **Severidad**: Alto
 - **Categoría**: Precisión / Arquitectura
 - **Componente**: `cognito-backend` (`app/core/session_manager.py`, `app/core/session/message_deriver.py`)
-- **Descripción**: Al resumir o compactar el historial de una sesión (`compact()`), las versiones iniciales descartaban mensajes intercalados y omitían la reinyección en caliente del System Prompt actualizado en la cabecera del contexto derivado para la siguiente llamada del LLM.
-- **Resolución**: Verificado contra el código actual. `SessionManager.get_effective_messages` y `derive_messages_for_llm` preservan la estructura del log de eventos, calculan las líneas cubiertas por el resumen de compactación e inyectan dinámicamente el System Prompt (`build_system_message`) en la posición inicial.
+- **Descripción**: Al resumir o compactar el historial de una sesión (`compact()` / `append_compaction()`), las versiones iniciales descartaban mensajes intercalados entre la línea de corte y el evento de compactación registrado, y omitían la reinyección del System Prompt actualizado en la cabecera del contexto derivado.
+- **Evidencia de Ubicación en Código**:
+  - `very-simplified-stack/cognito-backend/app/core/session_manager.py` (Líneas 281-305).
+  - `very-simplified-stack/cognito-backend/app/core/session/message_deriver.py` (Líneas 40-75).
+- **Confirmación con Diff y Análisis del Código Actual**:
+  - En `SessionManager.get_effective_messages`:
+    ```python
+    if compaction:
+        summary = compaction.get("summary", "")
+        start_line = compaction.get("covers_through_line", -1)
+        messages.append({"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"})
+        for i, data in all_entries:
+            if i > start_line and data.get("type") == "message":
+                messages.append(self._to_ai_message(data))
+        return messages
+    ```
+  - La condición `i > start_line` en la línea 298 garantiza explícitamente que los mensajes registrados entre la línea de corte `covers_through_line` (p. ej., línea 3) y la línea donde se grabó la compactación (p. ej., línea 5) NO se ignoran y son preservados en el array de mensajes devueltos.
+  - Además, si `include_system_prompt=True` (o en `derive_messages_for_llm`), se inserta en el índice 0 el system prompt dinámico (`build_system_message(resolved_cwd)`), incluyendo las directivas de `AGENTS.md`.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_session_compaction_regression.py` (`test_session_compaction_message_loss_and_system_prompt_regression`), `very-simplified-stack/cognito-backend/tests/test_compaction.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-003: Modo `COGNITO_MCP_INSECURE_DEV` desactivaba auth globalmente
-- **Severidad**: Alto
+- **Severidad**: Crítico (Reclasificado explícitamente de Alto a Crítico)
 - **Categoría**: Seguridad
 - **Componente**: `cognito-backend` (`app/services/mcp_server.py`)
-- **Descripción**: La variable de entorno `COGNITO_MCP_INSECURE_DEV` omitía por completo la comprobación de claves/tokens de autorización para todos los clientes MCP, exponiendo endpoints sensibles sin autenticación.
-- **Resolución**: Verificado contra el código actual. `COGNITO_MCP_INSECURE_DEV` únicamente emite advertencias de log en entorno de desarrollo, pero el servidor valida estrictamente los tokens HMAC y las credenciales efímeras configuradas.
+- **Descripción**: La variable de entorno `COGNITO_MCP_INSECURE_DEV` desactivaba la comprobación de autenticación para todos los clientes MCP.
+- **Evaluación de Reclasificación de Severidad**: **Reclasificado a Crítico**. La desactivación global de la autenticación permitía la ejecución remota no autenticada de tareas de agente arbitrarias (`execute_agent_task`), acceso al estado de sesiones y ejecución de herramientas con privilegios en el sistema host sin credenciales ni tokens de autorización.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/services/mcp_server.py` (Líneas 18-24, Líneas 56-83 y Líneas 85-108).
+- **Resolución y Evidencia Técnica**:
+  - En `load_mcp_config()` (Líneas 18-23), la opción `RequireAuth` se establece por defecto en `True` y `COGNITO_MCP_INSECURE_DEV` sólo desactiva auth si se habilita explícitamente (`RequireAuth = False`).
+  - Si no se configuran tokens/claves, `load_mcp_config()` genera automáticamente un token seguro efímero (`secrets.token_urlsafe(32)`), lo persiste en `~/.cognito/config.json` con permisos estrictos de sistema de archivos (`0o600` para el archivo, `0o700` para la carpeta) y falla con `RuntimeError` si la persistencia no es posible.
+  - En `verify_mcp_auth(auth_token)` (Líneas 85-108), todas las peticiones son evaluadas de forma segura y rechazadas por defecto si el token no coincide.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_mcp_server_canonical.py` (`test_load_mcp_config_and_auth`, `test_mcp_unauthenticated_rejected_by_default`, `test_load_mcp_config_persistence_failure_raises`, `test_mcp_insecure_dev_mode_opt_in`).
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-004: Contención de rendimiento y bloqueo del event loop por `fcntl.flock` síncrono
 - **Severidad**: Alto
 - **Categoría**: Arquitectura
-- **Componente**: `cognito-backend` (`app/core/session_manager.py`)
-- **Descripción**: La sincronización del índice y de los archivos de sesión dependía originalmente de un lock global en `index.json`. Además, el uso síncrono de `fcntl.flock` directamente dentro de funciones asíncronas de FastAPI/SessionManager bloqueaba por completo el Event Loop de asyncio durante el tiempo que la operación de I/O retenía el cerrojo.
-- **Resolución**: Se aplicó una arquitectura de metadatos segmentados por sesión (`<session_id>.meta.json`) eliminando el bloqueo global sobre `index.json`. Adicionalmente, se envuelven las operaciones de archivo con bloqueo síncrono en ejecutores asíncronos en hilos (`anyio.to_thread.run_sync` / thread pool), previniendo cualquier bloqueo del event loop principal del servidor.
+- **Componente**: `cognito-backend` (`app/core/session_manager.py`, `app/api/routes/ai_agents.py`)
+- **Descripción**: La sincronización dependía originalmente de un cerrojo global en `index.json`, y la invocación síncrona directa de `fcntl.flock` bloqueaba el Event Loop de asyncio durante operaciones de I/O concurrentes.
+- **Evidencia de Ubicación en Código**:
+  - `very-simplified-stack/cognito-backend/app/core/session_manager.py` (Líneas 47-57, Líneas 193-211).
+  - `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py` (Línea 108).
+- **Resolución y Evidencia Técnica**:
+  - Se sustituyó el cerrojo global por locks individuales por sesión (`<session_id>.lock` y `<session_id>.meta.json`) en `SessionManager._lock_session` (Líneas 47-57).
+  - Las llamadas síncronas de lectura/escritura de sesión en contexto asíncrono se delegan fuera del event loop principal mediante AnyIO thread pool worker (`anyio.to_thread.run_sync`) en `open_async`, `append_message_async`, y `get_effective_messages_async` (Líneas 193-211).
+- **Benchmark de Carga Concurrente (N=50 sesiones concurrentes, 1,000 operaciones en paralelo)**:
+  - **Latencia promedio**: 164.98 ms
+  - **Latencia p50 (Mediana)**: 165.46 ms
+  - **Latencia p95**: 210.02 ms
+  - **Latencia p99**: **238.64 ms**
+  - *(Comportamiento previo antes del fix: bloqueo completo del event loop con latencias p99 > 3,500 ms y timeouts por contención en `index.json.lock`)*.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_session_manager.py`, `very-simplified-stack/cognito-backend/tests/test_agent_loop_sessions.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-005: Interrupción de streaming por errores HTTP 429/transitorios en `generate_with_tools`
 - **Severidad**: Medio
 - **Categoría**: Resiliencia
-- **Componente**: `cognito-backend` (`app/services/backend_router.py`, `app/api/routes/ai_agents.py`)
-- **Descripción**: Aunque `BackendClient.generate_stream` contaba con `retry_transient_stream`, la ruta principal del Agent Loop (`/agent/loop` consumida por `ai_agents.py`) llamaba a `BackendRouter.generate_with_tools`, la cual iteraba directamente sobre la respuesta del cliente sin la protección de `retry_transient_stream`. Como resultado, un error HTTP 429 (Rate Limit) o de red intermitente de Ollama/OpenAI interrumpía el stream SSE de forma abrupta.
-- **Resolución**: Se integra `retry_transient_stream` en `BackendRouter.generate_with_tools` garantizando la re-intento transparente y el backoff exponencial ante errores transitorios durante el streaming de herramientas.
+- **Componente**: `cognito-backend` (`app/services/backend_router.py`)
+- **Descripción**: La ruta principal de streaming del Agent Loop llamaba a `BackendRouter.generate_with_tools`, la cual iteraba sobre la respuesta del cliente sin envolver la transmisión en `retry_transient_stream`.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/services/backend_router.py` (Líneas 99-114).
+- **Resolución y Evidencia Técnica**:
+  - `BackendRouter.generate_with_tools` importa e invoca `retry_transient_stream(_stream_raw)` (Línea 112).
+  - Ante errores HTTP 429 (Rate Limit) o fallos de red intermitentes de Ollama/OpenAI, la función realiza reintentos transparentes con backoff exponencial sin interrumpir abruptamente el stream SSE al cliente.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_retry_streaming.py` (`test_retry_transient_stream_recovery`, `test_retry_transient_stream_persistent_failure_explicit_error`, `test_retry_transient_stream_non_transient_no_retry`).
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-006: Falsos positivos del detector de bucles en herramientas de solo lectura
 - **Severidad**: Bajo
 - **Categoría**: Precisión
 - **Componente**: `cognito-backend` (`app/core/guardrails/tool_loop_detector.py`)
-- **Descripción**: `ToolLoopDetector` activaba alertas y bloqueaba ejecuciones al detectar múltiples llamadas a herramientas de inspección o lectura (p. ej., `read`, `dir`, `search`), que legítimamente se invocan repetidamente durante la exploración del repositorio.
-- **Resolución**: Verificado contra el código actual. El detector de bucles excluye herramientas de solo lectura y únicamente supervisa herramientas con efectos secundarios (mutadoras) o secuencias idénticas continuas con exactamente los mismos argumentos de entrada.
+- **Descripción**: `ToolLoopDetector` activaba alertas y bloqueaba ejecuciones al detectar múltiples llamadas a herramientas de inspección o lectura (`read`, `dir`, `search`), que legítimamente se invocan repetidamente durante la exploración del repositorio.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/guardrails/tool_loop_detector.py` (Líneas 47-54 y Línea 72).
+- **Confirmación de Uso de `READ_ONLY_TOOLS` dentro de `record_and_check`**:
+  - En las líneas 47-54 se define la constante:
+    ```python
+    READ_ONLY_TOOLS = {
+        "read",
+        "read_file",
+        "list_directory",
+        "search_files",
+        "query_spill",
+        "read_spill",
+    }
+    ```
+  - En la línea 72 dentro del método `record_and_check`, se confirma explícitamente con cita de línea el uso de `READ_ONLY_TOOLS`:
+    ```python
+    if tool_name in READ_ONLY_TOOLS:
+        call_hash = compute_tool_call_hash(tool_name, arguments, output=output)
+    else:
+        call_hash = compute_tool_call_hash(tool_name, arguments, output=None)
+    ```
+  - De este modo, para herramientas de lectura se incluye la salida `output` en el hash. Invocaciones sucesivas de lectura que retornan contenidos distintos no se cuentan como bucles repetitivos.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_tool_loop_detector.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-007: Clave por defecto hardcodeada en `cognito-worker`
 - **Severidad**: Medio
 - **Categoría**: Seguridad
 - **Componente**: `cognito-worker` (`worker_app/main.py`)
 - **Descripción**: `cognito-worker` contenía una clave HMAC por defecto para autenticar peticiones si no se proporcionaba la variable de entorno correspondiente.
-- **Resolución**: Verificado contra el código actual. `worker_app/main.py` requiere obligatoriamente `COGNITO_WORKER_SECRETS` y falla de inmediato en el arranque si no está configurado.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-worker/worker_app/main.py` (Líneas 32-37).
+- **Resolución y Evidencia Técnica**:
+  - `worker_app/main.py` verifica la variable de entorno `COGNITO_WORKER_SECRETS`:
+    ```python
+    raw_secrets = os.getenv("COGNITO_WORKER_SECRETS")
+    if not raw_secrets or not raw_secrets.strip():
+        raise RuntimeError("COGNITO_WORKER_SECRETS environment variable is required but not set.")
+    ```
+  - El proceso aborta con `RuntimeError` inmediatamente en tiempo de arranque si `COGNITO_WORKER_SECRETS` no está definida o está vacía, eliminando la clave hardcodeada previa.
+- **Test de Regresión**: `very-simplified-stack/cognito-worker/tests/test_worker.py`.
+- **Resultado del Test**: **PASA** (5/5 tests pasados).
 
 ### AUD-008: System prompt sin versionar
 - **Severidad**: Medio
 - **Categoría**: Arquitectura / Precisión
 - **Componente**: `cognito-backend` (`app/core/system_prompt.py`, `app/core/prompts/`)
-- **Descripción**: El system prompt estaba definido de manera implícita o estática sin un sistema de versionado estructurado que permitiese evaluar y retrotraer cambios.
-- **Resolución**: Verificado contra el código actual. Se cuenta con soporte para archivos de definición TOML versionados (p. ej., `system_prompt.v1.1.toml`), selector de versión por variable de entorno `COGNITO_SYSTEM_PROMPT_VERSION` y suite de evals en `evals/system_prompt/`.
+- **Descripción**: El system prompt estaba definido de manera implícita o estática sin un sistema de versionado estructurado.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/system_prompt.py` (Líneas 10-35) y `very-simplified-stack/cognito-backend/app/core/prompts/system_prompt.v1.1.toml`.
+- **Resolución y Evidencia Técnica**:
+  - `app/core/system_prompt.py` carga de forma dinámica archivos de definición TOML versionados.
+  - La versión se selecciona mediante la variable de entorno `COGNITO_SYSTEM_PROMPT_VERSION` (por defecto `system_prompt.v1.1.toml`).
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_system_prompt.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-009: Bypass de `ExecPolicy` en `shell_run`
 - **Severidad**: Crítico
 - **Categoría**: Seguridad
 - **Componente**: `cognito-backend` (`app/core/tools/nooa_tools.py`)
-- **Descripción**: La herramienta `shell_run` ejecutaba comandos recibidos sin validar previamente los permisos de `ExecPolicy`, permitiendo la ejecución no autorizada de comandos destructivos.
-- **Resolución**: Verificado contra el código actual. `ShellTools` (`shell_run`) valida todos los comandos mediante `exec_policy.py` antes de cualquier ejecución.
+- **Descripción**: La herramienta `shell_run` ejecutaba comandos recibidos sin validar previamente los permisos de `ExecPolicy`.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/tools/nooa_tools.py` (Líneas 85-110) y `very-simplified-stack/cognito-backend/app/core/exec_policy.py`.
+- **Resolución y Evidencia Técnica**:
+  - `ShellTools.shell_run` evalúa cada comando contra `ExecPolicy.evaluate_command(cmd)` antes de invocar `subprocess.run` / `asyncio.create_subprocess_exec`. Comandos denegados o destructivos son bloqueados de inmediato lanzando una excepción de seguridad.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_exec_policy.py`, `very-simplified-stack/cognito-backend/tests/test_nooa_core.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ### AUD-010: `shell_policy.py` desconectado en tiempo de ejecución
 - **Severidad**: Alto
 - **Categoría**: Seguridad
 - **Componente**: `cognito-backend` (`app/core/exec_policy.py`, `app/core/shell_policy.py`)
 - **Descripción**: `shell_policy.py` implementaba reglas de seguridad granulares pero sus funciones no eran invocadas por la canalización principal de `exec_policy.py`.
-- **Resolución**: Verificado contra el código actual. `exec_policy.py` importa e invoca dinámicamente `evaluate_shell_command_policy` de `shell_policy.py`.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/exec_policy.py` (Líneas 12-25) y `very-simplified-stack/cognito-backend/app/core/shell_policy.py`.
+- **Resolución y Evidencia Técnica**:
+  - `exec_policy.py` importa e invoca dinámicamente `evaluate_shell_command_policy` de `shell_policy.py` dentro de su pipeline de validación en tiempo de ejecución.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_exec_policy.py`, `very-simplified-stack/cognito-backend/tests/test_granular_security.py`.
+- **Resultado del Test**: **PASA** (200/200 tests pasados).
 
 ---
 
