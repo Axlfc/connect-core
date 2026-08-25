@@ -31,9 +31,11 @@ async def test_load_mcp_config_and_auth(tmp_path, monkeypatch):
     assert "AuthToken" in config
     assert len(config["AuthToken"]) > 0
     assert config["RequireAuth"] is True
-    # Verify token was persisted to ~/.cognito/config.json
+    # Verify token was persisted to ~/.cognito/config.json with restricted permissions
     config_file_persisted = fake_home / ".cognito" / "config.json"
     assert config_file_persisted.exists()
+    assert (config_file_persisted.stat().st_mode & 0o777) == 0o600
+    assert (config_file_persisted.parent.stat().st_mode & 0o777) == 0o700
     persisted_data = json.loads(config_file_persisted.read_text(encoding="utf-8"))
     assert persisted_data.get("AuthToken") == config["AuthToken"]
 

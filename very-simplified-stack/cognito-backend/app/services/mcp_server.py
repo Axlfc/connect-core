@@ -67,6 +67,10 @@ def load_mcp_config() -> Dict[str, Any]:
         config["AuthToken"] = generated_token
         try:
             config_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.chmod(config_path.parent, 0o700)
+            except Exception:
+                pass
             file_data = {}
             if config_path.exists():
                 try:
@@ -77,6 +81,10 @@ def load_mcp_config() -> Dict[str, Any]:
             file_data["AuthToken"] = generated_token
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(file_data, f, indent=2)
+            try:
+                os.chmod(config_path, 0o600)
+            except Exception:
+                pass
             logger.warning(
                 f"No auth token configured. Generated ephemeral AuthToken '{generated_token}' and persisted to {config_path}"
             )
@@ -98,6 +106,9 @@ def verify_mcp_auth(auth_token: Optional[str] = None) -> bool:
         return True
 
     expected_token = config.get("AuthToken") or config.get("APIKey")
+    if not expected_token:
+        logger.warning("MCP authentication failed: no expected auth token configured.")
+        return False
 
     if not auth_token:
         auth_token = os.getenv("COGNITO_AUTH_TOKEN") or os.getenv("COGNITO_API_KEY")
