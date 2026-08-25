@@ -67,7 +67,7 @@ def test_tool_loop_detector_legitimate_reads_growing_file_no_warning():
 
 def test_tool_loop_detector_identical_side_effect_calls_triggers_warning():
     """
-    Simulates 5 identical calls with no change in result on a tool with side effects (or any tool).
+    Simulates 5 identical calls with no change in result on a tool with side effects.
     Confirms that warning IS triggered starting at threshold (call 3).
     """
     detector = ToolLoopDetector(window_size=10, threshold=3)
@@ -81,6 +81,43 @@ def test_tool_loop_detector_identical_side_effect_calls_triggers_warning():
             assert res is None, f"Call {i} should not trigger warning"
         else:
             assert res is not None, f"Call {i} should trigger warning"
+            assert "ADVERTENCIA DEL SISTEMA" in res
+
+
+def test_tool_loop_detector_side_effect_tool_changing_output_still_triggers_warning():
+    """
+    Simulates 5 calls to a side-effect tool where output changes between calls.
+    Confirms that warning IS triggered starting at threshold (call 3) because side-effect tools ignore output.
+    """
+    detector = ToolLoopDetector(window_size=10, threshold=3)
+    tool_name = "bash"
+    args = {"command": "date"}
+
+    for i in range(1, 6):
+        res = detector.record_and_check(tool_name, args, output=f"output_{i}")
+        if i < 3:
+            assert res is None, f"Call {i} should not trigger warning"
+        else:
+            assert res is not None, f"Call {i} should trigger warning for side-effect tool despite changing output"
+            assert "ADVERTENCIA DEL SISTEMA" in res
+
+
+def test_tool_loop_detector_read_only_tool_identical_output_triggers_warning():
+    """
+    Simulates 5 identical calls to a read-only tool where output DOES NOT change.
+    Confirms that warning IS triggered starting at threshold (call 3).
+    """
+    detector = ToolLoopDetector(window_size=10, threshold=3)
+    tool_name = "read_file"
+    args = {"filepath": "config.json"}
+    output = "same content"
+
+    for i in range(1, 6):
+        res = detector.record_and_check(tool_name, args, output=output)
+        if i < 3:
+            assert res is None, f"Call {i} should not trigger warning"
+        else:
+            assert res is not None, f"Call {i} should trigger warning when content does not change"
             assert "ADVERTENCIA DEL SISTEMA" in res
 
 
