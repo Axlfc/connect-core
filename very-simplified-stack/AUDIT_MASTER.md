@@ -24,7 +24,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Corregido** (Persistencia durable en JSONL + Marcado `delivered` + Sincronización al reanudar) |
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Corregido** (Context Ledger estructurado JSON + persistencia en log + reinyección en system prompt) |
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Corregido** (Inyección con rol `system` y metadato `type: TokenBudgetReminder`) |
-| **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Pendiente (Documentado)** |
+| **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Corregido** (Escritura atómica en temp + fsync + os.replace + backup `.bak`) |
 | **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Pendiente (Documentado)** |
 | **AUD-017** | Medio | Arquitectura | `cognito-backend` | Falta de contratos de validación estrictos en herramientas MCP/locales | **Pendiente (Documentado)** |
 
@@ -266,8 +266,16 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 - **Severidad**: Bajo
 - **Categoría**: Resiliencia
 - **Componente**: `cognito-backend` (`app/core/tools/write_tool.py`)
-- **Descripción**: `WriteTool` sobrescribe archivos en disco mediante operaciones de apertura y escritura directas (`open(path, "w")`) sin escribir primero en un archivo temporal ni crear copias de seguridad (backups). Si se produce una interrupción de I/O o un fallo de proceso a mitad de la escritura, el archivo destino queda truncado o corrupto.
-- **Estado**: Pendiente (Documentado sin fix todavía).
+- **Descripción**: `WriteTool` sobrescribía archivos en disco mediante operaciones de apertura y escritura directas (`open(path, "w")`) sin escribir primero en un archivo temporal ni crear copias de seguridad (backups). Si se producía una interrupción de I/O o un fallo de proceso a mitad de la escritura, el archivo destino quedaba truncado o corrupto.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/tools/write_tool.py`.
+- **Resolución y Evidencia Técnica**:
+  - Refactorización de `WriteTool.execute` para escribir primero en un archivo temporal (`NamedTemporaryFile`) en el mismo directorio que el destino.
+  - Ejecución de `flush()` y `os.fsync()` en el archivo temporal antes de cerrar.
+  - Si el archivo destino existe, creación de copia de seguridad con sufijo `.bak` (vía `shutil.copy2`).
+  - Sustitución atómica del archivo original con `os.replace(temp_path, target_path)`.
+  - Manejo de excepciones (p. ej., disco lleno o permisos denegados) limpiando el archivo temporal y dejando el archivo original intacto.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_tools.py` (`test_write_tool_creates_backup_on_overwrite`, `test_write_tool_atomic_failure_leaves_original_intact`).
+- **Resultado del Test**: **PASA** (211/211 tests pasados).
 
 ### AUD-016: Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend`
 - **Severidad**: Medio

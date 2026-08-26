@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Any, Dict
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
@@ -39,10 +41,30 @@ class WriteTool(AgentTool):
         if not context.trusted:
             return ToolResult(is_error=True, output="Proyecto no confiado (untrusted). Ejecuta project-trust set antes de escribir.")
 
+        target_dir = os.path.dirname(target_path)
+        temp_path = None
         try:
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            with open(target_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            os.makedirs(target_dir, exist_ok=True)
+
+            # 1. Create a temporary file in the same directory as the target path
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target_dir, delete=False) as temp_file:
+                temp_path = temp_file.name
+                temp_file.write(content)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+
+            # 2. If target file exists, create a backup copy
+            if os.path.exists(target_path):
+                backup_path = f"{target_path}.bak"
+                shutil.copy2(target_path, backup_path)
+
+            # 3. Atomically replace the original file
+            os.replace(temp_path, target_path)
             return ToolResult(output=f"File '{norm_path}' written successfully.")
         except Exception as e:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
             return ToolResult(is_error=True, output=f"Error writing file: {str(e)}")
