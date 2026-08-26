@@ -3,8 +3,10 @@ import json
 import logging
 import secrets
 import httpx
+import jsonschema
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from app.core.tools.base import format_validation_error
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -12,6 +14,260 @@ except ImportError:
     from mcp.server.mcpserver import MCPServer as FastMCP
 
 logger = logging.getLogger("cognito.backend.mcp")
+
+MCP_TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
+    "execute_agent_task": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "El prompt o instrucción para el agente."},
+                "cwd": {"type": "string", "description": "Directorio de trabajo.", "default": "."},
+                "session_id": {"type": ["string", "null"], "description": "ID opcional de sesión."},
+                "stream": {"type": "boolean", "description": "Si responder con SSE streaming.", "default": False},
+                "auth_token": {"type": ["string", "null"], "description": "Token de autenticación opcional."},
+            },
+            "required": ["prompt"],
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "session_id": {"type": "string"},
+                "response": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "get_session_status": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session_id": {"type": "string", "description": "ID de la sesión a consultar."},
+                "auth_token": {"type": ["string", "null"], "description": "Token de autenticación opcional."},
+            },
+            "required": ["session_id"],
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "session_id": {"type": "string"},
+                "status": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_repository_search": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Consulta de búsqueda.", "default": ""},
+            },
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "results": {"type": "array"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_architecture_context": {
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "architecture": {"type": "string"},
+                "components": {"type": "array"},
+            },
+        },
+    },
+    "cognito_known_failures": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Consulta de búsqueda.", "default": ""},
+            },
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "failures": {"type": "array"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_task_status": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "ID de la tarea.", "default": ""},
+            },
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string"},
+                "status": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_model_catalog": {
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "catalog": {"type": ["object", "array"]},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_worker_health": {
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "health": {"type": "object"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "cognito_verification_results": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "ID de la tarea.", "default": ""},
+            },
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "verification_runs": {"type": "array"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "generate_with_llm": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Prompt para la generación."},
+                "model": {"type": "string", "default": "llama3.2"},
+                "system_prompt": {"type": "string", "default": ""},
+            },
+            "required": ["prompt"],
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "result": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "query_vector_db": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Consulta de vectores."},
+                "collection": {"type": "string", "default": "documents"},
+            },
+            "required": ["query"],
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "result": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+    "execute_rag_pipeline": {
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Consulta para RAG."},
+                "project_id": {"type": ["string", "null"]},
+            },
+            "required": ["query"],
+        },
+        "return": {
+            "type": "object",
+            "properties": {
+                "result": {"type": "string"},
+                "is_error": {"type": "boolean"},
+                "output": {"type": "string"},
+            },
+        },
+    },
+}
+
+
+def validate_mcp_input(tool_name: str, arguments: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Validates MCP tool input arguments fail-fast against its parameters schema.
+    Returns error dict if invalid, or None if valid.
+    """
+    schema_info = MCP_TOOL_SCHEMAS.get(tool_name)
+    if not schema_info:
+        return None
+    param_schema = schema_info.get("parameters")
+    if not param_schema:
+        return None
+
+    if not isinstance(arguments, dict):
+        arguments = {}
+
+    try:
+        jsonschema.validate(instance=arguments, schema=param_schema)
+        return None
+    except jsonschema.exceptions.ValidationError as ve:
+        err_msg = format_validation_error(
+            tool_name=tool_name,
+            schema=param_schema,
+            arguments=arguments,
+            error=ve,
+        )
+        return {"is_error": True, "output": err_msg}
+
+
+def validate_mcp_output(tool_name: str, result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validates MCP tool return value against its return schema.
+    Returns structured error dict if invalid, or original result if valid.
+    """
+    schema_info = MCP_TOOL_SCHEMAS.get(tool_name)
+    if not schema_info:
+        return result
+    ret_schema = schema_info.get("return")
+    if not ret_schema or not isinstance(result, dict) or result.get("is_error"):
+        return result
+
+    try:
+        jsonschema.validate(instance=result, schema=ret_schema)
+        return result
+    except jsonschema.exceptions.ValidationError as ve:
+        err_msg = f"Error de validación en el tipo de retorno de '{tool_name}': {ve.message}"
+        return {"is_error": True, "output": err_msg}
 
 def load_mcp_config() -> Dict[str, Any]:
     """
@@ -390,7 +646,7 @@ class CognitoMCPServer:
 
     async def call_tool(self, name: str, arguments: Dict[str, Any], origin: str, correlation_id: str, execution_depth: int = 1) -> Dict[str, Any]:
         """
-        Call a safe MCP tool with recursion protection.
+        Call a safe MCP tool with recursion protection and strict input/output validation.
         """
         if not self.validate_recursion(origin, correlation_id, execution_depth):
             return {
@@ -398,36 +654,42 @@ class CognitoMCPServer:
                 "output": f"Error: Recursive execution depth limit exceeded ({execution_depth} > {self.max_execution_depth})."
             }
 
+        input_err = validate_mcp_input(name, arguments)
+        if input_err is not None:
+            return input_err
+
         try:
             if name == "execute_agent_task":
-                return await execute_agent_task(**arguments)
+                raw_res = await execute_agent_task(**arguments)
             elif name == "get_session_status":
-                return await get_session_status(**arguments)
+                raw_res = await get_session_status(**arguments)
             elif name == "cognito_repository_search":
-                return await cognito_repository_search(**arguments)
+                raw_res = await cognito_repository_search(**arguments)
             elif name == "cognito_architecture_context":
-                return await cognito_architecture_context()
+                raw_res = await cognito_architecture_context()
             elif name == "cognito_known_failures":
-                return await cognito_known_failures(**arguments)
+                raw_res = await cognito_known_failures(**arguments)
             elif name == "cognito_task_status":
-                return await cognito_task_status(**arguments)
+                raw_res = await cognito_task_status(**arguments)
             elif name == "cognito_model_catalog":
-                return await cognito_model_catalog()
+                raw_res = await cognito_model_catalog()
             elif name == "cognito_worker_health":
-                return await cognito_worker_health()
+                raw_res = await cognito_worker_health()
             elif name == "cognito_verification_results":
-                return await cognito_verification_results(**arguments)
+                raw_res = await cognito_verification_results(**arguments)
             elif name == "generate_with_llm":
                 res = await generate_with_llm(**arguments)
-                return {"result": res}
+                raw_res = {"result": res}
             elif name == "query_vector_db":
                 res = await query_vector_db(**arguments)
-                return {"result": res}
+                raw_res = {"result": res}
             elif name == "execute_rag_pipeline":
                 res = await execute_rag_pipeline(**arguments)
-                return {"result": res}
+                raw_res = {"result": res}
             else:
                 return {"is_error": True, "output": f"Unknown tool: {name}"}
+
+            return validate_mcp_output(name, raw_res)
         except Exception as e:
             logger.error(f"Error executing MCP tool {name}: {e}")
             return {"is_error": True, "output": f"Execution error: {str(e)}"}
