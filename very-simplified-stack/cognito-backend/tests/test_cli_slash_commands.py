@@ -85,7 +85,7 @@ async def test_slash_compact_with_session(capsys, tmp_dir, monkeypatch):
     session_manager.append_message(sess_id, "assistant", "Hi there")
 
     monkeypatch.setattr("cli.slash_commands.SessionManager", lambda: session_manager)
-    monkeypatch.setattr("cli.slash_commands.compact", AsyncMock(return_value="Resumen de prueba"))
+    monkeypatch.setattr("cli.slash_commands.compact", AsyncMock(return_value=("Resumen de prueba", {})))
 
     handled, res_sess = await handle_slash_command("/compact", cwd=tmp_dir, current_session_id=sess_id)
     assert handled is True

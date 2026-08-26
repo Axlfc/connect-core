@@ -10,6 +10,8 @@ from typing import Optional, List, Dict, Any, Callable
 import anyio
 from pydantic import BaseModel
 
+from app.core.compaction import format_ledger_for_system_prompt
+
 logger = logging.getLogger(__name__)
 
 class SessionMetadata(BaseModel):
@@ -280,13 +282,22 @@ class SessionManager:
                 meta["message_count"] += 1
                 self._write_session_meta(session_id, meta)
 
-    def append_compaction(self, session_id: str, summary: str, covers_through_line: int) -> None:
+    def append_compaction(
+        self,
+        session_id: str,
+        summary: str,
+        covers_through_line: int,
+        context_ledger: Optional[Dict[str, Any]] = None
+    ) -> None:
         record = {
             "type": "compaction",
             "summary": summary,
             "covers_through_line": covers_through_line,
             "ts": datetime.now(timezone.utc).isoformat()
         }
+        if context_ledger is not None:
+            record["context_ledger"] = context_ledger
+
         with self._lock_session(session_id, shared=False):
             session_file = self.sessions_dir / f"{session_id}.jsonl"
             with open(session_file, "a") as f:
@@ -453,7 +464,15 @@ class SessionManager:
         if compaction:
             summary = compaction.get("summary", "")
             start_line = compaction.get("covers_through_line", -1)
-            messages.append({"role": "system", "content": f"[Resumen de la conversación anterior]: {summary}"})
+            context_ledger = compaction.get("context_ledger")
+
+            compaction_content = f"[Resumen de la conversación anterior]: {summary}"
+            if context_ledger:
+                ledger_text = format_ledger_for_system_prompt(context_ledger)
+                if ledger_text:
+                    compaction_content += f"\n\n{ledger_text}"
+
+            messages.append({"role": "system", "content": compaction_content})
             for i, data in all_entries:
                 if i > start_line and data.get("type") == "message":
                     messages.append(self._to_ai_message(data))

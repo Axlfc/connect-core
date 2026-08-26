@@ -71,8 +71,8 @@ async def handle_slash_command(
                 return True, current_session_id
 
             last_line = session_manager.get_last_line_index(current_session_id)
-            summary = await compact(effective_messages)
-            session_manager.append_compaction(current_session_id, summary, last_line)
+            summary, context_ledger = await compact(effective_messages)
+            session_manager.append_compaction(current_session_id, summary, last_line, context_ledger)
             print(f"[Sesión {current_session_id} compactada exitosamente.]")
         except Exception as e:
             logger.error(f"Error al compactar sesión: {e}")

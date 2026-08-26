@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.core.system_prompt import build_system_message
 from app.core.token_budget import apply_token_budget_reminder
 from app.core.context_spill import default_spill_manager, SpillManager
+from app.core.compaction import format_ledger_for_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class CompactionEvent(BaseSessionEvent):
     type: Literal["compaction"] = "compaction"
     summary: str
     covers_through_line: int
+    context_ledger: Optional[Dict[str, Any]] = None
 
 class InternalSystemEvent(BaseSessionEvent):
     type: Literal["internal_system", "system_internal", "telemetry", "audit", "hook_internal"]
@@ -120,7 +122,13 @@ async def derive_messages_for_llm(
 
     # 2. Compaction summary injection
     if compaction_event:
-        summary_msg = {"role": "system", "content": f"[Resumen de la conversación anterior]: {compaction_event.summary}"}
+        compaction_content = f"[Resumen de la conversación anterior]: {compaction_event.summary}"
+        if compaction_event.context_ledger:
+            ledger_text = format_ledger_for_system_prompt(compaction_event.context_ledger)
+            if ledger_text:
+                compaction_content += f"\n\n{ledger_text}"
+
+        summary_msg = {"role": "system", "content": compaction_content}
         derived_messages.append(summary_msg)
         start_line = compaction_event.covers_through_line
     else:

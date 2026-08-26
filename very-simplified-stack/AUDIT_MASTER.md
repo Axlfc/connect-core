@@ -22,7 +22,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-010** | Alto | Seguridad | `cognito-backend` | `shell_policy.py` desconectado en tiempo de ejecución | **Corregido** (Conectado a `exec_policy.py`) |
 | **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Corregido** (ExecPolicy + SandboxedExecutor bwrap / RLIMITs de OS) |
 | **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Corregido** (Persistencia durable en JSONL + Marcado `delivered` + Sincronización al reanudar) |
-| **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Pendiente (Documentado)** |
+| **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Corregido** (Context Ledger estructurado JSON + persistencia en log + reinyección en system prompt) |
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Pendiente (Documentado)** |
 | **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Pendiente (Documentado)** |
 | **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Pendiente (Documentado)** |
@@ -232,9 +232,20 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 ### AUD-013: Pérdida de detalle semántico durante la compactación de contexto
 - **Severidad**: Medio
 - **Categoría**: Precisión
-- **Componente**: `cognito-backend` (`app/core/compaction.py`)
-- **Descripción**: El proceso de compactación de historial genera resúmenes de texto plano que omiten metadatos estructurales clave, como rutas de archivos leídos/modificados, firmas de funciones involucradas y llamadas a herramientas anteriores (más allá de la pérdida de mensajes intermedios ya corregida en AUD-002), degradando la precisión del modelo en tareas de refactorización largas.
-- **Estado**: Pendiente (Documentado sin fix todavía).
+- **Componente**: `cognito-backend` (`app/core/compaction.py`, `app/core/session_manager.py`, `app/core/session/message_deriver.py`, `app/api/routes/ai_agents.py`)
+- **Descripción**: El proceso de compactación de historial generaba resúmenes de texto plano que omitían metadatos estructurales clave, como rutas de archivos leídos/modificados, firmas de funciones involucradas y llamadas a herramientas anteriores, degradando la precisión del modelo en tareas de refactorización largas.
+- **Evidencia de Ubicación en Código**:
+  - `very-simplified-stack/cognito-backend/app/core/compaction.py` (`extract_context_ledger`, `format_ledger_for_system_prompt`, `compact`).
+  - `very-simplified-stack/cognito-backend/app/core/session_manager.py` (`append_compaction`, `get_effective_messages`).
+  - `very-simplified-stack/cognito-backend/app/core/session/message_deriver.py` (`CompactionEvent`, `derive_messages_for_llm`).
+  - `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py` (`run_agent_loop`).
+- **Resolución y Evidencia Técnica**:
+  - `compaction.py` extrae automáticamente un `context_ledger` estructurado (JSON) que rastrea `files_touched`, `function_signatures` y `tool_calls` (nombre y argumentos clave).
+  - Preservación acumulativa: al compactar un rango que ya contiene ledgers previos, `_parse_embedded_ledgers` los fusiona para evitar la pérdida de contexto estructural en compactaciones sucesivas.
+  - El `context_ledger` se almacena junto al resumen narrativo en los eventos de compactación en el log `.jsonl` de la sesión (`append_compaction`).
+  - Tanto `get_effective_messages` como `derive_messages_for_llm` re-inyectan el ledger formateado de forma clara en el mensaje de sistema de resumen (`[Resumen de la conversación anterior]`), haciéndolo legible para el modelo.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_compaction.py` (`test_context_ledger_extraction_and_multi_compaction`), `very-simplified-stack/cognito-backend/tests/test_session_compaction_regression.py`.
+- **Resultado del Test**: **PASA** (209/209 tests pasados).
 
 ### AUD-014: Recordatorios de presupuesto de tokens inyectados con rol `user` en lugar de `system`
 - **Severidad**: Bajo

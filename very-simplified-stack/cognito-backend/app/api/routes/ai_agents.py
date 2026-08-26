@@ -110,8 +110,8 @@ async def run_agent_loop(request: AgentLoopRequest):
     if await should_compact(effective_messages):
         try:
             last_line = await anyio.to_thread.run_sync(session_manager.get_last_line_index, session_id)
-            summary = await compact(effective_messages, backend_router=backend_router)
-            await anyio.to_thread.run_sync(session_manager.append_compaction, session_id, summary, last_line)
+            summary, context_ledger = await compact(effective_messages, backend_router=backend_router)
+            await anyio.to_thread.run_sync(session_manager.append_compaction, session_id, summary, last_line, context_ledger)
         except Exception as e:
             logger.warning(f"Compaction failed for session {session_id}, continuing anyway: {e}")
 
