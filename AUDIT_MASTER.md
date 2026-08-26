@@ -29,7 +29,7 @@
 
 | ID | Severidad | Tipo | Categoría | Prioridad MVP Enterprise | Componente | Descripción Resumida | Estado |
 |---|---|---|---|---|---|---|---|
-| AUD-001 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | BashTool ejecuta comandos directamente en la shell del host sin aislamiento microVM ni bwrap obligatorio | Pendiente |
+| AUD-001 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | BashTool ejecuta comandos directamente en la shell del host sin aislamiento microVM ni bwrap obligatorio | Corregido |
 | AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Pendiente |
 | AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Pendiente |
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Pendiente |
@@ -78,7 +78,18 @@
 - **Descripción del problema:** La herramienta de comandos de shell (`BashTool`) ejecuta instrucciones de consola utilizando directamente `asyncio.create_subprocess_exec` en el proceso y sistema de archivos del host. Aunque existe un módulo `sandbox.py` que prepara argumentos para `bwrap` (Bubblewrap), `BashTool` no invoca a `SandboxManager` de forma obligatoria ni por defecto. Un comando malicioso enviado al agente tiene acceso completo a los recursos del host donde corre el proceso backend.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/tools/bash_tool.py` (líneas 27-55) y `very-simplified-stack/cognito-backend/app/core/sandbox.py` (líneas 85-150).
 - **Comparación con el estado del arte:** En 2026, los agent harnesses enterprise imponen aislamiento forzado a nivel de kernel/microVM (e.g. Codex CLI o Firecracker/gVisor). Ejecutar subprocesos directos en el host sin restricción estricta incumple los requisitos básicos de aislamiento.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se modificó `app/core/tools/bash_tool.py` para invocar obligatoriamente `SandboxedExecutor` / `bwrap` por defecto al ejecutar comandos bash.
+  - Se eliminó la ejecución directa en subproceso del host cuando `bwrap` no está disponible. Si `bwrap` no está presente, se retorna un error explícito de seguridad (`ToolResult(is_error=True)`).
+  - Se agregó el modo opcional "sin sandbox" gateado exclusivamente por la variable de entorno `COGNITO_DISABLE_SANDBOX_DEV_ONLY` (para entornos de desarrollo local), la cual emite una advertencia (`logger.warning`) en los logs durante el arranque y la ejecución.
+  - Se actualizaron los argumentos de `bwrap` en `app/core/sandbox.py` (`build_bwrap_args`) añadiendo `/dev`, `/proc` y `/tmp` como montajes necesarios junto con el directorio de trabajo actual (`--bind`), asegurando que la lectura/escritura de archivos del proyecto y comandos legítimos de build/test funcionen adecuadamente dentro del sandbox.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_sandbox.py`:
+    - `test_bash_tool_mandatory_sandbox_by_default`: Comprueba que `BashTool` ejecuta los comandos a través de `SandboxedExecutor`/`bwrap` por defecto.
+    - `test_bash_tool_bwrap_unavailable_error`: Verifica que si `bwrap` no está instalado y no está activo el bypass de dev, `BashTool` falla con un mensaje de error de seguridad.
+    - `test_bash_tool_dev_bypass_warning`: Confirma que al activar `COGNITO_DISABLE_SANDBOX_DEV_ONLY=true` se permite la ejecución en el host y se emite la advertencia requerida en los logs.
+    - `test_real_bwrap_isolation_filesystem`: Prueba la restricción del sistema de archivos con un binario real de `bwrap`, demostrando que no se puede escribir fuera del directorio de trabajo permitido ni alterar el sistema de archivos del host.
 
 #### AUD-002
 - **ID:** AUD-002

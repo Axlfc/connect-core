@@ -20,6 +20,10 @@ from app.services.semantic_orchestrator import semantic_orchestrator
 
 @app.on_event("startup")
 async def startup_event():
+    # Emit warning if dev sandbox bypass is active
+    from app.core.sandbox import is_sandbox_disabled_dev_only
+    is_sandbox_disabled_dev_only()
+
     # Load global and configured extensions on startup
     extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
     extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
