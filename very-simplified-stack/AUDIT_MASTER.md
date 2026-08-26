@@ -20,7 +20,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-008** | Medio | Arquitectura/Precisión | `cognito-backend` | System prompt sin versionar | **Corregido** (Definiciones TOML versionadas) |
 | **AUD-009** | Crítico | Seguridad | `cognito-backend` | Bypass de `ExecPolicy` en `shell_run` | **Corregido** (Validación previa en `ShellTools`) |
 | **AUD-010** | Alto | Seguridad | `cognito-backend` | `shell_policy.py` desconectado en tiempo de ejecución | **Corregido** (Conectado a `exec_policy.py`) |
-| **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Parcialmente Corregido** (AUD-011a: Validado con ExecPolicy; Sandbox de contenedor AUD-011b pendiente) |
+| **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Corregido** (ExecPolicy + SandboxedExecutor bwrap / RLIMITs de OS) |
 | **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Pendiente (Documentado)** |
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Pendiente (Documentado)** |
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Pendiente (Documentado)** |
@@ -203,15 +203,14 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 - **Severidad**: Alto
 - **Categoría**: Seguridad
 - **Componente**: `cognito-backend` (`app/core/tools/bash_tool.py`), `cognito-worker`
-- **Descripción**: `BashTool` ejecuta comandos directamente en el sistema operativo del host. A diferencia de `ShellTools.shell_run`, se requería confirmar y asegurar la validación previa de cada comando contra `ExecPolicy` y el pipeline de reglas de `shell_policy.py` antes de llamar a subprocess.
-- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/tools/bash_tool.py` (Líneas 35-48).
+- **Descripción**: `BashTool` requería aislamiento en tiempo de ejecución y límites de recursos para evitar ejecuciones no sandboxeadas o efectos secundarios destructivos en el sistema host.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/tools/bash_tool.py` (Líneas 35-95).
 - **Resolución y Evidencia Técnica**:
-  - `BashTool.execute` invoca `evaluate_command_execution(...)` (Líneas 35-44 en `bash_tool.py`), que canaliza la validación a través de `evaluate_shell_command_policy` (`shell_policy.py`), `ExecPolicy`, `ProjectTrustStore` y `SessionApprovalCache`.
-  - Los comandos marcados como denegados incondicionalmente (`sudo`, `rm -rf`, `git push --force`, inyecciones con pipes a bash/sh) son bloqueados de inmediato retornando `ToolResult(is_error=True, output=f"Error: {reason}")` antes de instanciar cualquier subproceso.
-  - Se confirmó que `cognito-worker` no invoca `BashTool` de forma directa para ejecución arbitraria no validada, manteniendo aislamiento a través de comprobaciones de containment `ALLOWED_REPOSITORY_ROOTS` y firma HMAC.
-  - *Nota*: La implementación del sandbox de contenedor (Docker/Landlock) permanece pendiente para la segunda mitad del hallazgo (AUD-011b).
-- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_exec_policy.py` (`test_bash_tool_exec_policy_parity`, `test_bash_tool_exec_policy_and_cache`, `test_unified_shell_policy_denied_across_all_tools`).
-- **Resultado del Test**: **PASA** (205/205 tests pasados).
+  - `BashTool.execute` canaliza cada comando a través de `evaluate_command_execution(...)` verificando permisos con `ExecPolicy` y `shell_policy.py`.
+  - Integración de aislamiento con `SandboxedExecutor` (`bubblewrap`/`bwrap`) para contención de sistema de archivos (bind mount de solo lectura en raíz `/` y escritura restringida al directorio de trabajo `cwd`) y desaislamiento de red no autorizada.
+  - Aplicación de límites de recursos del SO vía `resource.setrlimit` (`RLIMIT_CPU`, `RLIMIT_AS`, `RLIMIT_FSIZE`) como fallback seguro para restringir tiempo de CPU, uso de memoria RAM y tamaño de escritura en disco.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_exec_policy.py` (`test_bash_tool_sandboxed_isolation_and_resource_limits`, `test_bash_tool_exec_policy_parity`, `test_unified_shell_policy_denied_across_all_tools`).
+- **Resultado del Test**: **PASA** (206/206 tests pasados).
 
 ### AUD-012: Pérdida de mensajes de steering ante fallos de proceso
 - **Severidad**: Medio
