@@ -23,7 +23,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Corregido** (ExecPolicy + SandboxedExecutor bwrap / RLIMITs de OS) |
 | **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Corregido** (Persistencia durable en JSONL + Marcado `delivered` + Sincronización al reanudar) |
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Corregido** (Context Ledger estructurado JSON + persistencia en log + reinyección en system prompt) |
-| **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Pendiente (Documentado)** |
+| **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Corregido** (Inyección con rol `system` y metadato `type: TokenBudgetReminder`) |
 | **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Pendiente (Documentado)** |
 | **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Pendiente (Documentado)** |
 | **AUD-017** | Medio | Arquitectura | `cognito-backend` | Falta de contratos de validación estrictos en herramientas MCP/locales | **Pendiente (Documentado)** |
@@ -252,7 +252,15 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 - **Categoría**: Precisión
 - **Componente**: `cognito-backend` (`app/core/token_budget.py`)
 - **Descripción**: Las advertencias o recordatorios de consumo del presupuesto de tokens (`TokenBudgetReminder`) se insertan en la conversación con el rol `"user"` en lugar del rol `"system"`. Esto altera la semántica de la conversación y puede confundir al modelo atribuyendo instrucciones operativas de infraestructura a las entradas del usuario.
-- **Estado**: Pendiente (Documentado sin fix todavía).
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/token_budget.py` (Líneas 160-198).
+- **Resolución y Evidencia Técnica**:
+  - En `apply_token_budget_reminder`, el mensaje se construye explícitamente con `role: "system"`:
+    ```python
+    reminder_msg = {"role": "system", "content": reminder_text, "type": "TokenBudgetReminder"}
+    ```
+  - Se inyecta adecuadamente tras el prompt inicial del sistema o al final del listado de mensajes sin duplicación si ya está presente.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_token_budget.py` (`test_apply_token_budget_reminder`).
+- **Resultado del Test**: **PASA** (209/209 tests pasados).
 
 ### AUD-015: Ausencia de escritura atómica en `WriteTool` sin copia de respaldo ante fallos de I/O
 - **Severidad**: Bajo
