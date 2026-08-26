@@ -50,9 +50,17 @@ class BashTool(AgentTool):
         if not allowed:
             return ToolResult(is_error=True, output=f"Error: {reason}")
 
-        from app.core.sandbox import is_bwrap_available, SandboxedExecutor
+        from app.core.sandbox import is_bwrap_available, is_sandbox_disabled_dev_only, SandboxedExecutor, SandboxUnavailableError
 
-        if is_bwrap_available():
+        if not is_sandbox_disabled_dev_only():
+            if not is_bwrap_available():
+                msg = (
+                    "Error de Seguridad: Bubblewrap (bwrap) no está instalado en el host. "
+                    "La ejecución por defecto requiere bwrap para el aislamiento. Instala bwrap "
+                    "o habilita explícitamente COGNITO_DISABLE_SANDBOX_DEV_ONLY=true solo para desarrollo local."
+                )
+                return ToolResult(is_error=True, output=msg)
+
             executor = SandboxedExecutor(
                 working_dir=context.cwd,
                 timeout=timeout,
@@ -69,7 +77,7 @@ class BashTool(AgentTool):
             output = res.get("stdout", "") + res.get("stderr", "")
             return ToolResult(output=output, is_error=res.get("exit_code", 0) != 0)
 
-        # Fallback to direct subprocess with preexec resource limits if bwrap is not available
+        # Explicitly disabled sandbox mode (COGNITO_DISABLE_SANDBOX_DEV_ONLY=true)
         import resource
 
         def _set_limits():

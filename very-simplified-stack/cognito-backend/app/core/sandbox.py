@@ -25,10 +25,27 @@ def is_bwrap_available() -> bool:
     return shutil.which("bwrap") is not None
 
 
+def is_sandbox_disabled_dev_only() -> bool:
+    """
+    Checks if sandbox is explicitly disabled via COGNITO_DISABLE_SANDBOX_DEV_ONLY env var.
+    This mode is intended strictly for local development.
+    """
+    disabled = os.getenv("COGNITO_DISABLE_SANDBOX_DEV_ONLY", "").strip().lower() in ("true", "1", "yes")
+    if disabled:
+        logger.warning(
+            "⚠️ ATENCIÓN: El sandbox de Bubblewrap (bwrap) está DESACTIVADO por la variable de entorno "
+            "COGNITO_DISABLE_SANDBOX_DEV_ONLY. Los comandos se ejecutarán directamente en el host sin aislamiento. "
+            "USAR ÚNICAMENTE EN DESARROLLO LOCAL."
+        )
+    return disabled
+
+
 def build_bwrap_args(cwd: Path, allowed_network: bool = False) -> List[str]:
     """
     Builds bubblewrap execution arguments for sandbox isolation.
     - Mounts root filesystem as read-only (--ro-bind / /).
+    - Mounts essential virtual filesystems (--dev /dev --proc /proc --tmpfs /tmp).
+    - Ensures parent directories of cwd exist inside the sandbox (--dir {cwd}).
     - Mounts working directory with write permissions (--bind {cwd} {cwd}).
     - Unshares all namespaces for process isolation (--unshare-all --die-with-parent).
     - Conditionally enables network access (--share-net).
@@ -39,6 +56,10 @@ def build_bwrap_args(cwd: Path, allowed_network: bool = False) -> List[str]:
     args = [
         "bwrap",
         "--ro-bind", "/", "/",
+        "--dev", "/dev",
+        "--proc", "/proc",
+        "--tmpfs", "/tmp",
+        "--dir", cwd_str,
         "--bind", cwd_str, cwd_str,
         "--unshare-all",
         "--die-with-parent"
