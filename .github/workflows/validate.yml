@@ -176,7 +176,7 @@ jobs:
       - name: Verify no sensitive files committed
         run: |
           echo "Checking for sensitive files..."
-          ! find . -name ".env" -o -name "*.key" -o -name "*.pem" 2>/dev/null
+          [ -z "$(find . -name ".env" -o -name "*.key" -o -name "*.pem" 2>/dev/null)" ]
 
   # ========================================
   # Configuration Validation

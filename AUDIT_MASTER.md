@@ -6,8 +6,10 @@
 - **Metodología Aplicada:** Inspección estática del código fuente y suite de pruebas de los componentes backend, worker y CLI. Contrastación directa de cada directiva del listón de referencia A-J contra la implementación real o la evidencia de ausencia en las rutas de código del repositorio.
 - **Resumen Cuantitativo de Hallazgos:**
   - **Total de Hallazgos:** 33
-  - **Desglose por Severidad:** Crítico: 6 | Alto: 13 | Medio: 10 | Bajo: 4
-  - **Desglose por Tipo:** Defecto: 5 | Deuda Técnica: 9 | Brecha Funcional: 19
+  - **Desglose por Severidad:** Crítico: 5 | Alto: 14 | Medio: 13 | Bajo: 1
+  - **Desglose por Tipo:** Defecto: 5 | Deuda Técnica: 6 | Brecha Funcional: 22
+  - **Total con Estado "Corregido":** 6
+  - **Total con Estado "Pendiente":** 27
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 7 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
