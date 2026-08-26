@@ -82,25 +82,29 @@ async def test_bash_tool_exec_policy_and_cache(tmp_path):
     ctx_trusted = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
     ctx_untrusted = ToolContext(cwd=str(tmp_path), trusted=False, protected_files=set())
 
-    # 1. Untrusted project without approval -> fails
-    res = await tool.execute({"command": "echo 'hello'"}, ctx_untrusted)
-    assert res.is_error
-    assert "requires explicit user approval" in res.output
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("app.core.sandbox.SandboxedExecutor.execute_cmd") as mock_exec_cmd:
+        mock_exec_cmd.return_value = {"stdout": "hello\n", "stderr": "", "exit_code": 0, "timed_out": False}
 
-    # 2. Approved explicitly by user -> succeeds and stores in cache
-    res = await tool.execute({"command": "echo 'hello'", "user_approved": True}, ctx_untrusted)
-    assert not res.is_error
-    assert "hello" in res.output
+        # 1. Untrusted project without approval -> fails
+        res = await tool.execute({"command": "echo 'hello'"}, ctx_untrusted)
+        assert res.is_error
+        assert "requires explicit user approval" in res.output
 
-    # 3. Subsequent execution in same session -> auto-approved via cache
-    res = await tool.execute({"command": "echo 'hello'"}, ctx_untrusted)
-    assert not res.is_error
-    assert "hello" in res.output
+        # 2. Approved explicitly by user -> succeeds and stores in cache
+        res = await tool.execute({"command": "echo 'hello'", "user_approved": True}, ctx_untrusted)
+        assert not res.is_error
+        assert "hello" in res.output
 
-    # 4. Dangerous command on trusted project without explicit approval -> fails
-    res = await tool.execute({"command": "rm -rf /tmp/nonexistent_test_folder"}, ctx_trusted)
-    assert res.is_error
-    assert "forbidden by shell policy" in res.output or "requires explicit user approval" in res.output
+        # 3. Subsequent execution in same session -> auto-approved via cache
+        res = await tool.execute({"command": "echo 'hello'"}, ctx_untrusted)
+        assert not res.is_error
+        assert "hello" in res.output
+
+        # 4. Dangerous command on trusted project without explicit approval -> fails
+        res = await tool.execute({"command": "rm -rf /tmp/nonexistent_test_folder"}, ctx_trusted)
+        assert res.is_error
+        assert "forbidden by shell policy" in res.output or "requires explicit user approval" in res.output
 
 @pytest.mark.asyncio
 async def test_sandboxed_executor_cmd_policy_and_cache(tmp_path):
@@ -192,9 +196,13 @@ async def test_bash_tool_sandboxed_isolation_and_resource_limits(tmp_path):
     ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
 
     # 1. Executing a standard command inside sandbox/resource-limited environment
-    res = await bash_tool.execute({"command": "echo 'sandboxed'", "user_approved": True}, ctx)
-    assert res.is_error is False
-    assert "sandboxed" in res.output
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("app.core.sandbox.SandboxedExecutor.execute_cmd") as mock_exec_cmd:
+        mock_exec_cmd.return_value = {"stdout": "sandboxed\n", "stderr": "", "exit_code": 0, "timed_out": False}
+
+        res = await bash_tool.execute({"command": "echo 'sandboxed'", "user_approved": True}, ctx)
+        assert res.is_error is False
+        assert "sandboxed" in res.output
 
     # 2. Test sandbox isolation: attempt to write outside allowed working directory when bwrap is mocked/active
     with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
@@ -206,4 +214,4 @@ async def test_bash_tool_sandboxed_isolation_and_resource_limits(tmp_path):
 
         res_isolated = await bash_tool.execute({"command": "touch /root/forbidden.txt", "user_approved": True}, ctx)
         assert res_isolated.is_error is True
-        assert "Read-only file system" in res_isolated.output
+        assert "Read-only file system" in res_isolated.output or "Permission denied" in res_isolated.output

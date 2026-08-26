@@ -108,6 +108,11 @@ El backend incluye un cliente ligero en Python con tres modos de operación:
 - **Protected Files**: Ciertos archivos críticos (`auth.js`, etc.) nunca pueden ser modificados.
 - **Project Trust**: Las herramientas de escritura y ejecución requieren que el directorio haya sido marcado como confiable.
 - **AGENTS.md**: Si existe en el raíz del `cwd`, se inyecta automáticamente como contexto del sistema.
+- **Sandbox Network Policy (Deny-All por Defecto)**: El sandbox de Bubblewrap bloquea por defecto todo el tráfico de red saliente no autorizado.
+- **Lista Blanca de Hosts Configurable (`COGNITO_SANDBOX_ALLOWED_HOSTS`)**: Los operadores pueden autorizar hosts/IPs salientes adicionales sin modificar código mediante la variable de entorno `COGNITO_SANDBOX_ALLOWED_HOSTS` (separados por comas). Por defecto se autorizan automáticamente los endpoints del backend LLM configurado (`BackendRouter`, Ollama local o OpenAI) y `localhost` / `host.docker.internal`.
+  ```bash
+  export COGNITO_SANDBOX_ALLOWED_HOSTS="api.openai.com,192.168.1.15,custom-llm-host.internal"
+  ```
 
 ### Sistema de Extensiones (Fase 4)
 El sistema permite extender el agente sin modificar el código fuente mediante ficheros Python cargados en runtime.

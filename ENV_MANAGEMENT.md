@@ -321,6 +321,9 @@ ZROK_AUTH_TOKEN=
 
 # Búsqueda web
 MCP_BRAVE_API_KEY=
+
+# Sandbox Network Policy Whitelist (separados por coma)
+COGNITO_SANDBOX_ALLOWED_HOSTS=
 ```
 
 ### Variables con Valores Predefinidos (no cambiar)
