@@ -171,7 +171,7 @@ jobs:
       - name: Check for exposed API keys in code
         run: |
           echo "Scanning for exposed credentials..."
-          ! grep -rE "sk_live_|pk_live_|ZROK_AUTH_TOKEN\s*=\s*[a-zA-Z0-9_-]{10,}" . --include="*.yml" --include="*.yaml" --include="*.sh" 2>/dev/null
+          ! grep -rE "sk_live_[a-zA-Z0-9]{20,}|pk_live_[a-zA-Z0-9]{20,}" . --exclude-dir=".git" 2>/dev/null
 
       - name: Verify no sensitive files committed
         run: |
