@@ -32,7 +32,7 @@
 | AUD-001 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | BashTool ejecuta comandos directamente en la shell del host sin aislamiento microVM ni bwrap obligatorio | Corregido |
 | AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Corregido |
 | AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Pendiente |
-| AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Pendiente |
+| AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Pendiente |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Pendiente |
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente |
@@ -136,7 +136,21 @@
 - **Descripción del problema:** Las conexiones WebSocket y rutas HTTP expuestas por FastAPI y el servidor MCP no implementan validación de la cabecera `Origin`, ni middleware de protección CSRF o restricciones específicas de CORS. Además, ciertos tokens de auth pueden transmitirse en parámetros de consulta URL, expuestos a logs de red.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/main.py` (líneas 1-50) y `very-simplified-stack/cognito-backend/app/services/mcp_server.py` (líneas 1-700).
 - **Comparación con el estado del arte:** A raíz de vulnerabilidades críticas de Cross-Site WebSocket Hijacking en 2026, los harnesses enterprise requieren verificación estricta de `Origin`, tokens de sesión en cabeceras HTTP Authorization y mitigación CORS/CSRF.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se configuró `CORSMiddleware` en `app/main.py` con una lista blanca explícita de orígenes permitidos resolved a través de la variable de entorno `COGNITO_ALLOWED_ORIGINS` (evitando wildcards `*` combinados con credenciales).
+  - Se implementó validación explícita de la cabecera `Origin` en el endpoint WebSocket (`/ws`), rechazando conexiones no autorizadas con el código de cierre `1008 (Policy Violation)`.
+  - Se documentó explícitamente la razón por la cual CSRF no aplica (Cognito utiliza autenticación explícita por cabeceras `Authorization: Bearer <token>` y payloads FastMCP en lugar de cookies de sesión persistentes de navegador).
+  - Se verificó que la transmisión de tokens de autenticación se realice vía cabecera `Authorization` y se descartó cualquier requerimiento de tokens en parámetros de consulta URL.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_cors_origin_security.py`:
+    - `test_is_origin_allowed`: Valida la lógica de origen permitido contra listas blancas y comodines.
+    - `test_cors_whitelisted_origin`: Comprueba que una petición cross-origin desde un origen listado es permitida con cabeceras CORS de credenciales.
+    - `test_cors_unauthorized_origin`: Confirma que orígenes no autorizados no reciben cabeceras `Access-Control-Allow-Origin`.
+    - `test_cors_custom_env_origins`: Verifica la configuración dinámica de orígenes mediante `COGNITO_ALLOWED_ORIGINS`.
+    - `test_websocket_unauthorized_origin`: Demuestra que una conexión WebSocket desde un origen no autorizado es rechazada.
+    - `test_websocket_authorized_origin`: Confirma la aceptación y comunicación bidireccional cuando el origen es autorizado.
+    - `test_no_auth_tokens_in_url_query_params`: Garantiza que los tokens de auth son aceptados vía cabecera `Authorization`.
 
 #### AUD-005
 - **ID:** AUD-005
