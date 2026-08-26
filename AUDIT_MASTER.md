@@ -5,11 +5,11 @@
 - **Alcance del Documento:** Auditoría exhaustiva basada al 100% en evidencia de código del repositorio Cognito (`cognito-backend`, `cognito-worker`, y `cognito_agent.py`). Evaluado frente al listón de referencia enterprise 2026 para agent harnesses (características de referencia observadas en harnesses como Claude Code, Codex CLI, OpenCode, Hermes Agent, Pi Agent y OpenClaw).
 - **Metodología Aplicada:** Inspección estática del código fuente y suite de pruebas de los componentes backend, worker y CLI. Contrastación directa de cada directiva del listón de referencia A-J contra la implementación real o la evidencia de ausencia en las rutas de código del repositorio.
 - **Resumen Cuantitativo de Hallazgos:**
-  - **Total de Hallazgos:** 32
-  - **Desglose por Severidad:** Crítico: 6 | Alto: 12 | Medio: 10 | Bajo: 4
-  - **Desglose por Tipo:** Defecto: 4 | Deuda Técnica: 9 | Brecha Funcional: 19
+  - **Total de Hallazgos:** 33
+  - **Desglose por Severidad:** Crítico: 6 | Alto: 13 | Medio: 10 | Bajo: 4
+  - **Desglose por Tipo:** Defecto: 5 | Deuda Técnica: 9 | Brecha Funcional: 19
   - **Desglose por Categoría (A-J):**
-    - A. Seguridad y Aislamiento de Ejecución: 6 hallazgos
+    - A. Seguridad y Aislamiento de Ejecución: 7 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
     - C. Gestión de Contexto y Memoria: 4 hallazgos
     - D. Orquestación de Herramientas y Sub-Agentes: 5 hallazgos
@@ -61,6 +61,7 @@
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Pendiente |
 | AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente |
+| AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
 
 ---
 
@@ -113,6 +114,9 @@
     - `test_build_bwrap_args_deny_all_by_default`: Demuestra que `build_bwrap_args` no incluye `--share-net` por defecto, manteniendo el espacio de nombres de red aislado.
     - `test_get_sandbox_allowed_hosts_and_is_host_allowed`: Valida que los endpoints LLM por defecto y los hosts configurados vía `COGNITO_SANDBOX_ALLOWED_HOSTS` están permitidos, mientras que destinos no autorizados son rechazados.
     - `test_sandboxed_executor_unwhitelisted_host_fails`: Confirma que `SandboxedExecutor` cancela la ejecución lanzando `SandboxNetworkError` al intentar conectar a un host no listado.
+- **Nota de Seguimiento Fechada (Verificación de Enforcement de Red):**
+  - **Mecanismo de Enforcement Confirmado:** Se confirmó que las llamadas salientes del agente Cognito hacia proveedores LLM u otros servicios ocurren exclusivamente fuera del sandbox en el proceso principal orquestador de Cognito. El sandbox de `bwrap` aísla por completo el subproceso sandboxeado con `--unshare-all` a nivel de namespace del kernel Linux sin ninguna interfaz de red utilizable (`deny-all` real sin excepciones internas).
+  - **Corrección Aplicada:** Se eliminó la ambigüedad donde `build_bwrap_args` aceptaba opcionalmente `--share-net` si el host estaba en la lista blanca. Ahora `build_bwrap_args` NUNCA añade `--share-net` bajo ningún parámetro. La comprobación `is_host_allowed` / `get_sandbox_allowed_hosts` aplica a las verificaciones previas a la ejecución del proceso principal de Cognito, no al interior del sandbox.
 
 #### AUD-003
 - **ID:** AUD-003
@@ -188,6 +192,26 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/requirements.txt` (líneas 1-6) y `very-simplified-stack/cognito-worker/requirements.txt` (líneas 1-6).
 - **Comparación con el estado del arte:** Las normativas de compliance enterprise exigen escaneo de dependencias y lockfiles congelados (`poetry.lock`, `pip-compile --generate-hashes`).
 - **Estado:** Pendiente
+
+#### AUD-033
+- **ID:** AUD-033
+- **Severidad:** Alto
+- **Tipo:** Defecto
+- **Categoría:** A. Seguridad y Aislamiento de Ejecución
+- **Componente:** cognito-backend
+- **Prioridad MVP Enterprise:** P0 Bloqueante
+- **Descripción del problema:** En la implementación inicial de AUD-002, `build_bwrap_args` en `sandbox.py` habilitaba condicionalmente la flag `--share-net` de bubblewrap si la red estaba solicitada y el host de destino coincidía con la lista blanca. Esto abría una brecha de seguridad a nivel de red, ya que una vez que se pasaba la flag `--share-net` al binario `bwrap`, el comando sandboxeado compartía el namespace de red completo del host y podía abrir sockets hacia cualquier puerto/host arbitrario directamente desde el kernel, evitando cualquier filtrado a nivel de aplicación en el orquestador Python.
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/sandbox.py` (función `build_bwrap_args`).
+- **Comparación con el estado del arte:** El aislamiento estricto exige que los comandos de shell arbitrarios ejecutados en un sandbox tengan deny-all a nivel de kernel/namespace sin posibilidad de derivar la pila de red, manteniendo cualquier conectividad saliente fuera del proceso incondicionalmente.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se eliminó completamente la lógica de adición condicional de `--share-net` en `build_bwrap_args()`. Todos los subprocesos de bubblewrap se ejecutan estrictamente con `--unshare-all` y sin interfaz de red.
+  - Se aclaró formalmente en los docstrings de `sandbox.py` (`is_host_allowed`, `get_sandbox_allowed_hosts`, `SandboxNetworkError`) que la lista blanca aplica a las llamadas salientes originadas en el proceso principal de Cognito (ej. llamadas a APIs de modelos LLM o workers), y no al espacio de ejecución del sandbox.
+  - Se añadió la prueba `test_real_bwrap_isolation_network` en `test_sandbox.py` y se actualizaron las pruebas de `build_bwrap_args` para asegurar que `--share-net` nunca sea incluida.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_sandbox.py`:
+    - `test_build_bwrap_args_deny_all_by_default`: Comprueba que `--share-net` jamás se añade a los argumentos de `bwrap` independientemente de los parámetros provistos.
+    - `test_real_bwrap_isolation_network`: Ejecuta un comando real de prueba de socket dentro del sandbox intentando conectarse a `127.0.0.1:8080` (host de lista blanca) y confirma que la conexión falla a nivel de red con excepción de socket.
 
 ---
 

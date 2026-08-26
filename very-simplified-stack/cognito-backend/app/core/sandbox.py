@@ -22,8 +22,10 @@ class SandboxUnavailableError(RuntimeError):
 
 class SandboxNetworkError(RuntimeError):
     """
-    Exception raised when an outbound network connection attempt inside the sandbox
-    targets a host or IP that is not in the allowed network whitelist.
+    Exception raised when an outbound network connection attempt or target host check
+    intercepted by Cognito main orchestrator targets a host or IP not in the allowed network whitelist.
+    Note: Subprocesses executed inside bwrap sandbox have complete kernel network namespace isolation (--unshare-all)
+    and cannot open any outbound sockets regardless of host whitelist.
     """
     pass
 
@@ -52,12 +54,16 @@ def is_sandbox_disabled_dev_only() -> bool:
 
 def get_sandbox_allowed_hosts() -> List[str]:
     """
-    Retrieves the whitelist of hosts/IPs permitted for outbound network access from the sandbox.
+    Retrieves the whitelist of hosts/IPs permitted for outbound network access from Cognito main orchestrator process.
     By default, includes:
     1. Localhost and standard loopback addresses ("localhost", "127.0.0.1", "::1", "host.docker.internal").
     2. Hosts of active LLM backends configured in BackendRouter / BACKENDS_BY_PRIORITY.
     3. Hosts configured via environment variables (OPENAI_BASE_URL, OLLAMA_HOST, COGNITO_WORKER_URL).
     4. Custom operator-defined hosts provided in COGNITO_SANDBOX_ALLOWED_HOSTS (comma-separated).
+
+    NOTE: This whitelist governs outbound connections made by the main Cognito process (e.g., LLM provider calls,
+    worker HTTP calls). Subprocesses running inside the bwrap sandbox have total kernel-level network isolation
+    (--unshare-all without --share-net) and cannot establish network connections to any host.
     """
     allowed_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
 
@@ -102,7 +108,8 @@ def get_sandbox_allowed_hosts() -> List[str]:
 
 def is_host_allowed(target: str, allowed_hosts: Optional[List[str]] = None) -> bool:
     """
-    Checks if a target host, IP, domain, or URL is in the allowed sandbox whitelist.
+    Checks if a target host, IP, domain, or URL is in the allowed Cognito main orchestrator whitelist.
+    Note: Sandboxed subprocesses (in bwrap) have zero network access at the kernel level.
     """
     if not target:
         return False
@@ -157,9 +164,10 @@ def build_bwrap_args(
     - Mounts essential virtual filesystems (--dev /dev --proc /proc --tmpfs /tmp).
     - Ensures parent directories of cwd exist inside the sandbox (--dir {cwd}).
     - Mounts working directory with write permissions (--bind {cwd} {cwd}).
-    - Unshares all namespaces for process isolation (--unshare-all --die-with-parent).
-    - Deny-all network policy by default (isolated network namespace, no --share-net).
-    - Conditionally enables --share-net ONLY IF network is explicitly requested AND target_host is whitelisted.
+    - Unshares all namespaces including network namespace (--unshare-all --die-with-parent).
+    - Absolute deny-all kernel-level network enforcement: --share-net is NEVER passed.
+      All commands inside bwrap execute with zero usable network interfaces. Outbound LLM calls
+      or remote provider API calls take place exclusively outside the sandbox in the main process.
     """
     cwd_path = Path(cwd).resolve()
     cwd_str = str(cwd_path)
@@ -175,15 +183,6 @@ def build_bwrap_args(
         "--unshare-all",
         "--die-with-parent"
     ]
-
-    if allowed_network and target_host:
-        if is_host_allowed(target_host, allowed_hosts=allowed_hosts):
-            args.append("--share-net")
-        else:
-            logger.warning(
-                "Network requested in sandbox for unwhitelisted host '%s'. "
-                "Enforcing deny-all policy (no --share-net).", target_host
-            )
 
     return args
 
