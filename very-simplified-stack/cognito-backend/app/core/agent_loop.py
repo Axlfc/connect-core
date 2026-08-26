@@ -5,12 +5,14 @@ import uuid
 from typing import AsyncIterator, Dict, List, Optional, Any
 
 from app.core.events import (
-    AgentEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent
+    AgentEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent, ApprovalRequiredEvent
 )
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.uncertainty import compute_uncertainty
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.guardrails.tool_loop_detector import ToolLoopDetector
+from app.core.exec_policy import evaluate_command_execution, ExecVerdict
+from app.core.approval import approval_manager, ApprovalManager
 
 logger = logging.getLogger(__name__)
 
@@ -186,11 +188,85 @@ async def agent_loop(
                 if not tool:
                     result = ToolResult(is_error=True, output=f"Tool '{tc['name']}' not found.")
                 else:
-                    logger.info(f"Executing tool {tool.name} with args {tc['arguments']}")
-                    if isinstance(tool, AgentTool):
-                        result = await tool.validate_and_execute(tc["arguments"], context)
+                    logger.info(f"Preparing execution for tool {tool.name} with args {tc['arguments']}")
+
+                    # Check ExecPolicy for shell execution tools
+                    cmd = tc["arguments"].get("command", "") if isinstance(tc.get("arguments"), dict) else ""
+                    user_approved = bool(tc["arguments"].get("user_approved", False)) if isinstance(tc.get("arguments"), dict) else False
+                    eff_session_id = session_id or getattr(context, "session_id", None) or "default_session"
+
+                    verdict, reason = ExecVerdict.PERMITIR, "Auto-approved"
+                    if tc["name"] in ("bash", "persistent_shell", "shell_run") and cmd:
+                        verdict, reason = evaluate_command_execution(
+                            command=cmd,
+                            cwd=context.cwd,
+                            trusted=context.trusted,
+                            session_id=eff_session_id,
+                            user_approved=user_approved,
+                        )
+
+                    if verdict == ExecVerdict.DENEGAR:
+                        logger.warning(f"Tool execution for '{tc['name']}' denied by ExecPolicy: {reason}")
+                        result = ToolResult(is_error=True, output=f"Error: {reason}")
+                    elif verdict == ExecVerdict.REQUIERE_APROBACION:
+                        logger.info(f"Tool execution for '{tc['name']}' requires approval: {reason}")
+                        # Pre-register approval request BEFORE emitting event so it is immediately visible in pending list
+                        appr_req = await approval_manager.create_request(
+                            session_id=eff_session_id,
+                            tool_name=tc["name"],
+                            arguments=tc["arguments"] if isinstance(tc["arguments"], dict) else {"raw": tc["arguments"]},
+                            reason=reason,
+                            command=cmd,
+                        )
+                        appr_id = appr_req.approval_id
+
+                        req_event = ApprovalRequiredEvent(
+                            approval_id=appr_id,
+                            session_id=eff_session_id,
+                            tool_name=tc["name"],
+                            arguments=tc["arguments"] if isinstance(tc["arguments"], dict) else {"raw": tc["arguments"]},
+                            reason=reason,
+                            timeout_seconds=appr_req.timeout_seconds,
+                        )
+                        yield req_event
+
+                        # Also notify via session steering persistence if session_manager is active
+                        if session_manager and eff_session_id:
+                            steer_notice = (
+                                f"[SOLICITUD DE APROBACIÓN {appr_id}] Acción sensible requerida: '{cmd or tc['name']}'. "
+                                f"Razón: {reason}. Timeout: {appr_req.timeout_seconds}s."
+                            )
+                            try:
+                                if history_lock:
+                                    async with history_lock:
+                                        await session_manager.append_steering_message_async(eff_session_id, steer_notice, steering_id=appr_id)
+                                else:
+                                    await session_manager.append_steering_message_async(eff_session_id, steer_notice, steering_id=appr_id)
+                            except Exception as ex:
+                                logger.debug(f"Failed to append approval notification to steering log: {ex}")
+
+                        # Pause loop and await human decision or timeout using the exact pre-registered request
+                        decision = await approval_manager.wait_for_decision(appr_id)
+
+                        if decision.status == "approved":
+                            logger.info(f"Approval [{decision.approval_id}] granted by {decision.actor}. Executing tool.")
+                            if isinstance(tc.get("arguments"), dict):
+                                tc["arguments"]["user_approved"] = True
+                            if isinstance(tool, AgentTool):
+                                result = await tool.validate_and_execute(tc["arguments"], context)
+                            else:
+                                result = await tool.execute(tc["arguments"], context)
+                        else:
+                            logger.warning(f"Approval [{decision.approval_id}] status: {decision.status} ({decision.reason}). Skipping execution.")
+                            result = ToolResult(
+                                is_error=True,
+                                output=f"Acción denegada por política de aprobación humana ({decision.status}): {decision.reason}"
+                            )
                     else:
-                        result = await tool.execute(tc["arguments"], context)
+                        if isinstance(tool, AgentTool):
+                            result = await tool.validate_and_execute(tc["arguments"], context)
+                        else:
+                            result = await tool.execute(tc["arguments"], context)
 
                 # AUD-001 Fix: Use per-turn unpredictable token (nonce) to eliminate delimiter spoofing/escaping
                 turn_nonce = uuid.uuid4().hex[:12]

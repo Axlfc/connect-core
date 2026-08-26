@@ -1,0 +1,184 @@
+import asyncio
+import pytest
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.core.exec_policy import ExecPolicy, ExecVerdict
+from app.core.approval import ApprovalManager, ApprovalDecisionAudit
+from app.core.events import ApprovalRequiredEvent, ToolResultEvent
+from app.core.tools.base import ToolContext, ToolResult
+from app.core.tools.bash_tool import BashTool
+from app.core.agent_loop import agent_loop
+
+client = TestClient(app)
+
+@pytest.mark.asyncio
+async def test_exec_policy_requiere_aprobacion_classification():
+    policy = ExecPolicy()
+
+    # Sensitive action -> REQUIERE_APROBACION
+    verdict = policy.evaluate("git reset --hard", project_trusted=True)
+    assert verdict == ExecVerdict.REQUIERE_APROBACION
+
+    # Untrusted project -> REQUIERE_APROBACION
+    verdict_untrusted = policy.evaluate("ls -la", project_trusted=False)
+    assert verdict_untrusted == ExecVerdict.REQUIERE_APROBACION
+
+    # Dangerous action -> DENEGAR
+    verdict_dangerous = policy.evaluate("sudo rm -rf /", project_trusted=True)
+    assert verdict_dangerous == ExecVerdict.DENEGAR
+
+
+@pytest.mark.asyncio
+async def test_human_approval_flow_approved():
+    mgr = ApprovalManager(default_timeout_seconds=5)
+
+    async def simulate_operator():
+        await asyncio.sleep(0.05)
+        pending = await mgr.list_pending(session_id="s1")
+        assert len(pending) == 1
+        await mgr.submit_decision(
+            approval_id=pending[0].approval_id,
+            approved=True,
+            actor="operator_jane",
+            reason="Confirmed safe"
+        )
+
+    task_operator = asyncio.create_task(simulate_operator())
+
+    audit = await mgr.request_approval(
+        session_id="s1",
+        tool_name="bash",
+        arguments={"command": "git reset --hard"},
+        reason="Sensitive command",
+        command="git reset --hard",
+    )
+
+    await task_operator
+
+    assert audit.status == "approved"
+    assert audit.actor == "operator_jane"
+    assert audit.session_id == "s1"
+    assert audit.action == "git reset --hard"
+
+    logs = await mgr.get_audit_logs(session_id="s1")
+    assert len(logs) == 1
+    assert logs[0].approval_id == audit.approval_id
+
+
+@pytest.mark.asyncio
+async def test_human_approval_flow_denied():
+    mgr = ApprovalManager(default_timeout_seconds=5)
+
+    async def simulate_operator():
+        await asyncio.sleep(0.05)
+        pending = await mgr.list_pending(session_id="s2")
+        assert len(pending) == 1
+        await mgr.submit_decision(
+            approval_id=pending[0].approval_id,
+            approved=False,
+            actor="operator_john",
+            reason="Risk too high"
+        )
+
+    task_operator = asyncio.create_task(simulate_operator())
+
+    audit = await mgr.request_approval(
+        session_id="s2",
+        tool_name="bash",
+        arguments={"command": "git clean -fd"},
+        reason="Sensitive command",
+        command="git clean -fd",
+    )
+
+    await task_operator
+
+    assert audit.status == "denied"
+    assert audit.actor == "operator_john"
+    assert audit.session_id == "s2"
+
+
+@pytest.mark.asyncio
+async def test_human_approval_flow_timeout_default_deny():
+    mgr = ApprovalManager(default_timeout_seconds=1)
+
+    audit = await mgr.request_approval(
+        session_id="s3",
+        tool_name="bash",
+        arguments={"command": "npm install -g malicious-pkg"},
+        reason="Sensitive command",
+        command="npm install -g malicious-pkg",
+    )
+
+    assert audit.status == "timed_out"
+    assert audit.actor == "system_timeout"
+    assert audit.session_id == "s3"
+    assert "timeout" in audit.reason.lower()
+
+
+@pytest.mark.asyncio
+async def test_agent_loop_human_in_the_loop_integration(tmp_path):
+    # Mock backend router
+    class DummyRouter:
+        async def generate_with_tools(self, messages, tools_schema, model_params):
+            yield {"tool_calls": [{"id": "tc_1", "function": {"name": "bash", "arguments": {"command": "git reset --hard"}}}]}
+
+    dummy_router = DummyRouter()
+    bash_tool = BashTool()
+    tools = [bash_tool]
+    ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
+
+    events = []
+
+    async def consume_agent_loop_and_approve():
+        with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+             patch("app.core.sandbox.SandboxedExecutor.execute_cmd", return_value={"stdout": "HEAD is now at 1234\n", "stderr": "", "exit_code": 0}):
+
+            async for ev in agent_loop(
+                messages=[{"role": "user", "content": "Reset git state"}],
+                tools=tools,
+                context=ctx,
+                backend_router=dummy_router,
+                max_turns=1,
+                session_id="test_hitl_session"
+            ):
+                events.append(ev)
+                if isinstance(ev, ApprovalRequiredEvent):
+                    from app.core.approval import approval_manager
+                    # Submit decision using the exact approval_id emitted in the event
+                    await approval_manager.submit_decision(
+                        approval_id=ev.approval_id,
+                        approved=True,
+                        actor="test_admin",
+                        reason="Approved for regression test"
+                    )
+
+    await consume_agent_loop_and_approve()
+
+    # Verify ApprovalRequiredEvent was emitted
+    appr_events = [e for e in events if isinstance(e, ApprovalRequiredEvent)]
+    assert len(appr_events) == 1
+    assert appr_events[0].tool_name == "bash"
+    assert appr_events[0].session_id == "test_hitl_session"
+
+    # Verify ToolResultEvent executed after approval
+    result_events = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(result_events) == 1
+    assert result_events[0].is_error is False
+    assert "HEAD is now at 1234" in result_events[0].output
+
+
+def test_rest_api_approvals_endpoints():
+    # 1. Initially pending approvals list is empty
+    resp = client.get("/api/agent/approvals/pending")
+    assert resp.status_code == 200
+
+    # 2. Try deciding non-existent approval_id -> 404
+    resp = client.post(
+        "/api/agent/approvals/non_existent_id/decide",
+        json={"decision": "approved", "actor": "tester", "reason": "N/A"}
+    )
+    assert resp.status_code == 404

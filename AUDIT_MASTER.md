@@ -49,7 +49,7 @@
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Pendiente |
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Pendiente |
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Pendiente |
-| AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Pendiente |
+| AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
 | AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
 | AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Pendiente |
@@ -366,7 +366,25 @@
 - **Descripción del problema:** El backend carece de una interfaz interactiva de pausado e interrupción que solicite aprobación humana explícita (Human-in-the-Loop) para operaciones sensibles que no estén bloqueadas automáticamente por `ExecPolicy`.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/exec_policy.py` (líneas 1-80) y `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (líneas 110-140).
 - **Comparación con el estado del arte:** Las políticas de gobernanza 2026 exigen que operaciones de riesgo medio/alto requieran confirmación síncrona del operador.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se extendió `ExecPolicy` y la evaluación unificada `evaluate_command_execution` en `app/core/exec_policy.py` incorporando un tercer veredicto explícito: `ExecVerdict.REQUIERE_APROBACION` (`requiere_aprobacion`).
+  - Se definieron y documentaron los criterios de clasificación:
+    - `DENEGAR`: Comandos prohibidos incondicionales de alto riesgo (`rm -rf /`, `sudo`, `mkfs`, fork bomb, `curl | bash`).
+    - `REQUIERE_APROBACION`: Acciones sensibles (`git reset --hard`, `git clean`, `rm -rf <dir>`, paquetes de sistema, terminación de procesos) o comandos ejecutados en proyectos no confiables (`trusted=False`).
+    - `PERMITIR`: Inspección de solo lectura o comandos previamente autorizados en `SessionApprovalCache`.
+  - Se implementó `ApprovalManager` en `app/core/approval.py` que gestiona solicitudes pendientes, pausa la ejecución asíncrona mediante `asyncio.Future`, aplica timeout configurable (`COGNITO_APPROVAL_TIMEOUT_SECONDS`, por defecto 30s) y deniega la acción por defecto si expira sin respuesta.
+  - Se registró cada decisión en una estructura inmutable `ApprovalDecisionAudit` (`approval_id`, `session_id`, `action`, `actor`, `timestamp`, `status`, `reason`) preparada para integración futura con el sistema SIEM de AUD-009.
+  - Se introdujo `ApprovalRequiredEvent` en `app/core/events.py` y se actualizó `agent_loop.py` para pausar el turno del agente, emitir el evento SSE y notificar al canal de steering/sesión interactivo existente.
+  - Se expusieron los endpoints REST en `app/api/routes/ai_agents.py`: `GET /api/agent/approvals/pending`, `GET /api/agent/approvals/audit-logs` y `POST /api/agent/approvals/{approval_id}/decide`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_human_approval.py`:
+    - `test_exec_policy_requiere_aprobacion_classification`: Valida la clasificación del nuevo veredicto.
+    - `test_human_approval_flow_approved`: Prueba el flujo completo pausa -> aprobación por operador -> ejecución exitosa.
+    - `test_human_approval_flow_denied`: Confirma el rechazo explícito por operador.
+    - `test_human_approval_flow_timeout_default_deny`: Comprueba la denegación por defecto tras timeout.
+    - `test_agent_loop_human_in_the_loop_integration`: Verifica la emisión de `ApprovalRequiredEvent` y reanudación del bucle.
+    - `test_rest_api_approvals_endpoints`: Prueba los endpoints HTTP de decisión y consulta.
 
 ---
 

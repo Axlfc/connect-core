@@ -36,8 +36,8 @@ class BashTool(AgentTool):
         if not command:
             return ToolResult(is_error=True, output="Error: command is required.")
 
-        from app.core.exec_policy import evaluate_command_execution
-        allowed, reason = evaluate_command_execution(
+        from app.core.exec_policy import evaluate_command_execution, ExecVerdict
+        verdict, reason = evaluate_command_execution(
             command=command,
             cwd=context.cwd,
             trusted=context.trusted,
@@ -47,7 +47,7 @@ class BashTool(AgentTool):
             approval_cache=self.approval_cache,
         )
 
-        if not allowed:
+        if verdict != ExecVerdict.PERMITIR:
             return ToolResult(is_error=True, output=f"Error: {reason}")
 
         from app.core.sandbox import is_bwrap_available, is_sandbox_disabled_dev_only, SandboxedExecutor, SandboxUnavailableError

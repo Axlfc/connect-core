@@ -24,6 +24,7 @@ from app.core.events import SessionInfoEvent, TextDeltaEvent, ToolCallEvent, Too
 from app.core.session.message_deriver import derive_messages_for_llm, DerivationConfig
 from app.core.extensions.registry import extension_registry
 from app.core.steering import steering_manager
+from app.core.approval import approval_manager, PendingApprovalRequest, ApprovalDecisionAudit
 import logging
 
 from typing import Literal
@@ -48,6 +49,11 @@ class AgentLoopRequest(BaseModel):
 
 class SteerRequest(BaseModel):
     message: str
+
+class HumanApprovalDecisionRequest(BaseModel):
+    decision: Literal["approved", "denied"]
+    actor: str = "operator"
+    reason: Optional[str] = None
 
 @router.post("/agent", response_model=AIResponse)
 async def run_ai_agent(request: AIRequest):
@@ -289,6 +295,36 @@ async def steer_session(session_id: str, request: SteerRequest):
         "session_id": session_id,
         "message": request.message
     }
+
+@router.get("/agent/approvals/pending", response_model=List[PendingApprovalRequest])
+async def list_pending_approvals(session_id: Optional[str] = None):
+    """
+    List currently active pending human approval requests for sensitive agent actions.
+    """
+    return await approval_manager.list_pending(session_id=session_id)
+
+@router.get("/agent/approvals/audit-logs", response_model=List[ApprovalDecisionAudit])
+async def list_approval_audit_logs(session_id: Optional[str] = None):
+    """
+    Retrieve structured audit decision logs for human-in-the-loop approvals.
+    """
+    return await approval_manager.get_audit_logs(session_id=session_id)
+
+@router.post("/agent/approvals/{approval_id}/decide", response_model=ApprovalDecisionAudit)
+async def submit_approval_decision(approval_id: str, req: HumanApprovalDecisionRequest):
+    """
+    Submit human decision (approved or denied) for a pending sensitive action request.
+    """
+    is_approved = (req.decision == "approved")
+    audit_record = await approval_manager.submit_decision(
+        approval_id=approval_id,
+        approved=is_approved,
+        actor=req.actor,
+        reason=req.reason
+    )
+    if not audit_record:
+        raise HTTPException(status_code=404, detail=f"Pending approval request '{approval_id}' not found or already resolved.")
+    return audit_record
 
 
 # ══════════════════════════════════════════════════════════════════════════════

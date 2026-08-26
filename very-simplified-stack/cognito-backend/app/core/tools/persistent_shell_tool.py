@@ -351,8 +351,8 @@ class PersistentShellTool(AgentTool):
             status = "Session terminated successfully." if killed else "Session not found or already closed."
             return ToolResult(output=status)
 
-        from app.core.exec_policy import evaluate_command_execution
-        allowed, reason = evaluate_command_execution(
+        from app.core.exec_policy import evaluate_command_execution, ExecVerdict
+        verdict, reason = evaluate_command_execution(
             command=command,
             cwd=context.cwd,
             trusted=getattr(context, "trusted", False),
@@ -362,7 +362,7 @@ class PersistentShellTool(AgentTool):
             approval_cache=self.approval_cache,
         )
 
-        if not allowed:
+        if verdict != ExecVerdict.PERMITIR:
             return ToolResult(is_error=True, output=f"Error: {reason}")
 
         try:
