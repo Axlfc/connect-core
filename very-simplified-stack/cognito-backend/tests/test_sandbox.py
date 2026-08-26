@@ -39,15 +39,13 @@ def test_build_bwrap_args_deny_all_by_default():
     assert "--die-with-parent" in args
     assert "--share-net" not in args
 
-    # Even if allowed_network=True, without a whitelisted target_host, --share-net is NOT added
+    # --share-net MUST NEVER be added regardless of parameters (strict kernel namespace deny-all isolation)
     args_net_no_target = build_bwrap_args(cwd=cwd, allowed_network=True)
     assert "--share-net" not in args_net_no_target
 
-    # With a whitelisted target host and allowed_network=True, --share-net IS added
     args_net_whitelisted = build_bwrap_args(cwd=cwd, allowed_network=True, target_host="127.0.0.1")
-    assert "--share-net" in args_net_whitelisted
+    assert "--share-net" not in args_net_whitelisted
 
-    # With an unwhitelisted target host, --share-net is NOT added (deny-all policy)
     args_net_unwhitelisted = build_bwrap_args(cwd=cwd, allowed_network=True, target_host="forbidden-evil-domain.com")
     assert "--share-net" not in args_net_unwhitelisted
 
@@ -199,6 +197,34 @@ async def test_bash_tool_dev_bypass_warning(monkeypatch, tmp_path):
         assert "direct host output" in res.output
         mock_warn.assert_called()
         assert "DESACTIVADO" in mock_warn.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_real_bwrap_isolation_network(tmp_path):
+    """
+    Test that a command executed via SandboxedExecutor/bwrap has ZERO network connectivity,
+    failing at network/socket level even when attempting to reach whitelisted hosts (127.0.0.1 / localhost).
+    """
+    from app.core.sandbox import is_bwrap_available, SandboxedExecutor
+    if not is_bwrap_available():
+        pytest.skip("bwrap binary not installed on host system")
+
+    executor = SandboxedExecutor(working_dir=str(tmp_path), timeout=10)
+
+    # Attempt active socket connection to whitelisted local address inside bwrap sandbox
+    code = (
+        "import socket\n"
+        "try:\n"
+        "    s = socket.create_connection(('127.0.0.1', 8080), timeout=1)\n"
+        "    print('CONNECTED')\n"
+        "except Exception as e:\n"
+        "    print(f'NETWORK_FAILED: {e}')\n"
+    )
+
+    res = await executor.execute_code(code, target_host="127.0.0.1")
+    assert res["exit_code"] == 0
+    assert "NETWORK_FAILED" in res["stdout"]
+    assert "CONNECTED" not in res["stdout"]
 
 
 @pytest.mark.asyncio
