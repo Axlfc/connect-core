@@ -7,6 +7,7 @@ import jsonschema
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from app.core.tools.base import format_validation_error
+from app.core.secrets import get_secrets_provider
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -272,7 +273,7 @@ def validate_mcp_output(tool_name: str, result: Dict[str, Any]) -> Dict[str, Any
 def load_mcp_config() -> Dict[str, Any]:
     """
     Loads hierarchically resolved configuration for the Cognito MCP server.
-    Layered resolution: Defaults -> ~/.cognito/config.json -> Environment Variables.
+    Layered resolution: Defaults -> SecretsProvider -> Environment Variables.
     """
     insecure_dev = os.getenv("COGNITO_MCP_INSECURE_DEV", "false").lower() in ("true", "1", "yes")
     if insecure_dev:
@@ -281,10 +282,14 @@ def load_mcp_config() -> Dict[str, Any]:
     else:
         require_auth = True
 
+    provider = get_secrets_provider()
+    auth_token = provider.get_secret("AuthToken") or ""
+    api_key = provider.get_secret("APIKey") or ""
+
     config = {
         "Endpoint": os.getenv("COGNITO_ENDPOINT", "http://localhost:8000"),
-        "AuthToken": os.getenv("COGNITO_AUTH_TOKEN", ""),
-        "APIKey": os.getenv("COGNITO_API_KEY", ""),
+        "AuthToken": auth_token,
+        "APIKey": api_key,
         "MaxExecutionDepth": int(os.getenv("COGNITO_MCP_MAX_DEPTH", "3")),
         "RequireAuth": require_auth,
         "InsecureDev": insecure_dev,
@@ -294,74 +299,23 @@ def load_mcp_config() -> Dict[str, Any]:
         "ComfyUIURL": os.getenv("COMFYUI_URL", "http://localhost:8188"),
     }
 
-    config_path = Path.home() / ".cognito" / "config.json"
-    if config_path.exists():
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                file_config = json.load(f)
-                for k, v in file_config.items():
-                    if k in config and k != "RequireAuth":
-                        config[k] = v
-                    elif k.lower() in ("auth_token", "authtoken"):
-                        config["AuthToken"] = v
-                    elif k.lower() in ("api_key", "apikey"):
-                        config["APIKey"] = v
-        except Exception as e:
-            logger.warning(f"Could not load ~/.cognito/config.json: {e}")
-
     # Environment variables overrides (highest precedence)
     if os.getenv("COGNITO_ENDPOINT"):
         config["Endpoint"] = os.getenv("COGNITO_ENDPOINT")
-    if os.getenv("COGNITO_AUTH_TOKEN"):
-        config["AuthToken"] = os.getenv("COGNITO_AUTH_TOKEN")
-    if os.getenv("COGNITO_API_KEY"):
-        config["APIKey"] = os.getenv("COGNITO_API_KEY")
-
-    # Generate random token if none is provided, persist it, and log/communicate it
-    if not config["AuthToken"] and not config["APIKey"]:
-        generated_token = secrets.token_urlsafe(32)
-        config["AuthToken"] = generated_token
-        try:
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                os.chmod(config_path.parent, 0o700)
-            except Exception:
-                pass
-            file_data = {}
-            if config_path.exists():
-                try:
-                    with open(config_path, "r", encoding="utf-8") as f:
-                        file_data = json.load(f)
-                except Exception:
-                    file_data = {}
-            file_data["AuthToken"] = generated_token
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(file_data, f, indent=2)
-            try:
-                os.chmod(config_path, 0o600)
-            except Exception:
-                pass
-            logger.warning(
-                f"No auth token configured. Generated ephemeral AuthToken '{generated_token}' and persisted to {config_path}"
-            )
-        except Exception as e:
-            logger.error(f"Could not persist generated AuthToken to {config_path}: {e}")
-            raise RuntimeError(f"Failed to persist generated AuthToken to {config_path}: {e}") from e
 
     return config
 
 def verify_mcp_auth(auth_token: Optional[str] = None) -> bool:
     """
-    Verifies authentication against layered configuration.
+    Verifies authentication against SecretsProvider abstraction.
     Fail-closed by default: requires valid non-empty authentication token matching expected token.
     """
-    config = load_mcp_config()
-    require_auth = config.get("RequireAuth", True)
-
-    if not require_auth:
+    insecure_dev = os.getenv("COGNITO_MCP_INSECURE_DEV", "false").lower() in ("true", "1", "yes")
+    if insecure_dev:
         return True
 
-    expected_token = config.get("AuthToken") or config.get("APIKey")
+    provider = get_secrets_provider()
+    expected_token = provider.get_secret("AuthToken") or provider.get_secret("APIKey")
     if not expected_token:
         logger.warning("MCP authentication failed: no expected auth token configured.")
         return False

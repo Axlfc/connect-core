@@ -104,6 +104,20 @@ El backend incluye un cliente ligero en Python con tres modos de operación:
 3. `edit`: Edición basada en búsqueda y reemplazo único (requiere `trust`).
 4. `bash`: Ejecución de comandos en el workspace (requiere `trust`, sin `sudo`).
 
+### Gestión de Secretos y Rotación (AUD-003)
+Cognito incluye la abstracción `SecretsProvider` (`app/core/secrets.py`) para gestionar tokens de autenticación y claves API sin almacenarlos en texto plano expuesto y con soporte para rotación sin reinicios de proceso.
+
+- **Proveedores Soportados**:
+  - `LocalFileSecretsProvider` (predeterminado): Carga secretos con resolución jerárquica (Variables de entorno -> `~/.cognito/config.json` con permisos `0o600` y directorio `0o700` -> Token efímero autogenerado). Soporta caché en memoria con TTL configurable (`COGNITO_SECRETS_TTL_SECONDS`).
+  - `VaultSecretsProvider` (Stub): Implementación stub documentada preparada para HashiCorp Vault / AWS Secrets Manager.
+- **Variables de Configuración del Operador**:
+  - `COGNITO_SECRETS_PROVIDER`: Selecciona el proveedor (`local` por defecto, o `vault`).
+  - `COGNITO_SECRETS_TTL_SECONDS`: Tiempo de vida en segundos de la caché en memoria (por defecto `0`).
+  - `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_SECRET_PATH`: Variables de configuración para activar `VaultSecretsProvider` en un despliegue real.
+  - *Nota*: La integración de red en vivo contra una instancia real de HashiCorp Vault / AWS Secrets Manager queda marcada como trabajo de infraestructura de seguimiento pendiente.
+- **Endpoint de Recarga en Caliente**:
+  - `POST /api/secrets/reload`: Endpoint REST que invalida la caché de secretos para recargar inmediatamente credenciales rotadas externamente sin necesidad de reiniciar el proceso backend.
+
 ### Seguridad y Trust
 - **Protected Files**: Ciertos archivos críticos (`auth.js`, etc.) nunca pueden ser modificados.
 - **Project Trust**: Las herramientas de escritura y ejecución requieren que el directorio haya sido marcado como confiable.

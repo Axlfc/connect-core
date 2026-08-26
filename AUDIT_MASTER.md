@@ -31,7 +31,7 @@
 |---|---|---|---|---|---|---|---|
 | AUD-001 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | BashTool ejecuta comandos directamente en la shell del host sin aislamiento microVM ni bwrap obligatorio | Corregido |
 | AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Corregido |
-| AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Pendiente |
+| AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Corregido |
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Pendiente |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Pendiente |
@@ -124,7 +124,20 @@
 - **Descripción del problema:** El token de autenticación para el servidor MCP (`verify_mcp_auth`) se lee directamente en texto plano desde el archivo JSON de configuración `cognito_mcp_config.json` o variables de entorno simples sin soporte para integración con gestores de secretos (AWS Secrets Manager, Vault) ni rotación/revocación en caliente.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/services/mcp_server.py` (líneas 272-378).
 - **Comparación con el estado del arte:** La gestión de secretos enterprise exige rotación dinámica y revocación en tiempo real de credenciales comprometidas sin requerir reinicios o modificaciones de archivos en disco plano.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se creó la abstracción abstracta `SecretsProvider` (`app/core/secrets.py`) declarando `get_secret(name)`, `invalidate(name)` y `refresh(name)`.
+  - Se implementó `LocalFileSecretsProvider` envolviendo el comportamiento local por defecto (resolución jerárquica de variables de entorno -> `~/.cognito/config.json` con permisos `0o600` / directorio `0o700` -> token efímero autogenerado), manteniendo retrocompatibilidad total para desarrollo local.
+  - Se incluyó la clase `VaultSecretsProvider` como stub documentado con las instrucciones de configuración para operadores de infraestructura (`COGNITO_SECRETS_PROVIDER=vault`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_SECRET_PATH`). *(Nota explícita: La integración de red en vivo contra una infraestructura real de HashiCorp Vault / AWS Secrets Manager queda como trabajo de seguimiento pendiente de infraestructura/DevOps, no de código).*
+  - Se refactorizaron `verify_mcp_auth` y `load_mcp_config` en `app/services/mcp_server.py` para consultar credenciales mediante `SecretsProvider`.
+  - Se añadió el endpoint REST `POST /api/secrets/reload` que permite recargar/invalidar secretos en caliente tras una rotación sin reiniciar el proceso backend.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_secrets.py`:
+    - `test_local_file_secrets_provider_auto_generation`: Valida autogeneración y permisos `0o600` / `0o700`.
+    - `test_local_file_secrets_provider_env_override`: Valida prevalencia de variables de entorno.
+    - `test_secret_rotation_and_revocation_flow`: Demuestra que tras invalidar/rotar un secreto, las peticiones con el token antiguo son denegadas (`verify_mcp_auth` retorna `False`) y el nuevo token pasa a ser el único válido.
+    - `test_vault_secrets_provider_stub`: Valida el comportamiento e inicialización del stub de Vault.
+    - `test_secrets_reload_api_endpoint`: Comprueba la recarga en caliente a través del endpoint REST HTTP.
 
 #### AUD-004
 - **ID:** AUD-004
