@@ -20,6 +20,9 @@ class SessionMetadata(BaseModel):
     created_at: str
     updated_at: str
     message_count: int
+    approval_timeout_seconds: Optional[int] = None
+    blocked_actions_count: int = 0
+    approval_summary: List[Dict[str, Any]] = []
 
 class SessionManager:
     def __init__(self, sessions_dir: Optional[Path] = None):
@@ -153,7 +156,7 @@ class SessionManager:
             json.dump(index, f, indent=2)
         temp_index_path.replace(self.index_path)
 
-    def create(self, cwd: str) -> str:
+    def create(self, cwd: str, approval_timeout_seconds: Optional[int] = None) -> str:
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
@@ -166,7 +169,10 @@ class SessionManager:
             "cwd": resolved_cwd,
             "created_at": now,
             "updated_at": now,
-            "message_count": 0
+            "message_count": 0,
+            "approval_timeout_seconds": approval_timeout_seconds,
+            "blocked_actions_count": 0,
+            "approval_summary": []
         }
 
         with self._lock_session(session_id, shared=False):
@@ -182,7 +188,43 @@ class SessionManager:
             meta = self._read_session_meta(session_id)
             if not meta:
                 raise FileNotFoundError(f"Session {session_id} not found")
-            return SessionMetadata(session_id=session_id, **meta)
+            return SessionMetadata(
+                session_id=session_id,
+                cwd=meta["cwd"],
+                created_at=meta["created_at"],
+                updated_at=meta["updated_at"],
+                message_count=meta.get("message_count", 0),
+                approval_timeout_seconds=meta.get("approval_timeout_seconds"),
+                blocked_actions_count=meta.get("blocked_actions_count", 0),
+                approval_summary=meta.get("approval_summary", []),
+            )
+
+    def set_approval_timeout(self, session_id: str, timeout_seconds: int) -> bool:
+        with self._lock_session(session_id, shared=False):
+            meta = self._read_session_meta(session_id)
+            if not meta:
+                return False
+            meta["approval_timeout_seconds"] = timeout_seconds
+            meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._write_session_meta(session_id, meta)
+        return True
+
+    async def set_approval_timeout_async(self, session_id: str, timeout_seconds: int) -> bool:
+        return await anyio.to_thread.run_sync(self.set_approval_timeout, session_id, timeout_seconds)
+
+    def record_blocked_approval(self, session_id: str, decision_dict: Dict[str, Any]) -> None:
+        with self._lock_session(session_id, shared=False):
+            meta = self._read_session_meta(session_id)
+            if meta:
+                meta["blocked_actions_count"] = meta.get("blocked_actions_count", 0) + 1
+                summary = meta.get("approval_summary", [])
+                summary.append(decision_dict)
+                meta["approval_summary"] = summary
+                meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+                self._write_session_meta(session_id, meta)
+
+    async def record_blocked_approval_async(self, session_id: str, decision_dict: Dict[str, Any]) -> None:
+        await anyio.to_thread.run_sync(self.record_blocked_approval, session_id, decision_dict)
 
     async def open_async(self, session_id: str) -> SessionMetadata:
         return await anyio.to_thread.run_sync(self.open, session_id)

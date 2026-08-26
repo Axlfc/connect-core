@@ -431,6 +431,16 @@
     - `test_human_approval_flow_timeout_default_deny`: Comprueba la denegación por defecto tras timeout.
     - `test_agent_loop_human_in_the_loop_integration`: Verifica la emisión de `ApprovalRequiredEvent` y reanudación del bucle.
     - `test_rest_api_approvals_endpoints`: Prueba los endpoints HTTP de decisión y consulta.
+- **Nota de Seguimiento (2026-08-26):**
+  - **Investigación de Ejecuciones Sin Cliente en Vivo:** Se investigó la interacción entre `cognito-worker` y `cognito-backend`. Se confirmó que existen flujos no interactivos / sin cliente conectado en vivo (tareas en segundo plano `/api/agent/tasks`, ejecutores de tareas `escalation_service.execute_task_attempt`, o sesiones donde el cliente SSE/WebSocket se desconecta).
+  - **Visibilidad Mejorada de Denegaciones por Timeout:** Cuando una acción `REQUIERE_APROBACION` alcanza el timeout en una ejecución sin cliente en vivo, se mejoró la señalización para evitar que pase desapercibida:
+    - Se persistieron las decisiones de auditoría en disco (`approval_audit_logs.jsonl`) para garantizar que sobrevivan a reinicios del servidor.
+    - Se indexaron las denegaciones en `SessionMetadata` (`blocked_actions_count` y `approval_summary`), permitiendo a operadores identificar de inmediato sesiones bloqueadas mediante `GET /api/agent/sessions/{id}`.
+    - Se registró un mensaje de sistema prominente (`[ACCION_BLOQUEADA_POR_APROBACION_HUMANA]`) en el log de eventos/steering de la sesión.
+  - **Timeout Configurable Granular:** Se implementó una jerarquía de timeout a nivel de solicitud (`AgentLoopRequest.approval_timeout_seconds`) y de sesión (`SessionMetadata.approval_timeout_seconds` / `ApprovalManager.set_session_timeout`) manteniendo el fallback a la variable global `COGNITO_APPROVAL_TIMEOUT_SECONDS`.
+  - **Nuevos Tests de Regresión:**
+    - `test_configurable_approval_timeout_hierarchy`: Verifica la precedencia del timeout por solicitud y por sesión sobre la variable global.
+    - `test_non_live_session_approval_timeout_visibility`: Valida una ejecución sin cliente conectado que alcanza `REQUIERE_APROBACION`, confirmando la denegación explícita, actualización de metadatos, mensaje de steering persistente y registro en auditoría.
 
 ---
 

@@ -1,7 +1,9 @@
 import asyncio
 import os
+import json
 import uuid
 import logging
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
@@ -44,15 +46,68 @@ class ApprovalManager:
     Tracks structured audit log records designed for future SIEM integration (AUD-009).
     """
 
-    def __init__(self, default_timeout_seconds: Optional[int] = None):
+    def __init__(self, default_timeout_seconds: Optional[int] = None, audit_log_path: Optional[Path] = None):
         self._pending: Dict[str, PendingApprovalState] = {}
         self._audit_log: List[ApprovalDecisionAudit] = []
+        self._session_timeouts: Dict[str, int] = {}
         self._lock = asyncio.Lock()
         self.default_timeout_seconds = (
             default_timeout_seconds
             if default_timeout_seconds is not None
             else DEFAULT_APPROVAL_TIMEOUT_SECONDS
         )
+        self.audit_log_path = audit_log_path or (Path.home() / ".cognito" / "sessions" / "approval_audit_logs.jsonl")
+
+    def set_session_timeout(self, session_id: str, timeout_seconds: int) -> None:
+        """
+        Registers a session-specific approval timeout.
+        """
+        self._session_timeouts[session_id] = timeout_seconds
+
+    def get_effective_timeout(
+        self, session_id: Optional[str] = None, request_timeout: Optional[int] = None
+    ) -> int:
+        """
+        Resolves the timeout hierarchy:
+        1. Explicit request-level timeout
+        2. Session-level registered timeout
+        3. Global ApprovalManager default_timeout_seconds
+        """
+        if request_timeout is not None:
+            return request_timeout
+        if session_id and session_id in self._session_timeouts:
+            return self._session_timeouts[session_id]
+        return self.default_timeout_seconds
+
+    def _append_audit_log_to_disk(self, decision: ApprovalDecisionAudit) -> None:
+        """
+        Persists audit decisions to disk so they survive backend restarts.
+        """
+        try:
+            self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.audit_log_path, "a") as f:
+                f.write(decision.model_dump_json() + "\n")
+        except Exception as e:
+            logger.warning(f"Failed to persist approval audit log to disk: {e}")
+
+    def _read_audit_logs_from_disk(self, session_id: Optional[str] = None) -> List[ApprovalDecisionAudit]:
+        """
+        Loads persisted audit decisions from disk file.
+        """
+        if not self.audit_log_path.exists():
+            return []
+        disk_logs = []
+        try:
+            with open(self.audit_log_path, "r") as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line)
+                        audit = ApprovalDecisionAudit(**data)
+                        if not session_id or audit.session_id == session_id:
+                            disk_logs.append(audit)
+        except Exception as e:
+            logger.warning(f"Failed reading approval audit log from disk: {e}")
+        return disk_logs
 
     async def create_request(
         self,
@@ -68,7 +123,7 @@ class ApprovalManager:
         Registers a pending approval request in state without blocking execution.
         """
         appr_id = approval_id or f"appr-{uuid.uuid4().hex[:12]}"
-        effective_timeout = timeout_seconds if timeout_seconds is not None else self.default_timeout_seconds
+        effective_timeout = self.get_effective_timeout(session_id=session_id, request_timeout=timeout_seconds)
 
         request = PendingApprovalRequest(
             approval_id=appr_id,
@@ -130,6 +185,14 @@ class ApprovalManager:
 
         async with self._lock:
             self._audit_log.append(decision)
+
+        self._append_audit_log_to_disk(decision)
+
+        if decision.status in ("timed_out", "denied"):
+            logger.warning(
+                f"[APPROVAL_BLOCKED] Session {session_id} action '{decision.action}' "
+                f"blocked due to {decision.status}: {decision.reason}"
+            )
 
         return decision
 
@@ -202,13 +265,22 @@ class ApprovalManager:
 
     async def get_audit_logs(self, session_id: Optional[str] = None) -> List[ApprovalDecisionAudit]:
         """
-        Retrieves recorded structured audit decision logs.
+        Retrieves recorded structured audit decision logs from memory and disk.
         """
         async with self._lock:
-            logs = list(self._audit_log)
-        if session_id:
-            return [l for l in logs if l.session_id == session_id]
-        return logs
+            mem_logs = list(self._audit_log)
+
+        disk_logs = self._read_audit_logs_from_disk(session_id=session_id)
+
+        # Combine and deduplicate by approval_id
+        combined: Dict[str, ApprovalDecisionAudit] = {}
+        for l in disk_logs:
+            combined[l.approval_id] = l
+        for l in mem_logs:
+            if not session_id or l.session_id == session_id:
+                combined[l.approval_id] = l
+
+        return list(combined.values())
 
 
 # Default global instance
