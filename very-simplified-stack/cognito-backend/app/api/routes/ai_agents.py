@@ -141,6 +141,7 @@ async def run_agent_loop(request: AgentLoopRequest):
     total_tokens = estimate_messages_tokens(full_messages_for_loop, model=model_name)
     logger.info(f"Agent loop prompt token budget estimate: {total_tokens} tokens for model '{model_name or 'default'}'")
 
+    await steering_manager.sync_pending_steering_async(session_id, session_manager)
     steering_queue = steering_manager.get_queue(session_id)
     history_lock = steering_manager.get_lock(session_id)
 
@@ -169,6 +170,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                     history_lock=history_lock,
                     session_manager=session_manager,
                     session_id=session_id,
+                    steering_manager=steering_manager,
                 )
             except TypeError:
                 loop_iter = agent_loop(
@@ -281,7 +283,7 @@ async def steer_session(session_id: str, request: SteerRequest):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
-    await steering_manager.post_steering_message(session_id, request.message)
+    await steering_manager.post_steering_message(session_id, request.message, session_manager=session_manager)
     return {
         "status": "success",
         "session_id": session_id,

@@ -43,6 +43,7 @@ async def agent_loop(
     history_lock: Optional[Any] = None,
     session_manager: Optional[Any] = None,
     session_id: Optional[str] = None,
+    steering_manager: Optional[Any] = None,
 ) -> AsyncIterator[AgentEvent]:
     """
     Main Agent Loop:
@@ -58,22 +59,37 @@ async def agent_loop(
     async def process_steering():
         if steering_queue is None:
             return
+        sm_mgr = steering_manager
+        if sm_mgr is None:
+            from app.core.steering import steering_manager as default_sm
+            sm_mgr = default_sm
+        if session_manager and session_id:
+            await sm_mgr.sync_pending_steering_async(session_id, session_manager)
+
         while not steering_queue.empty():
             try:
                 steering_msg = steering_queue.get_nowait()
             except Exception:
                 break
-            steering_content = f"[STEERING INPUT] {steering_msg}"
+            steering_id = getattr(steering_msg, "id", None)
+            msg_content = str(steering_msg)
+            steering_content = f"[STEERING INPUT] {msg_content}"
             steering_user_msg = {"role": "user", "content": steering_content}
             if history_lock:
                 async with history_lock:
                     current_messages.append(steering_user_msg)
                     if session_manager and session_id:
                         session_manager.append_message(session_id, role="user", content=steering_content)
+                        session_manager.mark_steering_delivered(
+                            session_id, steering_id=steering_id, content=msg_content
+                        )
             else:
                 current_messages.append(steering_user_msg)
                 if session_manager and session_id:
                     session_manager.append_message(session_id, role="user", content=steering_content)
+                    session_manager.mark_steering_delivered(
+                        session_id, steering_id=steering_id, content=msg_content
+                    )
             logger.info(f"Injected steering message into session {session_id}: {steering_content}")
     # Convert AgentTool list to JSON Schema format for the backend
     tools_schema = [

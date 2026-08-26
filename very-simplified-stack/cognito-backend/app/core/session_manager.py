@@ -297,6 +297,119 @@ class SessionManager:
                 meta["updated_at"] = datetime.now(timezone.utc).isoformat()
                 self._write_session_meta(session_id, meta)
 
+    def append_steering_message(self, session_id: str, content: str, steering_id: Optional[str] = None) -> str:
+        sid = steering_id or f"steer-{uuid.uuid4().hex[:12]}"
+        record = {
+            "type": "steering",
+            "id": sid,
+            "content": content,
+            "delivered": False,
+            "ts": datetime.now(timezone.utc).isoformat()
+        }
+        with self._lock_session(session_id, shared=False):
+            session_file = self.sessions_dir / f"{session_id}.jsonl"
+            with open(session_file, "a") as f:
+                f.write(json.dumps(record) + "\n")
+
+            meta = self._read_session_meta(session_id)
+            if meta:
+                meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+                self._write_session_meta(session_id, meta)
+        return sid
+
+    async def append_steering_message_async(
+        self, session_id: str, content: str, steering_id: Optional[str] = None
+    ) -> str:
+        return await anyio.to_thread.run_sync(
+            self.append_steering_message, session_id, content, steering_id
+        )
+
+    def get_undelivered_steering_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        session_file = self.sessions_dir / f"{session_id}.jsonl"
+        if not session_file.exists():
+            return []
+
+        undelivered = []
+        with self._lock_session(session_id, shared=True):
+            with open(session_file, "r") as f:
+                for line in f:
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    try:
+                        data = json.loads(line_str)
+                        if (
+                            isinstance(data, dict)
+                            and data.get("type") == "steering"
+                            and not data.get("delivered", False)
+                        ):
+                            undelivered.append({
+                                "id": data.get("id"),
+                                "content": data.get("content"),
+                                "ts": data.get("ts")
+                            })
+                    except json.JSONDecodeError:
+                        pass
+        return undelivered
+
+    async def get_undelivered_steering_messages_async(self, session_id: str) -> List[Dict[str, Any]]:
+        return await anyio.to_thread.run_sync(self.get_undelivered_steering_messages, session_id)
+
+    def mark_steering_delivered(
+        self, session_id: str, steering_id: Optional[str] = None, content: Optional[str] = None
+    ) -> bool:
+        session_file = self.sessions_dir / f"{session_id}.jsonl"
+        if not session_file.exists():
+            return False
+
+        updated = False
+        lines = []
+
+        with self._lock_session(session_id, shared=False):
+            with open(session_file, "r") as f:
+                for line in f:
+                    line_str = line.strip()
+                    if not line_str:
+                        lines.append(line)
+                        continue
+                    try:
+                        data = json.loads(line_str)
+                        if (
+                            isinstance(data, dict)
+                            and data.get("type") == "steering"
+                            and not data.get("delivered", False)
+                        ):
+                            match_id = steering_id and data.get("id") == steering_id
+                            match_content = not steering_id and content and data.get("content") == content
+                            if match_id or match_content:
+                                data["delivered"] = True
+                                updated = True
+                                lines.append(json.dumps(data) + "\n")
+                                continue
+                    except json.JSONDecodeError:
+                        pass
+                    lines.append(line)
+
+            if updated:
+                temp_file = self.sessions_dir / f".{session_id}_{uuid.uuid4().hex}.tmp"
+                try:
+                    with open(temp_file, "w") as f:
+                        f.writelines(lines)
+                    temp_file.replace(session_file)
+                except Exception:
+                    if temp_file.exists():
+                        temp_file.unlink()
+                    raise
+
+        return updated
+
+    async def mark_steering_delivered_async(
+        self, session_id: str, steering_id: Optional[str] = None, content: Optional[str] = None
+    ) -> bool:
+        return await anyio.to_thread.run_sync(
+            self.mark_steering_delivered, session_id, steering_id, content
+        )
+
     def get_effective_messages(self, session_id: str, cwd: Optional[str] = None, include_system_prompt: bool = False) -> List[Dict[str, Any]]:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
         if not session_file.exists():

@@ -10,6 +10,7 @@ from app.core.session_manager import SessionManager
 from app.core.agent_loop import agent_loop
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.events import TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent
+from app.core.session.message_deriver import derive_messages_for_llm, DerivationConfig
 
 
 class DummyTool(AgentTool):
@@ -186,3 +187,95 @@ async def test_agent_loop_steering_injection_before_tool_exec(tmp_path):
     # Verify session persisted steering message
     persisted_messages = sm.get_effective_messages(session_id)
     assert any("[STEERING INPUT] Wait, do not call dummy_tool with bad args" in m.get("content", "") for m in persisted_messages)
+
+
+@pytest.mark.asyncio
+async def test_steering_persistence_and_resumption_after_process_restart(tmp_path):
+    # 1. Initialize session manager and create session
+    sm = SessionManager(sessions_dir=tmp_path)
+    session_id = sm.create(cwd=str(tmp_path))
+
+    sm_steering = SteeringManager()
+
+    # 2. Post steering message before agent loop consumes it
+    steering_id = await sm_steering.post_steering_message(
+        session_id, "Use strict typing and pytest", session_manager=sm
+    )
+
+    # Verify steering message was persisted to .jsonl with delivered: False
+    undelivered = sm.get_undelivered_steering_messages(session_id)
+    assert len(undelivered) == 1
+    assert undelivered[0]["id"] == steering_id
+    assert undelivered[0]["content"] == "Use strict typing and pytest"
+
+    # 3. Simulate backend process restart / worker crash (new SteeringManager instance, memory cleared)
+    sm_restarted = SteeringManager()
+    sm_session_restarted = SessionManager(sessions_dir=tmp_path)
+
+    backend_router = MagicMock()
+    received_messages = []
+
+    async def mock_generate(messages, tools_schema, model_params=None):
+        received_messages.append(list(messages))
+        yield {"token": "Refactored with pytest"}
+
+    backend_router.generate_with_tools = mock_generate
+
+    initial_messages = [{"role": "user", "content": "Refactor code"}]
+    tool_context = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=[])
+    history_lock = sm_restarted.get_lock(session_id)
+    steering_queue = sm_restarted.get_queue(session_id)
+
+    # 4. Resume session in restarted backend process
+    events = []
+    async for event in agent_loop(
+        messages=initial_messages,
+        tools=[],
+        context=tool_context,
+        backend_router=backend_router,
+        steering_queue=steering_queue,
+        history_lock=history_lock,
+        session_manager=sm_session_restarted,
+        session_id=session_id,
+        steering_manager=sm_restarted
+    ):
+        events.append(event)
+
+    # 5. Assertions for first turn after resumption
+    assert len(received_messages) == 1
+    messages_in_turn = received_messages[0]
+    assert any(
+        m.get("role") == "user" and "[STEERING INPUT] Use strict typing and pytest" in m.get("content", "")
+        for m in messages_in_turn
+    )
+
+    # Verify persistent state: undelivered is now empty, and delivered is True in .jsonl
+    undelivered_after = sm_session_restarted.get_undelivered_steering_messages(session_id)
+    assert len(undelivered_after) == 0
+
+    # 6. Run a second turn deriving messages from session history to ensure no duplicate steering injection occurs
+    received_messages.clear()
+    turn2_messages = await derive_messages_for_llm(
+        session_id, DerivationConfig(cwd=str(tmp_path), sessions_dir=tmp_path)
+    )
+
+    async for event in agent_loop(
+        messages=turn2_messages,
+        tools=[],
+        context=tool_context,
+        backend_router=backend_router,
+        steering_queue=steering_queue,
+        history_lock=history_lock,
+        session_manager=sm_session_restarted,
+        session_id=session_id,
+        steering_manager=sm_restarted
+    ):
+        pass
+
+    assert len(received_messages) == 1
+    messages_in_second_turn = received_messages[0]
+    steering_occurrences = sum(
+        1 for m in messages_in_second_turn
+        if m.get("role") == "user" and "[STEERING INPUT] Use strict typing and pytest" in m.get("content", "")
+    )
+    assert steering_occurrences == 1

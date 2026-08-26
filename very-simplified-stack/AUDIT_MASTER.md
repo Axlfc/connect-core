@@ -21,7 +21,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-009** | Crítico | Seguridad | `cognito-backend` | Bypass de `ExecPolicy` en `shell_run` | **Corregido** (Validación previa en `ShellTools`) |
 | **AUD-010** | Alto | Seguridad | `cognito-backend` | `shell_policy.py` desconectado en tiempo de ejecución | **Corregido** (Conectado a `exec_policy.py`) |
 | **AUD-011** | Alto | Seguridad | `cognito-worker` / `cognito-backend` | Ejecución de `BashTool` sin sandbox de contenedor ni lista blanca | **Corregido** (ExecPolicy + SandboxedExecutor bwrap / RLIMITs de OS) |
-| **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Pendiente (Documentado)** |
+| **AUD-012** | Medio | Resiliencia | `cognito-backend` | Pérdida de mensajes de steering por almacenarse únicamente en cola en memoria | **Corregido** (Persistencia durable en JSONL + Marcado `delivered` + Sincronización al reanudar) |
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Pendiente (Documentado)** |
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Pendiente (Documentado)** |
 | **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Pendiente (Documentado)** |
@@ -215,9 +215,19 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 ### AUD-012: Pérdida de mensajes de steering ante fallos de proceso
 - **Severidad**: Medio
 - **Categoría**: Resiliencia
-- **Componente**: `cognito-backend` (`app/api/routes/ai_agents.py`, `app/core/steering.py`)
-- **Descripción**: Los mensajes de direccionamiento e interacción en tiempo real enviados vía `/api/agent/sessions/{session_id}/steer` se almacenan en colas en memoria (`asyncio.Queue`). Si el proceso del backend se reinicia o sufre un fallo repentino antes del siguiente turno del bucle, dichos mensajes se pierden de forma irrecuperable sin haber sido persistidos en el log de la sesión.
-- **Estado**: Pendiente (Documentado sin fix todavía).
+- **Componente**: `cognito-backend` (`app/api/routes/ai_agents.py`, `app/core/steering.py`, `app/core/session_manager.py`, `app/core/agent_loop.py`)
+- **Descripción**: Los mensajes de steering enviados vía `POST /api/agent/sessions/{session_id}/steer` se guardaban únicamente en una cola en memoria (`asyncio.Queue`). Si el proceso del backend se reiniciaba o fallaba antes de que el agent loop consumiera el siguiente turno, dichos mensajes se perdían sin haber quedado registrados en el log de la sesión.
+- **Evidencia de Ubicación en Código**:
+  - `very-simplified-stack/cognito-backend/app/core/session_manager.py` (Líneas 300-412: `append_steering_message`, `get_undelivered_steering_messages`, `mark_steering_delivered`).
+  - `very-simplified-stack/cognito-backend/app/core/steering.py` (Líneas 32-72: `post_steering_message`, `sync_pending_steering`, `SteeringString`).
+  - `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py` (Línea 144 en `run_agent_loop`, Línea 285 en `steer_session`).
+  - `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (Líneas 61-90 en `process_steering`).
+- **Resolución y Evidencia Técnica**:
+  - Al recibir un mensaje de steering en `post_steering_message`, se registra de forma durable en el almacenamiento JSONL de la sesión (`<session_id>.jsonl`) con `type: "steering"`, `id`, `content`, y `delivered: false`.
+  - Al iniciar o reanudar una sesión (`run_agent_loop` o cada turno de `agent_loop`), `steering_manager.sync_pending_steering` consulta los mensajes de steering no entregados (`delivered: false`) y los re-encola en memoria.
+  - Al consumirse cada mensaje de steering durante la ejecución del agent loop (`process_steering`), se inyecta en la conversación como mensaje de rol `user` (`[STEERING INPUT] ...`) y se marca como `delivered: true` en el log de la sesión, garantizando entrega duradera y evitando duplicaciones al reanudar.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_steering.py` (`test_steering_persistence_and_resumption_after_process_restart`).
+- **Resultado del Test**: **PASA** (208/208 tests pasados).
 
 ### AUD-013: Pérdida de detalle semántico durante la compactación de contexto
 - **Severidad**: Medio
