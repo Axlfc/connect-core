@@ -2,6 +2,7 @@ import pytest
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 from app.core.project_trust import ProjectTrustStore
 from app.core.tools.base import ToolContext, ToolResult
 from app.core.tools.read_tool import ReadTool
@@ -58,6 +59,38 @@ async def test_write_tool(temp_workspace, tool_context):
     result = await tool.execute({"path": "untrusted.txt", "content": "data"}, tool_context)
     assert result.is_error
     assert "no confiado" in result.output
+
+@pytest.mark.asyncio
+async def test_write_tool_creates_backup_on_overwrite(temp_workspace, tool_context):
+    test_file = Path(temp_workspace) / "existing.txt"
+    test_file.write_text("version 1")
+
+    tool = WriteTool()
+    result = await tool.execute({"path": "existing.txt", "content": "version 2"}, tool_context)
+    assert not result.is_error
+    assert test_file.read_text() == "version 2"
+
+    backup_file = Path(temp_workspace) / "existing.txt.bak"
+    assert backup_file.exists()
+    assert backup_file.read_text() == "version 1"
+
+@pytest.mark.asyncio
+async def test_write_tool_atomic_failure_leaves_original_intact(temp_workspace, tool_context):
+    test_file = Path(temp_workspace) / "important.txt"
+    test_file.write_text("original content")
+
+    tool = WriteTool()
+
+    with patch("os.fsync", side_effect=OSError("Disk full or I/O error")):
+        result = await tool.execute({"path": "important.txt", "content": "corrupt partial data"}, tool_context)
+
+    assert result.is_error
+    assert "Disk full or I/O error" in result.output
+    # Original file remains completely intact
+    assert test_file.read_text() == "original content"
+    # Ensure no temporary file left behind
+    files_in_dir = list(Path(temp_workspace).iterdir())
+    assert files_in_dir == [test_file]
 
 def test_edit_tool_deprecated_description():
     tool = EditTool()
