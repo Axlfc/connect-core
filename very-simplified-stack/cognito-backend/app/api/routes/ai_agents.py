@@ -1,8 +1,10 @@
 import json
+import time
 import anyio
+from collections import deque
 from typing import List, Optional, Any, Dict
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from app.models.ai import AIRequest, AIResponse
@@ -57,11 +59,86 @@ class HumanApprovalDecisionRequest(BaseModel):
 
 class SecretReloadRequest(BaseModel):
     name: Optional[str] = None
+    auth_token: Optional[str] = None
+    token: Optional[str] = None
 
 class SecretReloadResponse(BaseModel):
     status: str
     message: str
     invalidated_secret: Optional[str] = None
+
+
+class SlidingWindowRateLimiter:
+    """
+    Sliding window rate limiter protecting sensitive administrative endpoints against DoS.
+    """
+    def __init__(self, max_requests: int = 5, window_seconds: float = 60.0):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._timestamps: deque = deque()
+
+    def check(self) -> bool:
+        now = time.time()
+        while self._timestamps and (now - self._timestamps[0]) > self.window_seconds:
+            self._timestamps.popleft()
+
+        if len(self._timestamps) >= self.max_requests:
+            return False
+
+        self._timestamps.append(now)
+        return True
+
+    def reset(self) -> None:
+        self._timestamps.clear()
+
+
+secrets_reload_rate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0)
+
+
+def _extract_and_verify_admin_auth(
+    request: Request,
+    req: Optional[SecretReloadRequest] = None,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+) -> None:
+    """
+    Extracts administrative authentication token from HTTP headers or request body,
+    and verifies it against SecretsProvider via verify_mcp_auth.
+    Raises 401 Unauthorized if verification fails.
+    """
+    token: Optional[str] = None
+
+    if authorization:
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:].strip()
+        else:
+            token = authorization.strip()
+
+    if not token and x_api_key:
+        token = x_api_key.strip()
+
+    if not token:
+        auth_hdr = request.headers.get("Authorization") or request.headers.get("authorization")
+        if auth_hdr:
+            if auth_hdr.lower().startswith("bearer "):
+                token = auth_hdr[7:].strip()
+            else:
+                token = auth_hdr.strip()
+        if not token:
+            api_key_hdr = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+            if api_key_hdr:
+                token = api_key_hdr.strip()
+
+    if not token and req:
+        token = req.auth_token or req.token
+
+    from app.services.mcp_server import verify_mcp_auth
+    if not token or not verify_mcp_auth(token):
+        logger.warning("Unauthenticated or invalid token access attempt to administrative endpoint.")
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication failed. Invalid or missing authorization token."
+        )
 
 @router.post("/agent", response_model=AIResponse)
 async def run_ai_agent(request: AIRequest):
@@ -335,11 +412,30 @@ async def submit_approval_decision(approval_id: str, req: HumanApprovalDecisionR
     return audit_record
 
 @router.post("/secrets/reload", response_model=SecretReloadResponse)
-async def reload_secrets(req: Optional[SecretReloadRequest] = None):
+async def reload_secrets(
+    request: Request,
+    req: Optional[SecretReloadRequest] = None,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+):
     """
     Triggers dynamic invalidation and reloading of secrets (e.g. AuthToken, APIKey)
     without restarting the backend process.
+    Requires administrative authentication (Bearer token / X-API-Key / body auth_token)
+    and enforces rate limiting (max 5 calls per minute).
     """
+    # 1. Rate Limiting Check
+    if not secrets_reload_rate_limiter.check():
+        logger.warning("Rate limit exceeded for /api/secrets/reload endpoint.")
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for secrets reload. Maximum 5 requests per minute allowed."
+        )
+
+    # 2. Authentication Check
+    _extract_and_verify_admin_auth(request=request, req=req, authorization=authorization, x_api_key=x_api_key)
+
+    # 3. Dynamic secret invalidation
     from app.core.secrets import get_secrets_provider
     provider = get_secrets_provider()
     secret_name = req.name if req else None
