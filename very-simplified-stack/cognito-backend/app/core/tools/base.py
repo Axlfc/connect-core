@@ -105,10 +105,21 @@ def format_validation_error(
     )
 
 
+STANDARD_TOOL_RETURN_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "output": {"type": "string"},
+        "is_error": {"type": "boolean"},
+    },
+    "required": ["output"],
+}
+
+
 class AgentTool(ABC):
     name: str
     description: str
     parameters_schema: dict[str, Any]  # Standard JSON Schema
+    return_schema: Optional[dict[str, Any]] = STANDARD_TOOL_RETURN_SCHEMA  # Standard JSON Schema for ToolResult
 
     @abstractmethod
     async def execute(self, arguments: dict[str, Any], context: ToolContext) -> ToolResult:
@@ -116,7 +127,7 @@ class AgentTool(ABC):
 
     async def validate_and_execute(self, arguments: dict[str, Any], context: ToolContext) -> ToolResult:
         """
-        Validates arguments against parameters_schema and catches validation errors,
+        Validates arguments against parameters_schema (fail-fast) and return value against return_schema,
         returning a friendly ToolResult for LLMs.
         """
         if not isinstance(arguments, dict):
@@ -136,7 +147,7 @@ class AgentTool(ABC):
                 return ToolResult(is_error=True, output=msg)
 
         try:
-            return await self.execute(arguments, context)
+            res = await self.execute(arguments, context)
         except (jsonschema.exceptions.ValidationError, ValidationError) as ve:
             msg = format_validation_error(
                 tool_name=getattr(self, "name", self.__class__.__name__),
@@ -145,3 +156,18 @@ class AgentTool(ABC):
                 error=ve
             )
             return ToolResult(is_error=True, output=msg)
+
+        # Validate return value structure if return_schema is defined and execution did not produce a system error
+        ret_schema = getattr(self, "return_schema", None)
+        if ret_schema and isinstance(res, ToolResult) and not res.is_error:
+            try:
+                res_dict = res.model_dump() if hasattr(res, "model_dump") else res.dict()
+                jsonschema.validate(instance=res_dict, schema=ret_schema)
+            except (jsonschema.exceptions.ValidationError, ValidationError) as ve:
+                msg = (
+                    f"Error de validación en el tipo de retorno de '{getattr(self, 'name', self.__class__.__name__)}': "
+                    f"{ve.message if hasattr(ve, 'message') else str(ve)}"
+                )
+                return ToolResult(is_error=True, output=msg)
+
+        return res

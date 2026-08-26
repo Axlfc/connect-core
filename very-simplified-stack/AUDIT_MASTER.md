@@ -26,7 +26,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Corregido** (Inyección con rol `system` y metadato `type: TokenBudgetReminder`) |
 | **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Corregido** (Escritura atómica en temp + fsync + os.replace + backup `.bak`) |
 | **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Corregido** (Cliente CLI sobre agent_loop + ExecPolicy + SessionManager) |
-| **AUD-017** | Medio | Arquitectura | `cognito-backend` | Falta de contratos de validación estrictos en herramientas MCP/locales | **Pendiente (Documentado)** |
+| **AUD-017** | Medio | Arquitectura | `cognito-backend` | Falta de contratos de validación estrictos en herramientas MCP/locales | **Corregido** (Validación fail-fast Pydantic/JSON Schema en entrada y salida) |
 
 ---
 
@@ -294,6 +294,13 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 ### AUD-017: Falta de contratos de validación estrictos en herramientas MCP y locales
 - **Severidad**: Medio
 - **Categoría**: Arquitectura
-- **Componente**: `cognito-backend` (`app/core/tools/`), `app/services/mcp_server.py`
-- **Descripción**: Las herramientas locales y del protocolo MCP carecen de esquemas de validación estrictos para sus parámetros de entrada y tipos de retorno, permitiendo que argumentos mal formados o tipos incompatibles pasen a la fase de ejecución sin un rechazo temprano estructurado.
-- **Estado**: Pendiente (Solo documentar).
+- **Componente**: `cognito-backend` (`app/core/tools/base.py`, `app/services/mcp_server.py`)
+- **Descripción**: Las herramientas locales y del protocolo MCP carecían de esquemas de validación estrictos para sus parámetros de entrada y tipos de retorno, permitiendo que argumentos mal formados o tipos incompatibles pasasen a la fase de ejecución sin un rechazo temprano estructurado.
+- **Evidencia de Ubicación en Código**: `very-simplified-stack/cognito-backend/app/core/tools/base.py` (Líneas 100-165), `very-simplified-stack/cognito-backend/app/services/mcp_server.py` (Líneas 15-275, 645-690).
+- **Resolución y Evidencia Técnica**:
+  - Ampliado `AgentTool` en `app/core/tools/base.py` incorporando `STANDARD_TOOL_RETURN_SCHEMA` y validación estructurada del tipo de retorno en `validate_and_execute(...)`.
+  - Definidos esquemas explícitos JSON Schema (`MCP_TOOL_SCHEMAS`) para los parámetros de entrada y estructuras de retorno de todas las herramientas MCP expuestas en `app/services/mcp_server.py`.
+  - Implementadas las funciones reutilizables `validate_mcp_input` y `validate_mcp_output` en `mcp_server.py` (compartiendo `format_validation_error` con las herramientas locales) aplicando validación fail-fast antes de la ejecución de cualquier lógica de la herramienta.
+  - Generación de respuestas de error legibles y estructuradas cuando los argumentos de entrada faltan o son de tipo incorrecto, garantizando un comportamiento idéntico tanto si la herramienta se invoca localmente como si se invoca vía MCP.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_tool_validation_errors.py` (`test_local_tools_reject_invalid_arguments_fail_fast`, `test_mcp_tools_reject_invalid_arguments_fail_fast`, `test_valid_arguments_pass_local_and_mcp_tools`).
+- **Resultado del Test**: **PASA** (228/228 tests pasados).
