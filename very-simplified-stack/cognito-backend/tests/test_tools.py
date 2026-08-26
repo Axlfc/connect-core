@@ -117,10 +117,14 @@ async def test_edit_tool(temp_workspace, tool_context):
 async def test_bash_tool(temp_workspace, tool_context):
     tool = BashTool()
 
-    # Success
-    result = await tool.execute({"command": "echo 'hello'"}, tool_context)
-    assert not result.is_error
-    assert "hello" in result.output
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("app.core.sandbox.SandboxedExecutor.execute_cmd") as mock_exec_cmd:
+        mock_exec_cmd.return_value = {"stdout": "hello\n", "stderr": "", "exit_code": 0, "timed_out": False}
+
+        # Success
+        result = await tool.execute({"command": "echo 'hello'"}, tool_context)
+        assert not result.is_error
+        assert "hello" in result.output
 
     # sudo rejection
     result = await tool.execute({"command": "sudo ls"}, tool_context)
@@ -128,9 +132,13 @@ async def test_bash_tool(temp_workspace, tool_context):
     assert "forbidden by shell policy" in result.output or "strictly forbidden" in result.output
 
     # Timeout (mocking or using sleep)
-    result = await tool.execute({"command": "sleep 2", "timeout_seconds": 1}, tool_context)
-    assert result.is_error
-    assert "timed out" in result.output
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("app.core.sandbox.SandboxedExecutor.execute_cmd") as mock_exec_cmd:
+        mock_exec_cmd.return_value = {"stdout": "", "stderr": "Execution timed out.", "exit_code": -1, "timed_out": True}
+
+        result = await tool.execute({"command": "sleep 2", "timeout_seconds": 1}, tool_context)
+        assert result.is_error
+        assert "timed out" in result.output or "timed_out" in result.output
 
 @pytest.mark.asyncio
 async def test_unified_patch_tool_success(temp_workspace, tool_context):

@@ -30,7 +30,7 @@
 | ID | Severidad | Tipo | Categoría | Prioridad MVP Enterprise | Componente | Descripción Resumida | Estado |
 |---|---|---|---|---|---|---|---|
 | AUD-001 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | BashTool ejecuta comandos directamente en la shell del host sin aislamiento microVM ni bwrap obligatorio | Corregido |
-| AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Pendiente |
+| AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Corregido |
 | AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Pendiente |
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Pendiente |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Pendiente |
@@ -101,7 +101,18 @@
 - **Descripción del problema:** No existe un control de red de salida saliente (egress network policy) tipo deny-all por defecto para los subprocesos o herramientas ejecutadas por el agente. El módulo `build_bwrap_args` en `sandbox.py` incluye la opción `--share-net` o deja activa la pila de red sin filtrar IP salientes ni requerir lista blanca explícita de endpoints.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/sandbox.py` (líneas 34-45) y `cognito_agent.py` (líneas 1-200).
 - **Comparación con el estado del arte:** Los arneses enterprise de 2026 bloquean por defecto cualquier tráfico de red saliente de las herramientas ejecutadas por el agente, permitiendo únicamente dominios o IPs autorizadas explícitamente en una lista blanca.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se modificó `build_bwrap_args` en `very-simplified-stack/cognito-backend/app/core/sandbox.py` para aplicar una política de red deny-all por defecto (espacio de nombres de red aislado con `--unshare-all`, eliminando `--share-net` por defecto).
+  - Se implementaron las funciones `get_sandbox_allowed_hosts()` e `is_host_allowed()` para definir y validar dinámicamente la lista blanca de hosts autorizados. La lista blanca por defecto incluye los endpoints de los proveedores LLM activos en `BackendRouter` (`BACKENDS_BY_PRIORITY`), así como `localhost`, `127.0.0.1`, `::1` y `host.docker.internal`.
+  - Se añadió soporte para que un operador configure hosts/IPs salientes adicionales sin modificar código fuente mediante la variable de entorno `COGNITO_SANDBOX_ALLOWED_HOSTS` (lista separada por comas).
+  - Se actualizó `SandboxedExecutor` para validar los hosts de destino antes y durante la ejecución, lanzando `SandboxNetworkError` si se intenta conectar a un host no listado.
+  - Se documentó la variable `COGNITO_SANDBOX_ALLOWED_HOSTS` en `very-simplified-stack/cognito-backend/README.md` y `ENV_MANAGEMENT.md`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_sandbox.py`:
+    - `test_build_bwrap_args_deny_all_by_default`: Demuestra que `build_bwrap_args` no incluye `--share-net` por defecto, manteniendo el espacio de nombres de red aislado.
+    - `test_get_sandbox_allowed_hosts_and_is_host_allowed`: Valida que los endpoints LLM por defecto y los hosts configurados vía `COGNITO_SANDBOX_ALLOWED_HOSTS` están permitidos, mientras que destinos no autorizados son rechazados.
+    - `test_sandboxed_executor_unwhitelisted_host_fails`: Confirma que `SandboxedExecutor` cancela la ejecución lanzando `SandboxNetworkError` al intentar conectar a un host no listado.
 
 #### AUD-003
 - **ID:** AUD-003
