@@ -1,11 +1,18 @@
 import hashlib
 import re
 import sqlite3
-from typing import List, Optional, Set
+from enum import Enum
+from typing import List, Optional, Set, Tuple
+
+class ExecVerdict(str, Enum):
+    PERMITIR = "permitir"
+    DENEGAR = "denegar"
+    REQUIERE_APROBACION = "requiere_aprobacion"
+
 
 DANGEROUS_PREFIXES_AND_PATTERNS = [
-    r"rm\s+-rf",
-    r"rm\s+-[^ ]*r[^ ]*f",
+    r"rm\s+-rf\s+/",
+    r"rm\s+-[^ ]*r[^ ]*f\s+/",
     r"curl\s+.*\|\s*(bash|sh)",
     r"wget\s+.*\|\s*(bash|sh)",
     r"\bsudo\b",
@@ -14,22 +21,45 @@ DANGEROUS_PREFIXES_AND_PATTERNS = [
     r"mkfs",
     r"dd\s+if=",
     r":\(\)\{\s*:\|\:&\s*\};:",  # fork bomb
-    r"chmod\s+-R\s+777",
+]
+
+SENSITIVE_PREFIXES_AND_PATTERNS = [
+    r"rm\s+-rf",
+    r"rm\s+-[^ ]*r[^ ]*f",
+    r"git\s+reset\s+--hard",
+    r"git\s+clean",
+    r"chmod\s+-R",
     r"chown\s+-R",
+    r"\bkill\b",
+    r"\bpkill\b",
+    r"systemctl",
+    r"service\s+",
+    r"pip\s+install",
+    r"npm\s+install",
+    r"apt-get",
+    r"yum\s+",
 ]
 
 class ExecPolicy:
     """
     Engine for checking shell command risk policies.
-    Identifies dangerous command patterns that force explicit human approval
-    regardless of project trust settings.
+    Classifies command execution into three verdicts:
+    - ExecVerdict.DENEGAR ("denegar"): Hard forbidden/unconditional dangerous command patterns.
+    - ExecVerdict.REQUIERE_APROBACION ("requiere_aprobacion"): Sensitive actions (destructive commands,
+      system package operations, hard git resets) or execution in untrusted project context.
+    - ExecVerdict.PERMITIR ("permitir"): Safe commands in a trusted environment.
     """
-    def __init__(self, dangerous_patterns: Optional[List[str]] = None):
+    def __init__(
+        self,
+        dangerous_patterns: Optional[List[str]] = None,
+        sensitive_patterns: Optional[List[str]] = None,
+    ):
         self.dangerous_patterns = dangerous_patterns or DANGEROUS_PREFIXES_AND_PATTERNS
+        self.sensitive_patterns = sensitive_patterns or SENSITIVE_PREFIXES_AND_PATTERNS
 
     def is_dangerous(self, command: str) -> bool:
         """
-        Returns True if command contains any forbidden/dangerous prefix or pattern.
+        Returns True if command contains any forbidden/dangerous pattern (DENEGAR).
         """
         cmd_strip = command.strip()
         for pattern in self.dangerous_patterns:
@@ -37,14 +67,31 @@ class ExecPolicy:
                 return True
         return False
 
-    def requires_explicit_approval(self, command: str, project_trusted: bool = False) -> bool:
+    def is_sensitive(self, command: str) -> bool:
         """
-        Determines whether execution of a command requires approval.
-        Dangerous commands ALWAYS require explicit approval regardless of trust level.
+        Returns True if command contains sensitive patterns requiring approval (REQUIERE_APROBACION).
+        """
+        cmd_strip = command.strip()
+        for pattern in self.sensitive_patterns:
+            if re.search(pattern, cmd_strip, re.IGNORECASE):
+                return True
+        return False
+
+    def evaluate(self, command: str, project_trusted: bool = False) -> ExecVerdict:
+        """
+        Evaluates command against policy criteria and returns ExecVerdict.
         """
         if self.is_dangerous(command):
-            return True
-        return not project_trusted
+            return ExecVerdict.DENEGAR
+        if self.is_sensitive(command) or not project_trusted:
+            return ExecVerdict.REQUIERE_APROBACION
+        return ExecVerdict.PERMITIR
+
+    def requires_explicit_approval(self, command: str, project_trusted: bool = False) -> bool:
+        """
+        Helper method returning True if evaluation requires explicit user approval.
+        """
+        return self.evaluate(command, project_trusted=project_trusted) == ExecVerdict.REQUIERE_APROBACION
 
 
 class SessionApprovalCache:
@@ -132,16 +179,17 @@ def evaluate_command_execution(
     user_approved: bool = False,
     exec_policy: Optional[ExecPolicy] = None,
     approval_cache: Optional[SessionApprovalCache] = None,
-) -> tuple[bool, str]:
+) -> Tuple[ExecVerdict, str]:
     """
     Unified evaluator for shell command execution.
     Combines evaluate_shell_command_policy, ExecPolicy, ProjectTrustStore permissions,
     and SessionApprovalCache.
 
     Returns:
-        (allowed, reason)
-        If allowed is True, execution proceeds.
-        If allowed is False, reason explains why (denied unconditionally or requires explicit approval).
+        (verdict, reason)
+        - ExecVerdict.PERMITIR: Execution proceeds.
+        - ExecVerdict.REQUIERE_APROBACION: Execution requires human approval before running.
+        - ExecVerdict.DENEGAR: Hard denied execution.
     """
     from app.core.shell_policy import evaluate_shell_command_policy
     from app.core.project_trust import ProjectTrustStore
@@ -161,8 +209,8 @@ def evaluate_command_execution(
     classification = evaluate_shell_command_policy(command, permissions)
 
     # Hard rejection for unconditional deny patterns (e.g. sudo, rm -rf /, etc.)
-    if classification.is_denied:
-        return False, f"Command forbidden by shell policy: {classification.reason}"
+    if classification.is_denied or policy.is_dangerous(command):
+        return ExecVerdict.DENEGAR, f"Command forbidden by shell policy: {classification.reason or 'dangerous command pattern'}"
 
     # 3. Check session cache or explicit user approval
     is_cache_approved = cache.is_approved(session_id, command)
@@ -171,18 +219,18 @@ def evaluate_command_execution(
 
     auto_approved = is_cache_approved or user_approved
     if auto_approved:
-        return True, "Approved by session cache or user approval"
+        return ExecVerdict.PERMITIR, "Approved by session cache or user approval"
 
     # 4. Check whether ExecPolicy or shell policy requires explicit approval
-    exec_policy_requires = policy.requires_explicit_approval(command, project_trusted=trusted)
-    if classification.requires_approval or exec_policy_requires:
+    verdict = policy.evaluate(command, project_trusted=trusted)
+    if classification.requires_approval or verdict == ExecVerdict.REQUIERE_APROBACION:
         reason_msg = (
-            f"Command requires explicit user approval ({classification.reason}). "
-            f"Command: '{command}'. Pass user_approved=True or approve in current session."
+            f"Command requires explicit user approval ({classification.reason or 'sensitive command or untrusted project'}). "
+            f"Command: '{command}'."
         )
-        return False, reason_msg
+        return ExecVerdict.REQUIERE_APROBACION, reason_msg
 
-    return True, "Auto-approved by policy"
+    return ExecVerdict.PERMITIR, "Auto-approved by policy"
 
 
 # Default global instances

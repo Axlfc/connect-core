@@ -33,4 +33,13 @@ class SessionInfoEvent(BaseModel):
     session_id: str
     is_new: bool
 
-AgentEvent = Union[TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent, SessionInfoEvent]
+class ApprovalRequiredEvent(BaseModel):
+    type: Literal["approval_required"] = "approval_required"
+    approval_id: str
+    session_id: str
+    tool_name: str
+    arguments: dict[str, Any]
+    reason: str
+    timeout_seconds: int
+
+AgentEvent = Union[TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent, SessionInfoEvent, ApprovalRequiredEvent]

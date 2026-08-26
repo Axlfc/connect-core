@@ -265,8 +265,8 @@ class SandboxedExecutor:
             logger.error(msg)
             raise SandboxNetworkError(msg)
 
-        from app.core.exec_policy import evaluate_command_execution
-        allowed, reason = evaluate_command_execution(
+        from app.core.exec_policy import evaluate_command_execution, ExecVerdict
+        verdict, reason = evaluate_command_execution(
             command=command,
             cwd=self.working_dir,
             trusted=project_trusted,
@@ -276,7 +276,7 @@ class SandboxedExecutor:
             approval_cache=self.approval_cache,
         )
 
-        if not allowed:
+        if verdict != ExecVerdict.PERMITIR:
             return {
                 "stdout": "",
                 "stderr": reason,
