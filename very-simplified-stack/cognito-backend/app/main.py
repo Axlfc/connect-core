@@ -1,6 +1,41 @@
-from fastapi import FastAPI
+import os
+import logging
+from typing import List
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents
 from app.api.routes.openai_compat import router as openai_router
+
+logger = logging.getLogger("cognito.backend.main")
+
+# CSRF PROTECTION NOTE (AUD-004):
+# Cognito uses stateless Bearer authentication (Authorization headers) or token-based MCP authentication.
+# Since Cognito does NOT rely on browser session cookies or cookie-based ambient credentials for endpoint
+# authentication, CSRF (Cross-Site Request Forgery) attacks do not apply to these APIs.
+# If cookie-based authentication is added in the future, anti-CSRF tokens (or SameSite cookie controls) must be implemented.
+
+def get_allowed_origins() -> List[str]:
+    """
+    Retrieves the allowed origins whitelist for CORS and WebSocket validation.
+    Layered resolution: Environment Variable COGNITO_ALLOWED_ORIGINS -> standard defaults.
+    Never defaults to wildcard '*' combined with credentials.
+    """
+    raw_origins = os.getenv("COGNITO_ALLOWED_ORIGINS", "")
+    if raw_origins.strip():
+        origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    else:
+        # Default whitelist for safe development and standard clients
+        origins = [
+            "http://localhost",
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "http://localhost:5173",
+            "http://127.0.0.1",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8000",
+            "http://127.0.0.1:5173",
+        ]
+    return origins
 
 # Create the FastAPI app instance
 app = FastAPI(
@@ -8,6 +43,51 @@ app = FastAPI(
     description="An API for interacting with an AI-powered reasoning engine.",
     version="1.0.0"
 )
+
+allowed_origins = get_allowed_origins()
+
+# CORS Middleware with explicit whitelist (never wildcard '*' with credentials)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"],
+)
+
+def is_origin_allowed(origin: str, allowed_list: List[str]) -> bool:
+    """
+    Validates if an Origin header value is present in the allowed origins list.
+    """
+    if not origin:
+        return False
+    normalized_origin = origin.rstrip("/")
+    for allowed in allowed_list:
+        if allowed == "*" or normalized_origin == allowed.rstrip("/"):
+            return True
+    return False
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint with strict Origin header validation.
+    Rejects connections from unauthorized origins.
+    """
+    origin = websocket.headers.get("origin")
+    allowed_list = get_allowed_origins()
+
+    if not origin or not is_origin_allowed(origin, allowed_list):
+        logger.warning(f"WebSocket connection rejected: unauthorized origin '{origin}'")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized Origin")
+        return
+
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Echo: {data}")
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected")
 
 # Include the API routers
 app.include_router(health.router, tags=["Health"])
