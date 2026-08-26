@@ -25,7 +25,7 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 | **AUD-013** | Medio | Precisión | `cognito-backend` | Pérdida de detalle semántico (rutas de archivo, firmas) durante compactación | **Corregido** (Context Ledger estructurado JSON + persistencia en log + reinyección en system prompt) |
 | **AUD-014** | Bajo | Precisión | `cognito-backend` | Recordatorios de presupuesto de tokens inyectados con rol `user` en vez de `system` | **Corregido** (Inyección con rol `system` y metadato `type: TokenBudgetReminder`) |
 | **AUD-015** | Bajo | Resiliencia | `cognito-backend` | Ausencia de escritura atómica en `WriteTool`, sin backup ante fallo de I/O | **Corregido** (Escritura atómica en temp + fsync + os.replace + backup `.bak`) |
-| **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Pendiente (Documentado)** |
+| **AUD-016** | Medio | Arquitectura | `cognito-backend` | Desacoplamiento entre `cognito_agent.py` y el agent loop de `cognito-backend` | **Corregido** (Cliente CLI sobre agent_loop + ExecPolicy + SessionManager) |
 | **AUD-017** | Medio | Arquitectura | `cognito-backend` | Falta de contratos de validación estrictos en herramientas MCP/locales | **Pendiente (Documentado)** |
 
 ---
@@ -281,8 +281,15 @@ Cualquier auditoría futura debe contrastarse e integrarse en este documento uti
 - **Severidad**: Medio
 - **Categoría**: Arquitectura
 - **Componente**: Raíz del repositorio (`cognito_agent.py`), `cognito-backend` (`app/core/agent_loop.py`)
-- **Descripción**: El script CLI `cognito_agent.py` mantiene su propia lógica y flujo de orquestación divergente respecto al bucle estándar `agent_loop` de `cognito-backend`, generando duplicación de código y comportamientos inconsistentes en el manejo de herramientas y sesiones.
-- **Estado**: Pendiente (Solo documentar).
+- **Descripción**: El script CLI `cognito_agent.py` mantenía su propia lógica de orquestación sin ejecución de herramientas ni políticas de seguridad, divergente del `agent_loop` estándar de `cognito-backend`, duplicando código y omitiendo `ExecPolicy`, `ToolLoopDetector`, sanitización por nonce y la persistencia estructurada de sesiones JSONL.
+- **Evidencia de Ubicación en Código**: `cognito_agent.py` (Líneas 1-250), `very-simplified-stack/cognito-backend/app/core/agent_loop.py`.
+- **Resolución y Evidencia Técnica**:
+  - `cognito_agent.py` refactorizado como un cliente/wrapper CLI delgado construido sobre la orquestación unificada de `agent_loop.py`.
+  - Integración directa de `SessionManager`, `ToolContext`, `ResourceLoader`, `ProjectTrustStore` y `extension_registry.tools_for(...)`.
+  - En cada ciclo de razonamiento, `SimpleCognitoStack` invoca `agent_loop(...)` consumiendo sus eventos (`TextDeltaEvent`, `ToolCallEvent`, `ToolResultEvent`, `DoneEvent`, `ErrorEvent`), garantizando la aplicación automática de políticas de seguridad (`ExecPolicy`, `shell_policy`), aislamiento sandbox (`SandboxedExecutor`), detector de bucles (`ToolLoopDetector`), sanitización por nonce impredecible de delimitadores `<tool_output>` y registro persistente de eventos de sesión en formato JSONL.
+  - Mantenimiento estricto de la interfaz externa y firma de funciones del CLI (`solve()`, `execute_reasoning()`, `route_task()`, `generate()`) garantizando compatibilidad retroactiva total.
+- **Test de Regresión**: `very-simplified-stack/cognito-backend/tests/test_cognito_agent_unification.py` (`test_cognito_agent_initialization`, `test_cognito_agent_solve_flow_uses_agent_loop`, `test_cognito_agent_tool_execution_and_exec_policy`, `test_cognito_agent_triggers_tool_loop_detector`).
+- **Resultado del Test**: **PASA** (215/215 tests pasados).
 
 ### AUD-017: Falta de contratos de validación estrictos en herramientas MCP y locales
 - **Severidad**: Medio
