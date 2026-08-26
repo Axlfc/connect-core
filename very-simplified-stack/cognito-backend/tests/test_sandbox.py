@@ -1,7 +1,15 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, AsyncMock
-from app.core.sandbox import is_bwrap_available, build_bwrap_args, SandboxedExecutor, SandboxUnavailableError
+from app.core.sandbox import (
+    is_bwrap_available,
+    build_bwrap_args,
+    get_sandbox_allowed_hosts,
+    is_host_allowed,
+    SandboxedExecutor,
+    SandboxUnavailableError,
+    SandboxNetworkError,
+)
 
 
 def test_is_bwrap_available():
@@ -12,7 +20,7 @@ def test_is_bwrap_available():
         assert is_bwrap_available() is False
 
 
-def test_build_bwrap_args():
+def test_build_bwrap_args_deny_all_by_default():
     cwd = Path("/tmp/test_workspace")
     args = build_bwrap_args(cwd=cwd, allowed_network=False)
 
@@ -31,8 +39,55 @@ def test_build_bwrap_args():
     assert "--die-with-parent" in args
     assert "--share-net" not in args
 
-    args_net = build_bwrap_args(cwd=cwd, allowed_network=True)
-    assert "--share-net" in args_net
+    # Even if allowed_network=True, without a whitelisted target_host, --share-net is NOT added
+    args_net_no_target = build_bwrap_args(cwd=cwd, allowed_network=True)
+    assert "--share-net" not in args_net_no_target
+
+    # With a whitelisted target host and allowed_network=True, --share-net IS added
+    args_net_whitelisted = build_bwrap_args(cwd=cwd, allowed_network=True, target_host="127.0.0.1")
+    assert "--share-net" in args_net_whitelisted
+
+    # With an unwhitelisted target host, --share-net is NOT added (deny-all policy)
+    args_net_unwhitelisted = build_bwrap_args(cwd=cwd, allowed_network=True, target_host="forbidden-evil-domain.com")
+    assert "--share-net" not in args_net_unwhitelisted
+
+
+def test_get_sandbox_allowed_hosts_and_is_host_allowed(monkeypatch):
+    monkeypatch.setenv("COGNITO_SANDBOX_ALLOWED_HOSTS", "custom-api.domain.com, 10.200.0.15:8080")
+
+    hosts = get_sandbox_allowed_hosts()
+
+    assert "localhost" in hosts
+    assert "127.0.0.1" in hosts
+    assert "host.docker.internal" in hosts
+    assert "custom-api.domain.com" in hosts
+    assert "10.200.0.15" in hosts
+
+    # Whitelisted hosts pass check
+    assert is_host_allowed("localhost") is True
+    assert is_host_allowed("127.0.0.1") is True
+    assert is_host_allowed("http://custom-api.domain.com/v1") is True
+    assert is_host_allowed("10.200.0.15:8080") is True
+
+    # Unlisted hosts fail check
+    assert is_host_allowed("arbitrary-internet-host.com") is False
+    assert is_host_allowed("8.8.8.8") is False
+    assert is_host_allowed("https://malicious-site.org/exfiltrate") is False
+
+
+@pytest.mark.asyncio
+async def test_sandboxed_executor_unwhitelisted_host_fails():
+    executor = SandboxedExecutor(working_dir="/tmp", target_host="malicious-site.org")
+
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True):
+        with pytest.raises(SandboxNetworkError) as exc_info:
+            await executor.execute_cmd("curl https://malicious-site.org")
+        assert "Acceso de red denegado" in str(exc_info.value)
+        assert "malicious-site.org" in str(exc_info.value)
+
+        with pytest.raises(SandboxNetworkError) as exc_info_code:
+            await executor.execute_code("import urllib.request; urllib.request.urlopen('https://malicious-site.org')")
+        assert "Acceso de red denegado" in str(exc_info_code.value)
 
 
 @pytest.mark.asyncio

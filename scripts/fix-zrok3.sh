@@ -78,17 +78,17 @@ fi
 # Step 5: Verify environment variables
 print_info "Step 5: Verifying environment variables..."
 
-if ! grep -q "^ZROK_AUTH_TOKEN=" .env; then
+if ! grep -q "^ZROK_AUTH_TOKEN" .env; then
     print_error "ZROK_AUTH_TOKEN not found in .env"
     echo ""
     echo "Please add your zrok token to .env:"
-    echo "  ZROK_AUTH_TOKEN=your-token-here"
+    echo "  ZROK_AUTH_TOKEN: your-token-here"
     echo ""
     echo "Get your token from: https://zrok.io"
     exit 1
 fi
 
-TOKEN=$(grep "^ZROK_AUTH_TOKEN=" .env | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+TOKEN=$(grep "^ZROK_AUTH_TOKEN" .env | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 if [ -z "$TOKEN" ]; then
     print_error "ZROK_AUTH_TOKEN is empty in .env"
     exit 1

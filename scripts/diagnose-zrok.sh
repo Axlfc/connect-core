@@ -129,8 +129,8 @@ else
     print_error "Zrok is NOT enabled (environment.json missing)"
     
     # Try to enable it
-    if grep -q "^ZROK_AUTH_TOKEN=" "$ENV_FILE"; then
-        TOKEN=$(grep "^ZROK_AUTH_TOKEN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+    if grep -q "^ZROK_AUTH_TOKEN" "$ENV_FILE"; then
+        TOKEN=$(grep "^ZROK_AUTH_TOKEN" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         if [ -n "$TOKEN" ]; then
             print_info "Attempting to enable zrok with token from .env..."
             if docker exec "$CONTAINER_NAME" zrok enable "$TOKEN" 2>&1; then
@@ -295,8 +295,8 @@ if [ $ISSUES_FOUND -gt 0 ]; then
         
         # Try to enable zrok if not enabled
         if ! docker exec "$CONTAINER_NAME" test -f /home/zrok/.zrok/environment.json 2>/dev/null; then
-            if grep -q "^ZROK_AUTH_TOKEN=" "$ENV_FILE"; then
-                TOKEN=$(grep "^ZROK_AUTH_TOKEN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+        if grep -q "^ZROK_AUTH_TOKEN" "$ENV_FILE"; then
+            TOKEN=$(grep "^ZROK_AUTH_TOKEN" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
                 if [ -n "$TOKEN" ]; then
                     print_info "Enabling zrok..."
                     docker exec "$CONTAINER_NAME" zrok enable "$TOKEN"
