@@ -55,6 +55,14 @@ class HumanApprovalDecisionRequest(BaseModel):
     actor: str = "operator"
     reason: Optional[str] = None
 
+class SecretReloadRequest(BaseModel):
+    name: Optional[str] = None
+
+class SecretReloadResponse(BaseModel):
+    status: str
+    message: str
+    invalidated_secret: Optional[str] = None
+
 @router.post("/agent", response_model=AIResponse)
 async def run_ai_agent(request: AIRequest):
     """
@@ -325,6 +333,24 @@ async def submit_approval_decision(approval_id: str, req: HumanApprovalDecisionR
     if not audit_record:
         raise HTTPException(status_code=404, detail=f"Pending approval request '{approval_id}' not found or already resolved.")
     return audit_record
+
+@router.post("/secrets/reload", response_model=SecretReloadResponse)
+async def reload_secrets(req: Optional[SecretReloadRequest] = None):
+    """
+    Triggers dynamic invalidation and reloading of secrets (e.g. AuthToken, APIKey)
+    without restarting the backend process.
+    """
+    from app.core.secrets import get_secrets_provider
+    provider = get_secrets_provider()
+    secret_name = req.name if req else None
+    provider.invalidate(secret_name)
+    target_str = f"'{secret_name}'" if secret_name else "all secrets"
+    logger.info(f"Secrets provider invalidated {target_str} via API endpoint.")
+    return SecretReloadResponse(
+        status="success",
+        message=f"Successfully invalidated {target_str}.",
+        invalidated_secret=secret_name
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
