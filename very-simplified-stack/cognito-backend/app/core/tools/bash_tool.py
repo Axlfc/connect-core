@@ -50,19 +50,58 @@ class BashTool(AgentTool):
         if not allowed:
             return ToolResult(is_error=True, output=f"Error: {reason}")
 
+        from app.core.sandbox import is_bwrap_available, SandboxedExecutor
+
+        if is_bwrap_available():
+            executor = SandboxedExecutor(
+                working_dir=context.cwd,
+                timeout=timeout,
+                allowed_network=getattr(context, "trusted", False),
+                exec_policy=self.exec_policy,
+                approval_cache=self.approval_cache,
+            )
+            res = await executor.execute_cmd(
+                command=command,
+                session_id=session_id,
+                project_trusted=context.trusted,
+                user_approved=user_approved,
+            )
+            output = res.get("stdout", "") + res.get("stderr", "")
+            return ToolResult(output=output, is_error=res.get("exit_code", 0) != 0)
+
+        # Fallback to direct subprocess with preexec resource limits if bwrap is not available
+        import resource
+
+        def _set_limits():
+            try:
+                # Limit CPU time to 30s
+                resource.setrlimit(resource.RLIMIT_CPU, (30, 35))
+            except Exception:
+                pass
+            try:
+                # Limit address space to 512MB
+                resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+            except Exception:
+                pass
+            try:
+                # Limit max file write size to 50MB
+                resource.setrlimit(resource.RLIMIT_FSIZE, (50 * 1024 * 1024, 50 * 1024 * 1024))
+            except Exception:
+                pass
+
         try:
-            # Run the command with a timeout
             process = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=context.cwd
+                cwd=context.cwd,
+                preexec_fn=_set_limits
             )
 
             try:
                 stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
                 output = (stdout + stderr).decode("utf-8")
-                return ToolResult(output=output)
+                return ToolResult(output=output, is_error=process.returncode != 0)
             except asyncio.TimeoutError:
                 try:
                     process.kill()

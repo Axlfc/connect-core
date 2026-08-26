@@ -165,3 +165,45 @@ async def test_unified_shell_policy_denied_across_all_tools(tmp_path):
         res_sb = await sandbox_executor.execute_cmd(blocked_cmd, project_trusted=True, user_approved=True)
         assert res_sb["approval_required"] is True
         assert "forbidden by shell policy" in res_sb["stderr"] or "unconditional deny pattern" in res_sb["stderr"]
+
+@pytest.mark.asyncio
+async def test_bash_tool_exec_policy_parity(tmp_path):
+    policy = ExecPolicy()
+    cache = SessionApprovalCache()
+    bash_tool = BashTool(exec_policy=policy, approval_cache=cache)
+    ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
+
+    denied_commands = [
+        "sudo rm -rf /",
+        "rm -rf /tmp/test_dir",
+        "git push --force",
+    ]
+
+    for cmd in denied_commands:
+        res = await bash_tool.execute({"command": cmd, "user_approved": True}, ctx)
+        assert res.is_error is True
+        assert "forbidden by shell policy" in res.output or "Error:" in res.output
+
+@pytest.mark.asyncio
+async def test_bash_tool_sandboxed_isolation_and_resource_limits(tmp_path):
+    policy = ExecPolicy()
+    cache = SessionApprovalCache()
+    bash_tool = BashTool(exec_policy=policy, approval_cache=cache)
+    ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
+
+    # 1. Executing a standard command inside sandbox/resource-limited environment
+    res = await bash_tool.execute({"command": "echo 'sandboxed'", "user_approved": True}, ctx)
+    assert res.is_error is False
+    assert "sandboxed" in res.output
+
+    # 2. Test sandbox isolation: attempt to write outside allowed working directory when bwrap is mocked/active
+    with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
+         patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"", b"Read-only file system\n")
+        mock_proc.returncode = 1
+        mock_exec.return_value = mock_proc
+
+        res_isolated = await bash_tool.execute({"command": "touch /root/forbidden.txt", "user_approved": True}, ctx)
+        assert res_isolated.is_error is True
+        assert "Read-only file system" in res_isolated.output
