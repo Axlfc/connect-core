@@ -33,8 +33,8 @@ async def test_exec_policy_requiere_aprobacion_classification():
 
 
 @pytest.mark.asyncio
-async def test_human_approval_flow_approved():
-    mgr = ApprovalManager(default_timeout_seconds=5)
+async def test_human_approval_flow_approved(tmp_path):
+    mgr = ApprovalManager(default_timeout_seconds=5, audit_log_path=tmp_path / "audit.jsonl")
 
     async def simulate_operator():
         await asyncio.sleep(0.05)
@@ -70,8 +70,8 @@ async def test_human_approval_flow_approved():
 
 
 @pytest.mark.asyncio
-async def test_human_approval_flow_denied():
-    mgr = ApprovalManager(default_timeout_seconds=5)
+async def test_human_approval_flow_denied(tmp_path):
+    mgr = ApprovalManager(default_timeout_seconds=5, audit_log_path=tmp_path / "audit.jsonl")
 
     async def simulate_operator():
         await asyncio.sleep(0.05)
@@ -102,8 +102,8 @@ async def test_human_approval_flow_denied():
 
 
 @pytest.mark.asyncio
-async def test_human_approval_flow_timeout_default_deny():
-    mgr = ApprovalManager(default_timeout_seconds=1)
+async def test_human_approval_flow_timeout_default_deny(tmp_path):
+    mgr = ApprovalManager(default_timeout_seconds=1, audit_log_path=tmp_path / "audit.jsonl")
 
     audit = await mgr.request_approval(
         session_id="s3",
@@ -182,3 +182,79 @@ def test_rest_api_approvals_endpoints():
         json={"decision": "approved", "actor": "tester", "reason": "N/A"}
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_configurable_approval_timeout_hierarchy():
+    mgr = ApprovalManager(default_timeout_seconds=30)
+    session_id = "sess_config_timeout"
+
+    # Default timeout
+    assert mgr.get_effective_timeout(session_id=session_id) == 30
+
+    # Per-session timeout
+    mgr.set_session_timeout(session_id, 120)
+    assert mgr.get_effective_timeout(session_id=session_id) == 120
+
+    # Request-level override takes precedence over session-level timeout
+    assert mgr.get_effective_timeout(session_id=session_id, request_timeout=5) == 5
+
+
+@pytest.mark.asyncio
+async def test_non_live_session_approval_timeout_visibility(tmp_path):
+    from app.core.session_manager import SessionManager
+    from app.core.approval import approval_manager
+
+    sess_dir = tmp_path / "sessions"
+    sess_dir.mkdir()
+    sess_mgr = SessionManager(sessions_dir=sess_dir)
+    session_id = sess_mgr.create(cwd=str(tmp_path), approval_timeout_seconds=1)
+
+    class DummyRouter:
+        async def generate_with_tools(self, messages, tools_schema, model_params):
+            yield {"tool_calls": [{"id": "tc_nonlive", "function": {"name": "bash", "arguments": {"command": "git reset --hard"}}}]}
+
+    dummy_router = DummyRouter()
+    bash_tool = BashTool()
+    tools = [bash_tool]
+    ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
+
+    events = []
+
+    # Non-live execution: agent loop runs without any live client responding to approval
+    async for ev in agent_loop(
+        messages=[{"role": "user", "content": "Execute git reset --hard in background"}],
+        tools=tools,
+        context=ctx,
+        backend_router=dummy_router,
+        max_turns=1,
+        session_manager=sess_mgr,
+        session_id=session_id,
+        approval_timeout_seconds=1,
+    ):
+        events.append(ev)
+
+    # 1. Verify ToolResultEvent indicates default denial due to timeout
+    result_events = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(result_events) == 1
+    assert result_events[0].is_error is True
+    assert "timed_out" in result_events[0].output or "deniegada" in result_events[0].output
+
+    # 2. Verify SessionMetadata was updated with blocked_actions_count and approval_summary
+    meta = sess_mgr.open(session_id)
+    assert meta.blocked_actions_count == 1
+    assert len(meta.approval_summary) == 1
+    assert meta.approval_summary[0]["status"] == "timed_out"
+    assert meta.approval_summary[0]["actor"] == "system_timeout"
+
+    # 3. Verify prominent steering message was persisted for future operators inspecting session history
+    undelivered = sess_mgr.get_undelivered_steering_messages(session_id)
+    assert len(undelivered) >= 1
+    block_notices = [m for m in undelivered if "[ACCION_BLOQUEADA_POR_APROBACION_HUMANA]" in m["content"]]
+    assert len(block_notices) == 1
+    assert "git reset --hard" in block_notices[0]["content"]
+
+    # 4. Verify audit log recorded the timeout decision
+    audit_logs = await approval_manager.get_audit_logs(session_id=session_id)
+    assert len(audit_logs) >= 1
+    assert audit_logs[-1].status == "timed_out"

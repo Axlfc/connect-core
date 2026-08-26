@@ -46,6 +46,7 @@ async def agent_loop(
     session_manager: Optional[Any] = None,
     session_id: Optional[str] = None,
     steering_manager: Optional[Any] = None,
+    approval_timeout_seconds: Optional[int] = None,
 ) -> AsyncIterator[AgentEvent]:
     """
     Main Agent Loop:
@@ -210,6 +211,10 @@ async def agent_loop(
                         result = ToolResult(is_error=True, output=f"Error: {reason}")
                     elif verdict == ExecVerdict.REQUIERE_APROBACION:
                         logger.info(f"Tool execution for '{tc['name']}' requires approval: {reason}")
+                        eff_timeout = approval_manager.get_effective_timeout(
+                            session_id=eff_session_id,
+                            request_timeout=approval_timeout_seconds
+                        )
                         # Pre-register approval request BEFORE emitting event so it is immediately visible in pending list
                         appr_req = await approval_manager.create_request(
                             session_id=eff_session_id,
@@ -217,6 +222,7 @@ async def agent_loop(
                             arguments=tc["arguments"] if isinstance(tc["arguments"], dict) else {"raw": tc["arguments"]},
                             reason=reason,
                             command=cmd,
+                            timeout_seconds=eff_timeout,
                         )
                         appr_id = appr_req.approval_id
 
@@ -258,6 +264,30 @@ async def agent_loop(
                                 result = await tool.execute(tc["arguments"], context)
                         else:
                             logger.warning(f"Approval [{decision.approval_id}] status: {decision.status} ({decision.reason}). Skipping execution.")
+                            if session_manager and eff_session_id:
+                                block_notice = (
+                                    f"[ACCION_BLOQUEADA_POR_APROBACION_HUMANA] La acción '{cmd or tc['name']}' "
+                                    f"fue bloqueada ({decision.status}). Razón: {decision.reason}"
+                                )
+                                try:
+                                    if history_lock:
+                                        async with history_lock:
+                                            await session_manager.append_steering_message_async(
+                                                eff_session_id, block_notice, steering_id=f"blocked-{appr_id}"
+                                            )
+                                            await session_manager.record_blocked_approval_async(
+                                                eff_session_id, decision.model_dump()
+                                            )
+                                    else:
+                                        await session_manager.append_steering_message_async(
+                                            eff_session_id, block_notice, steering_id=f"blocked-{appr_id}"
+                                        )
+                                        await session_manager.record_blocked_approval_async(
+                                            eff_session_id, decision.model_dump()
+                                        )
+                                except Exception as ex:
+                                    logger.debug(f"Failed to record block notification in session manager: {ex}")
+
                             result = ToolResult(
                                 is_error=True,
                                 output=f"Acción denegada por política de aprobación humana ({decision.status}): {decision.reason}"

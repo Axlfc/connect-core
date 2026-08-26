@@ -48,6 +48,7 @@ class AgentLoopRequest(BaseModel):
     cwd: str
     session_id: Optional[str] = None
     model_params: Optional[Dict[str, Any]] = None
+    approval_timeout_seconds: Optional[int] = None
 
 class SteerRequest(BaseModel):
     message: str
@@ -175,7 +176,7 @@ async def run_agent_loop(request: AgentLoopRequest):
         if session_id == "latest":
             session_id = session_manager.continue_recent(request.cwd)
             if not session_id:
-                session_id = session_manager.create(request.cwd)
+                session_id = session_manager.create(request.cwd, approval_timeout_seconds=request.approval_timeout_seconds)
                 is_new = True
         elif session_id:
             metadata = session_manager.open(session_id)
@@ -187,8 +188,12 @@ async def run_agent_loop(request: AgentLoopRequest):
                     media_type="text/event-stream"
                 )
         else:
-            session_id = session_manager.create(request.cwd)
+            session_id = session_manager.create(request.cwd, approval_timeout_seconds=request.approval_timeout_seconds)
             is_new = True
+
+        if request.approval_timeout_seconds is not None:
+            approval_manager.set_session_timeout(session_id, request.approval_timeout_seconds)
+            await session_manager.set_approval_timeout_async(session_id, request.approval_timeout_seconds)
     except Exception as e:
         logger.error(f"Session resolution failed: {e}")
         return StreamingResponse(
@@ -262,6 +267,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                     session_manager=session_manager,
                     session_id=session_id,
                     steering_manager=steering_manager,
+                    approval_timeout_seconds=request.approval_timeout_seconds,
                 )
             except TypeError:
                 loop_iter = agent_loop(
