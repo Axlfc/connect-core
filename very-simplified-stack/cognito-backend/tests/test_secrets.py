@@ -11,13 +11,16 @@ from app.core.secrets import (
     reset_secrets_provider,
 )
 from app.services.mcp_server import verify_mcp_auth
+from app.api.routes.ai_agents import secrets_reload_rate_limiter
 
 
 @pytest.fixture(autouse=True)
 def clean_secrets_state():
     reset_secrets_provider(None)
+    secrets_reload_rate_limiter.reset()
     yield
     reset_secrets_provider(None)
+    secrets_reload_rate_limiter.reset()
 
 
 def test_local_file_secrets_provider_auto_generation(tmp_path, monkeypatch):
@@ -95,6 +98,40 @@ def test_vault_secrets_provider_stub(monkeypatch):
     assert provider.get_secret("AuthToken") == "vault_token_789"
 
 
+def test_secrets_reload_unauthenticated_rejected(tmp_path, monkeypatch):
+    fake_config_file = tmp_path / "cognito" / "config.json"
+    fake_config_file.parent.mkdir(parents=True, exist_ok=True)
+    fake_config_file.write_text(json.dumps({"AuthToken": "valid_token_123"}))
+
+    provider = LocalFileSecretsProvider(config_path=fake_config_file, ttl_seconds=300.0)
+    reset_secrets_provider(provider)
+
+    client = TestClient(app)
+    # No auth header or body token
+    response = client.post("/api/secrets/reload", json={"name": "AuthToken"})
+    assert response.status_code == 401
+    assert "Authentication failed" in response.json()["detail"]
+
+
+def test_secrets_reload_invalid_token_rejected(tmp_path, monkeypatch):
+    fake_config_file = tmp_path / "cognito" / "config.json"
+    fake_config_file.parent.mkdir(parents=True, exist_ok=True)
+    fake_config_file.write_text(json.dumps({"AuthToken": "valid_token_123"}))
+
+    provider = LocalFileSecretsProvider(config_path=fake_config_file, ttl_seconds=300.0)
+    reset_secrets_provider(provider)
+
+    client = TestClient(app)
+    # Invalid Bearer token
+    response = client.post(
+        "/api/secrets/reload",
+        headers={"Authorization": "Bearer wrong_token_456"},
+        json={"name": "AuthToken"}
+    )
+    assert response.status_code == 401
+    assert "Authentication failed" in response.json()["detail"]
+
+
 def test_secrets_reload_api_endpoint(tmp_path, monkeypatch):
     fake_config_file = tmp_path / "cognito" / "config.json"
     fake_config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +146,12 @@ def test_secrets_reload_api_endpoint(tmp_path, monkeypatch):
     fake_config_file.write_text(json.dumps({"AuthToken": "token_after_api_reload"}))
 
     client = TestClient(app)
-    response = client.post("/api/secrets/reload", json={"name": "AuthToken"})
+    # Authenticated call with Bearer header using active token
+    response = client.post(
+        "/api/secrets/reload",
+        headers={"Authorization": "Bearer token_before_api_reload"},
+        json={"name": "AuthToken"}
+    )
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["status"] == "success"
@@ -118,3 +160,31 @@ def test_secrets_reload_api_endpoint(tmp_path, monkeypatch):
     assert provider.get_secret("AuthToken") == "token_after_api_reload"
     assert verify_mcp_auth("token_after_api_reload") is True
     assert verify_mcp_auth("token_before_api_reload") is False
+
+
+def test_secrets_reload_rate_limiting(tmp_path, monkeypatch):
+    fake_config_file = tmp_path / "cognito" / "config.json"
+    fake_config_file.parent.mkdir(parents=True, exist_ok=True)
+    fake_config_file.write_text(json.dumps({"AuthToken": "valid_token_rate_limit"}))
+
+    provider = LocalFileSecretsProvider(config_path=fake_config_file, ttl_seconds=300.0)
+    reset_secrets_provider(provider)
+
+    client = TestClient(app)
+    # 5 requests should succeed (200 OK)
+    for i in range(5):
+        res = client.post(
+            "/api/secrets/reload",
+            headers={"Authorization": "Bearer valid_token_rate_limit"},
+            json={"name": "AuthToken"}
+        )
+        assert res.status_code == 200
+
+    # 6th request should be rejected with 429 Too Many Requests
+    res_overflow = client.post(
+        "/api/secrets/reload",
+        headers={"Authorization": "Bearer valid_token_rate_limit"},
+        json={"name": "AuthToken"}
+    )
+    assert res_overflow.status_code == 429
+    assert "Rate limit exceeded" in res_overflow.json()["detail"]

@@ -142,6 +142,15 @@
     - `test_secret_rotation_and_revocation_flow`: Demuestra que tras invalidar/rotar un secreto, las peticiones con el token antiguo son denegadas (`verify_mcp_auth` retorna `False`) y el nuevo token pasa a ser el único válido.
     - `test_vault_secrets_provider_stub`: Valida el comportamiento e inicialización del stub de Vault.
     - `test_secrets_reload_api_endpoint`: Comprueba la recarga en caliente a través del endpoint REST HTTP.
+- **Nota de Seguimiento Fechada (Verificación y Fortalecimiento de Autenticación en Endpoint de Recarga):**
+  - **Verificación Realizada:** Se constató que la implementación inicial de `POST /api/secrets/reload` exponía el endpoint sin autenticación obligatoria y sin límites de tasa de peticiones, lo cual permitía que cualquier cliente anónimo invalidara la caché de secretos de forma repetida (vector potencial de denegación de servicio / DoS).
+  - **Corrección Aplicada:** Se protegió `POST /api/secrets/reload` en `app/api/routes/ai_agents.py` mediante verificación administrativa exigiendo un token válido (`Authorization: Bearer <token>`, `X-API-Key: <token>` o `auth_token` en el cuerpo JSON) validado dinámicamente con `verify_mcp_auth`. Peticiones sin token o con credenciales inválidas son rechazadas con HTTP 401 (`Unauthorized`). Adicionalmente, se incorporó un rate limiter por ventana deslizante (`SlidingWindowRateLimiter`) restringiendo el endpoint a un máximo de 5 peticiones por minuto, retornando HTTP 429 (`Too Many Requests`) al exceder la cuota.
+  - **Test de Regresión:**
+    - `very-simplified-stack/cognito-backend/tests/test_secrets.py`:
+      - `test_secrets_reload_unauthenticated_rejected`: Comprueba que peticiones no autenticadas a `POST /api/secrets/reload` son rechazadas con HTTP 401.
+      - `test_secrets_reload_invalid_token_rejected`: Valida que tokens incorrectos o caducados reciben HTTP 401.
+      - `test_secrets_reload_api_endpoint`: Confirma la invalidación y recarga exitosa con credenciales HTTP Bearer válidas (HTTP 200).
+      - `test_secrets_reload_rate_limiting`: Demuestra que peticiones excesivas que superan la tasa límite son bloqueadas con HTTP 429.
 
 #### AUD-004
 - **ID:** AUD-004
