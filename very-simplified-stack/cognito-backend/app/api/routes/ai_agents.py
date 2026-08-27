@@ -243,13 +243,19 @@ async def run_agent_loop(request: AgentLoopRequest):
     steering_queue = steering_manager.get_queue(session_id)
     history_lock = steering_manager.get_lock(session_id)
 
-    # REDESIGN: To persist assistant messages correctly, we need to capture them.
-    # The current agent_loop yields events but doesn't return the full objects.
+    # Checkpointing note (AUD-026): Storage operations are performed against SessionManager.
+    # PENDING REVIEW: Re-evaluate once RFC Phase 6 database storage migration lands.
     async def event_generator_v2():
-        # Persist incoming new messages from request (offloaded to thread to avoid blocking event loop)
+        # Persist incoming new messages from request only if not already present in session history (AUD-026 resumption)
+        existing_history = await session_manager.get_effective_messages_async(session_id)
         async with history_lock:
             for msg in new_messages:
-                await session_manager.append_message_async(session_id, msg["role"], msg["content"])
+                already_exists = any(
+                    h.get("role") == msg.get("role") and h.get("content") == msg.get("content")
+                    for h in existing_history
+                )
+                if not already_exists:
+                    await session_manager.append_message_async(session_id, msg["role"], msg["content"])
 
         yield f"data: {SessionInfoEvent(session_id=session_id, is_new=is_new).model_dump_json()}\n\n"
 
@@ -293,7 +299,7 @@ async def run_agent_loop(request: AgentLoopRequest):
                         "function": {"name": event.tool_name, "arguments": json.dumps(event.arguments)}
                     })
                 elif isinstance(event, ToolResultEvent):
-                    # Before persisting tool result, we MUST persist the assistant message that called it
+                    # Checkpoint assistant message and tool result immediately after turn (AUD-026)
                     async with history_lock:
                         if assistant_content or current_tool_calls:
                             await session_manager.append_message_async(

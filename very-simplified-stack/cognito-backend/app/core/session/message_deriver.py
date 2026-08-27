@@ -157,9 +157,17 @@ async def derive_messages_for_llm(
             )
             derived_messages.append(formatted_msg)
 
-    # 4. Append extra unpersisted messages (e.g., incoming request messages)
+    # 4. Append extra unpersisted messages (e.g., incoming request messages) if not already present
     if config.extra_messages:
         for msg in config.extra_messages:
+            if derived_messages:
+                last_derived = derived_messages[-1]
+                if (
+                    isinstance(last_derived, dict)
+                    and last_derived.get("role") == msg.get("role")
+                    and last_derived.get("content") == msg.get("content")
+                ):
+                    continue
             derived_messages.append(msg)
 
     # 5. Apply Token Budget Reminder injection
