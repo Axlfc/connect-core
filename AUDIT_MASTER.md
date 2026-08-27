@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 9
-  - **Total con Estado "Pendiente":** 25
+  - **Total con Estado "Corregido":** 10
+  - **Total con Estado "Pendiente":** 24
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -49,7 +49,7 @@
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Pendiente |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
-| AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Pendiente |
+| AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Corregido |
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Pendiente |
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
@@ -466,7 +466,18 @@
 - **Descripción del problema:** La clase `MCPServerClient` implementa un cliente simulado (mock) en `discover_tools` que devuelve una herramienta hardcodeada (`WrappedMCPTool`) sin establecer una conexión real por protocolo stdio o SSE con servidores MCP externos.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/mcp_client.py` (líneas 14-38).
 - **Comparación con el estado del arte:** Los sistemas enterprise requieren un cliente MCP completo capaz de negociar herramientas y recursos con cualquier servidor MCP de terceros.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó el soporte para transportes reales `stdio` y `sse` en `MCPServerClient` (`app/core/mcp_client.py`) utilizando la librería oficial `mcp` (`ClientSession`, `stdio_client`, `sse_client`).
+  - Se agregaron las excepciones tipadas `MCPClientError`, `MCPClientConnectionError`, `MCPClientTimeoutError` y `MCPClientProtocolError` para un manejo transparente de fallos de conexión, timeout y protocolo MCP.
+  - Se implementó la negociación de capacidades (handshake `initialize()`), descubrimiento dinámico de herramientas (`list_tools()`) y envoltura en instancias de `WrappedMCPTool`.
+  - Se implementó la ejecución de herramientas remotas en `WrappedMCPTool.execute()` e `MCPServerClient.call_tool()`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_mcp_client_real_stdio_sse.py`:
+    - `test_real_stdio_mcp_client_discovery_and_tool_call`: Prueba de integración completa descubriendo e invocando herramientas de un servidor MCP externo real corriendo sobre protocolo `stdio` (`python3 -m app.services.mcp_server`).
+    - `test_mcp_client_invalid_command_connection_error`: Valida que comandos/binarios inexistentes lanzan `MCPClientConnectionError`.
+    - `test_mcp_client_connection_timeout_error`: Confirma que demoras excediendo el timeout lanzan `MCPClientTimeoutError`.
+    - `test_mcp_client_sse_transport_mocked`: Prueba unitaria de descubrimiento e invocación mediante transporte `sse`.
 
 #### AUD-020
 - **ID:** AUD-020
