@@ -47,7 +47,7 @@
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
-| AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Pendiente |
+| AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Corregido |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Corregido |
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Pendiente |
@@ -436,7 +436,12 @@
 - **Descripción del problema:** El bucle principal en `agent_loop.py` es estrictamente secuencial y monohilo/monoagente. No posee capacidad para delegar sub-tareas a sub-agentes paralelos o en segundo plano (background workers).
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (líneas 80-160).
 - **Comparación con el estado del arte:** Los harnesses de 2026 permiten al agente principal instanciar decenas de sub-agentes paralelos para tareas intensivas (búsquedas, refactorizaciones parciales).
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó la ejecución concurrente de herramientas `concurrency_safe` en `agent_loop.py` usando `asyncio.gather` por lotes.
+  - Se creó la herramienta `SubAgentTool` (`delegate_subagent`) en `app/core/tools/subagent_tool.py`, que permite al agente principal delegar sub-tareas delimitadas con límites de tiempo (`timeout_seconds`), límites de turnos (`max_turns`) y alcance de herramientas restringido.
+  - Se registró `SubAgentTool` en el registro de extensiones (`app/core/extensions/registry.py`).
+  - Se agregaron pruebas de rendimiento y comportamiento en `tests/test_parallel_subagents.py` y se verificó que pasa 100% el Eval Harness E2E (`tests/test_e2e_eval_harness.py`).
 
 #### AUD-018
 - **ID:** AUD-018
