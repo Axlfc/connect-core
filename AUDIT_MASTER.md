@@ -48,7 +48,7 @@
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Pendiente |
-| AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Pendiente |
+| AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Pendiente |
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Pendiente |
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
@@ -448,7 +448,13 @@
 - **Descripción del problema:** Cognito no fuerza una fase de análisis/planificación de solo lectura previa a la ejecución de escrituras en disco. El agente puede invocar `WriteTool` o `EditTool` en el primer turno de la interacción.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (líneas 90-140).
 - **Comparación con el estado del arte:** Arneses como OpenCode imponen una fase de scoping mediante un agente de solo lectura que genera un plan antes de habilitar herramientas destructivas.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Notas de Resolución:**
+  - Se implementó la fase forzada de planificación de solo lectura en `evaluate_tool_execution` (`app/core/exec_policy.py`) usando la metadato `is_read_only` introducida en AUD-005.
+  - En un workspace no confiado y durante los turnos iniciales (`turn <= read_only_turns`, por defecto 1), cualquier intento de ejecutar una herramienta que no sea de solo lectura (`WriteTool`, `EditTool`, `BashTool`, etc.) es rechazado hasta que se produzca un plan.
+  - Se añadieron parámetros configurables `planning_phase` (bool) y `read_only_turns` (int) en `AgentLoopRequest` (`app/api/routes/ai_agents.py`) y `agent_loop` (`app/core/agent_loop.py`) para activar/desactivar o personalizar la fase.
+  - Se agregaron pruebas unitarias e integradas en `tests/test_read_only_planning_phase.py`.
+  - Se verificó con el harness de evaluación E2E (`tests/test_e2e_eval_harness.py`) confirmando cero regresiones en la calidad y paso del 100% de las tareas.
 
 #### AUD-019
 - **ID:** AUD-019
