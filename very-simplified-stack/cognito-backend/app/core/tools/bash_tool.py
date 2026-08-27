@@ -8,6 +8,9 @@ from app.core.exec_policy import default_exec_policy, session_approval_cache, Ex
 class BashTool(AgentTool):
     name = "bash"
     description = "Execute a bash command in the current workspace."
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

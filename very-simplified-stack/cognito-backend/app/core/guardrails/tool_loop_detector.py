@@ -75,16 +75,31 @@ class ToolLoopDetector:
         self.threshold = threshold
         self.history: deque[Tuple[str, str]] = deque(maxlen=window_size)  # stores (tool_name, hash)
 
-    def record_and_check(self, tool_name: str, arguments: Any, output: Optional[str] = None) -> Optional[str]:
+    def record_and_check(
+        self,
+        tool_name: str,
+        arguments: Any,
+        output: Optional[str] = None,
+        tool: Optional[Any] = None,
+        is_read_only: Optional[bool] = None,
+    ) -> Optional[str]:
         """
         Records a tool call into the rolling window and checks if the loop threshold is exceeded.
 
         :param tool_name: Name of the executed tool.
         :param arguments: Tool arguments.
         :param output: Execution result of the tool call. If provided, used to determine if output changed.
+        :param tool: Optional AgentTool instance to query is_read_only metadata directly.
+        :param is_read_only: Optional explicit boolean flag indicating if tool is read-only.
         :return: Optional warning string to inject as system message if guardrail triggers, else None.
         """
-        if tool_name in READ_ONLY_TOOLS:
+        if is_read_only is None:
+            if tool is not None and hasattr(tool, "is_read_only"):
+                is_read_only = bool(tool.is_read_only)
+            else:
+                is_read_only = tool_name in READ_ONLY_TOOLS
+
+        if is_read_only:
             call_hash = compute_tool_call_hash(tool_name, arguments, output=output)
         else:
             call_hash = compute_tool_call_hash(tool_name, arguments, output=None)

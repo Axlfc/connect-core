@@ -9,6 +9,9 @@ from app.core.fs_observation_policy import FSObservationPolicy
 class ListDirectoryTool(AgentTool):
     name = "list_directory"
     description = "List contents of a directory. Hides protected and ignored files/folders."
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {
@@ -50,6 +53,9 @@ class ListDirectoryTool(AgentTool):
 class SearchFilesTool(AgentTool):
     name = "search_files"
     description = "Search for files matching a pattern in workspace. Hides protected and ignored files."
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {

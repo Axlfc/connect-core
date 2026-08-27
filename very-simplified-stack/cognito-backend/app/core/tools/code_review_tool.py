@@ -18,6 +18,9 @@ class CodeReviewTool(AgentTool):
         "Revisa cambios de código (diff) para identificar bugs, vulnerabilidades de seguridad o "
         "desviaciones de AGENTS.md. Acepta objetivos como 'uncommitted', 'branch:main', o 'commit:abc123'."
     )
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {

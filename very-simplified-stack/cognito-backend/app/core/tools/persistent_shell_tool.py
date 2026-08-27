@@ -276,6 +276,9 @@ class PersistentShellTool(AgentTool):
         "Execute commands in a persistent shell session maintaining working directory, "
         "environment variables, and background processes between calls."
     )
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

@@ -2,7 +2,7 @@ import hashlib
 import re
 import sqlite3
 from enum import Enum
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Any, Dict
 
 class ExecVerdict(str, Enum):
     PERMITIR = "permitir"
@@ -231,6 +231,47 @@ def evaluate_command_execution(
         return ExecVerdict.REQUIERE_APROBACION, reason_msg
 
     return ExecVerdict.PERMITIR, "Auto-approved by policy"
+
+
+def evaluate_tool_execution(
+    tool: Optional[Any] = None,
+    arguments: Optional[dict] = None,
+    command: Optional[str] = None,
+    cwd: Optional[str] = None,
+    trusted: bool = False,
+    session_id: str = "default_session",
+    user_approved: bool = False,
+    exec_policy: Optional[ExecPolicy] = None,
+    approval_cache: Optional[SessionApprovalCache] = None,
+) -> Tuple[ExecVerdict, str]:
+    """
+    Evaluates execution of an AgentTool or command using tool metadata (is_read_only, is_destructive) and command policy.
+    """
+    args = arguments or {}
+    cmd = command or (args.get("command", "") if isinstance(args, dict) else "")
+
+    if cmd:
+        return evaluate_command_execution(
+            command=cmd,
+            cwd=cwd,
+            trusted=trusted,
+            session_id=session_id,
+            user_approved=user_approved,
+            exec_policy=exec_policy,
+            approval_cache=approval_cache,
+        )
+
+    if tool is not None:
+        is_destructive = getattr(tool, "is_destructive", False)
+        is_read_only = getattr(tool, "is_read_only", False)
+        tool_name = getattr(tool, "name", tool.__class__.__name__)
+
+        if is_destructive and not trusted and not user_approved:
+            return ExecVerdict.REQUIERE_APROBACION, f"Herramienta destructiva '{tool_name}' requiere aprobación en contexto no confiable."
+
+        return ExecVerdict.PERMITIR, f"Auto-aprobado por metadatos de herramienta ({'solo lectura' if is_read_only else 'no destructiva'})"
+
+    return ExecVerdict.PERMITIR, "Auto-aprobado por defecto"
 
 
 # Default global instances

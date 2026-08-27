@@ -8,6 +8,9 @@ from app.core.context_spill import default_spill_manager, SpillManager, spill_la
 class ReadTool(AgentTool):
     name = "read"
     description = "Read the content of a file. Supports optional offset and limit for large files."
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {

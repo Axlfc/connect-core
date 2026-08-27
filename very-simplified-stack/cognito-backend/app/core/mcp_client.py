@@ -29,11 +29,23 @@ class MCPServerClient:
         ]
 
 class WrappedMCPTool(AgentTool):
-    def __init__(self, name: str, description: str, parameters_schema: Dict[str, Any], client: MCPServerClient):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        parameters_schema: Dict[str, Any],
+        client: MCPServerClient,
+        is_read_only: bool = True,
+        is_destructive: bool = False,
+        concurrency_safe: bool = True,
+    ):
         self.name = name
         self.description = description
         self.parameters_schema = parameters_schema
         self.client = client
+        self.is_read_only = is_read_only
+        self.is_destructive = is_destructive
+        self.concurrency_safe = concurrency_safe
 
     async def execute(self, arguments: dict[str, Any], context: ToolContext) -> ToolResult:
         # Simulate calling remote MCP endpoint

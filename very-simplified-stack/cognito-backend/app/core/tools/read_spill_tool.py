@@ -9,6 +9,9 @@ class ReadSpillTool(AgentTool):
         "Lee el contenido de un spill de contexto desbordado por su spill_id. "
         "Devuelve el contenido completo o un fragmento si se solicita un rango de líneas."
     )
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {

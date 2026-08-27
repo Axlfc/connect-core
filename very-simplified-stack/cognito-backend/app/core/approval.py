@@ -31,6 +31,8 @@ class PendingApprovalRequest(BaseModel):
     reason: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     timeout_seconds: int = DEFAULT_APPROVAL_TIMEOUT_SECONDS
+    is_destructive: bool = False
+    is_read_only: bool = False
 
 
 class PendingApprovalState:
@@ -118,6 +120,8 @@ class ApprovalManager:
         command: Optional[str] = None,
         timeout_seconds: Optional[int] = None,
         approval_id: Optional[str] = None,
+        is_destructive: bool = False,
+        is_read_only: bool = False,
     ) -> PendingApprovalRequest:
         """
         Registers a pending approval request in state without blocking execution.
@@ -133,6 +137,8 @@ class ApprovalManager:
             command=command,
             reason=reason,
             timeout_seconds=effective_timeout,
+            is_destructive=is_destructive,
+            is_read_only=is_read_only,
         )
 
         state = PendingApprovalState(request)
@@ -205,6 +211,8 @@ class ApprovalManager:
         command: Optional[str] = None,
         timeout_seconds: Optional[int] = None,
         approval_id: Optional[str] = None,
+        is_destructive: bool = False,
+        is_read_only: bool = False,
     ) -> ApprovalDecisionAudit:
         """
         Registers request and awaits decision in a single call.
@@ -217,6 +225,8 @@ class ApprovalManager:
             command=command,
             timeout_seconds=timeout_seconds,
             approval_id=approval_id,
+            is_destructive=is_destructive,
+            is_read_only=is_read_only,
         )
         return await self.wait_for_decision(req.approval_id)
 
