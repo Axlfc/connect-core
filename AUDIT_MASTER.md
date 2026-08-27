@@ -57,7 +57,7 @@
 | AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Pendiente |
 | AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
 | AUD-026 | Alto | Brecha Funcional | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Falta de checkpointing de ejecución que permita reanudar el estado tras una caída del proceso | Pendiente |
-| AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Pendiente |
+| AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Corregido |
 | AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Corregido |
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
@@ -618,7 +618,7 @@
 - **Descripción del problema:** El mecanismo de reintento transitorio (`retry_transient_async` en `retry.py`) reejecuta peticiones cuando ocurre una desconexión de red. Si el fallo ocurre después de que una herramienta no idempotente (ej. modificar un archivo o ejecutar un comando remoto) se haya iniciado, la herramienta puede ser ejecutada de nuevo produciendo duplicaciones de efectos secundarios.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/retry.py` (líneas 1-50) y `very-simplified-stack/cognito-backend/app/services/worker_client.py` (líneas 40-90).
 - **Comparación con el estado del arte:** Los arneses robustos gestionan tokens de idempotencia y estado de efectos secundarios antes de autorizar reintentos de red.
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 ---
 
