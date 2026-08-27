@@ -3,6 +3,7 @@ import uuid
 import logging
 import contextvars
 from typing import Dict, Any, List, Optional
+from app.core.logging_config import TRACE_ID_VAR, get_trace_id, set_trace_id
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class OpenInferenceSpan:
         self.span_type = span_type
         self.session_id = SESSION_ID_VAR.get()
         self.task_id = TASK_ID_VAR.get()
+        self.trace_id = get_trace_id()
         self.inputs: Dict[str, Any] = {}
         self.outputs: Dict[str, Any] = {}
 
@@ -64,6 +66,6 @@ class OpenInferenceSpan:
         """
         logger.info(
             f"[OTEL TRACE] Name: {self.name} | Type: {self.span_type} | "
-            f"Session: {self.session_id} | Task: {self.task_id} | "
+            f"Trace: {self.trace_id} | Session: {self.session_id} | Task: {self.task_id} | "
             f"Inputs: {self.inputs} | Outputs: {self.outputs}"
         )

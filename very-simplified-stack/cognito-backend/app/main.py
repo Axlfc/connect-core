@@ -4,10 +4,14 @@ import asyncio
 import logging
 from typing import List
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents
 from app.api.routes.openai_compat import router as openai_router
+from app.core.logging_config import configure_structured_logging, set_trace_id, clear_correlation_context
+
+# Initialize structured JSON logging for backend
+configure_structured_logging()
 
 logger = logging.getLogger("cognito.backend.main")
 
@@ -100,8 +104,26 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Trace-ID", "X-Request-ID"],
+    expose_headers=["X-Trace-ID", "X-Request-ID"],
 )
+
+@app.middleware("http")
+async def trace_id_middleware(request: Request, call_next):
+    """
+    Middleware to extract or generate trace_id for incoming HTTP requests,
+    propagate it through ContextVar, and attach X-Trace-ID to the HTTP response.
+    """
+    trace_id_hdr = (
+        request.headers.get("X-Trace-ID")
+        or request.headers.get("x-trace-id")
+        or request.headers.get("X-Request-ID")
+        or request.headers.get("x-request-id")
+    )
+    eff_trace_id = set_trace_id(trace_id_hdr)
+    response = await call_next(request)
+    response.headers["X-Trace-ID"] = eff_trace_id
+    return response
 
 def is_origin_allowed(origin: str, allowed_list: List[str]) -> bool:
     """
@@ -118,18 +140,26 @@ def is_origin_allowed(origin: str, allowed_list: List[str]) -> bool:
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
-    WebSocket endpoint with strict Origin header validation.
+    WebSocket endpoint with strict Origin header validation and trace_id context initialization.
     Rejects connections from unauthorized origins.
     """
+    trace_id_hdr = (
+        websocket.headers.get("x-trace-id")
+        or websocket.headers.get("x-request-id")
+        or websocket.query_params.get("trace_id")
+    )
+    eff_trace_id = set_trace_id(trace_id_hdr)
+
     origin = websocket.headers.get("origin")
     allowed_list = get_allowed_origins()
 
     if not origin or not is_origin_allowed(origin, allowed_list):
-        logger.warning(f"WebSocket connection rejected: unauthorized origin '{origin}'")
+        logger.warning(f"WebSocket connection rejected: unauthorized origin '{origin}' | trace_id={eff_trace_id}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized Origin")
         return
 
     await websocket.accept()
+    logger.info(f"WebSocket connected | trace_id={eff_trace_id}")
     try:
         while True:
             data = await websocket.receive_text()

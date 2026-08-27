@@ -55,7 +55,7 @@
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
 | AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
 | AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Pendiente |
-| AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Pendiente |
+| AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
 | AUD-026 | Alto | Brecha Funcional | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Falta de checkpointing de ejecución que permita reanudar el estado tras una caída del proceso | Pendiente |
 | AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Pendiente |
 | AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Pendiente |
@@ -568,7 +568,7 @@
 - **Descripción del problema:** Los logs generados durante la ejecución de las peticiones HTTP y del agent loop carecen de identificadores de trazabilidad unificados (`trace_id`, `span_id`, `request_id`) propagados a las llamadas a herramientas.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/tracing.py` (líneas 1-60) y `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py` (líneas 20-80).
 - **Comparación con el estado del arte:** La resolución de incidentes en entornos distribuidos depende de la propagación de contextos W3C Trace Context en todos los componentes.
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 ---
 
