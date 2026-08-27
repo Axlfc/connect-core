@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 8
-  - **Total con Estado "Pendiente":** 26
+  - **Total con Estado "Corregido":** 9
+  - **Total con Estado "Pendiente":** 25
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -46,7 +46,7 @@
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Pendiente |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
-| AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Pendiente |
+| AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Pendiente |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Pendiente |
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Pendiente |
@@ -397,7 +397,16 @@
 - **Descripción del problema:** `ResourceLoader.discover_agents_md` únicamente busca el archivo `AGENTS.md` en la raíz exacta del directorio de trabajo actual (`os.path.join(self.cwd, "AGENTS.md")`). No soporta jerarquías anidadas por subdirectorio ni gestiona excepciones de sintaxis de forma detallada.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/resource_loader.py` (líneas 10-38).
 - **Comparación con el estado del arte:** La norma de referencia para `AGENTS.md` exige descubrimiento recursivo descendente con prevalencia del archivo más cercano al directorio donde opera la herramienta.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se modificó `ResourceLoader` en `app/core/resource_loader.py` agregando `discover_agents_md_files()` que recorre los directorios de forma ascendente desde el directorio de trabajo actual (`self.cwd`) hasta la raíz del sistema de archivos.
+  - Se ordenan los archivos descubiertos desde la raíz hacia `self.cwd`, garantizando que las directivas del archivo `AGENTS.md` más cercano al subdirectorio anidado se concatenen al final y tengan prevalencia en el contexto del System Prompt.
+  - Se añadió manejo de excepciones tolerante a fallos (`try-except`) al leer cada `AGENTS.md`. En caso de encontrarse con archivos mal formados o inalcanzables (e.g., `UnicodeDecodeError`, `PermissionError`, `OSError`), se registra una advertencia en logs (`logger.warning`) y la inicialización/arranque del agente continúa sin interrumpirse.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_resource_loader.py`:
+    - `test_discover_agents_md_recursive_and_precedence`: Verifica que `AGENTS.md` en subdirectorios anidados se descubre y sus directivas quedan ordenadas con prevalencia sobre los `AGENTS.md` de la raíz.
+    - `test_discover_agents_md_malformed_file_handling`: Confirma que archivos con codificación o bytes corruptos no detienen la ejecución ni el arranque, emitiendo una advertencia en los logs.
+    - `test_get_effective_protected_files_with_nested_agents_md`: Valida la combinación de archivos protegidos considerando la jerarquía descendente de `AGENTS.md`.
 
 ---
 
