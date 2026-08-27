@@ -54,7 +54,7 @@
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
 | AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
-| AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Pendiente |
+| AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Corregido |
 | AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
 | AUD-026 | Alto | Brecha Funcional | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Falta de checkpointing de ejecución que permita reanudar el estado tras una caída del proceso | Pendiente |
 | AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Corregido |
@@ -578,7 +578,7 @@
 - **Descripción del problema:** El módulo `metrics.py` registra contadores locales simples, pero no expone un endpoint `/metrics` en formato Prometheus ni exporta datos de telemetría de costo y uso de tokens por usuario vía OpenTelemetry.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/metrics.py` (líneas 1-40) y `very-simplified-stack/cognito-backend/app/core/token_budget.py` (líneas 20-60).
 - **Comparación con el estado del arte:** La observabilidad en producción exige métricas estandarizadas de latencia, fallos de herramientas y costes por modelo exportables a tableros corporativos.
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 #### AUD-025
 - **ID:** AUD-025

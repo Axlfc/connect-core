@@ -190,22 +190,21 @@ jobs:
       - name: Verify Lockfiles are Up-to-Date
         run: |
           check_lockfile() {
-            req_path="$1"
-            lock_path="$2"
-            echo "Checking $lock_path against $req_path..."
+            component_dir="$1"
+            echo "Checking $component_dir/requirements.lock against $component_dir/requirements.txt..."
             tmp_lock=$(mktemp)
-            uv pip compile --generate-hashes "$req_path" -o "$tmp_lock"
-            if ! diff -u "$lock_path" "$tmp_lock"; then
-              echo "❌ Error: $lock_path is out of sync with $req_path. Please run 'uv pip compile --generate-hashes $req_path -o $lock_path' and commit the result."
+            (cd "$component_dir" && uv pip compile --generate-hashes requirements.txt -o "$tmp_lock")
+            if ! diff -u -I "^#" "$component_dir/requirements.lock" "$tmp_lock"; then
+              echo "❌ Error: $component_dir/requirements.lock is out of sync with $component_dir/requirements.txt. Please run 'cd $component_dir && uv pip compile --generate-hashes requirements.txt -o requirements.lock' and commit the result."
               rm -f "$tmp_lock"
               exit 1
             fi
             rm -f "$tmp_lock"
-            echo "✓ $lock_path is synchronized"
+            echo "✓ $component_dir/requirements.lock is synchronized"
           }
 
-          check_lockfile "very-simplified-stack/cognito-backend/requirements.txt" "very-simplified-stack/cognito-backend/requirements.lock"
-          check_lockfile "very-simplified-stack/cognito-worker/requirements.txt" "very-simplified-stack/cognito-worker/requirements.lock"
+          check_lockfile "very-simplified-stack/cognito-backend"
+          check_lockfile "very-simplified-stack/cognito-worker"
 
       - name: Verify no sensitive files committed
         run: |
