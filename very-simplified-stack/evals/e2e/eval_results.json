@@ -1,0 +1,182 @@
+{
+  "total_tasks": 10,
+  "passed_tasks": 10,
+  "pass_rate": 1.0,
+  "category_scores": {
+    "file_read": 1.0,
+    "multi_file_edit": 1.0,
+    "test_fix": 1.0,
+    "cleanup": 1.0,
+    "refactoring": 1.0,
+    "code_review": 1.0,
+    "security_approval": 1.0,
+    "guardrails": 1.0,
+    "shell_session": 1.0,
+    "multi_turn_doc": 1.0
+  },
+  "results": [
+    {
+      "task_id": "E2E-001",
+      "task_name": "Read and summarize file",
+      "category": "file_read",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 2,
+      "executed_tools": [
+        "read"
+      ],
+      "verification_details": [
+        "\u2713 Event 'ToolCallEvent' (value=read) occurred during trajectory."
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-002",
+      "task_name": "Multi-file coordinated edit",
+      "category": "multi_file_edit",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 3,
+      "executed_tools": [
+        "write",
+        "write"
+      ],
+      "verification_details": [
+        "\u2713 File 'src/version.py' contains expected substring '2.0.0'",
+        "\u2713 File 'README.md' contains expected substring '2.0.0'"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-003",
+      "task_name": "Run and fix failing test",
+      "category": "test_fix",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 4,
+      "executed_tools": [
+        "bash",
+        "write",
+        "bash"
+      ],
+      "verification_details": [
+        "\u2713 File 'src/math_utils.py' contains expected substring 'return a + b'",
+        "\u2713 Test command 'python test_math.py' passed with code 0"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-004",
+      "task_name": "File deletion / cleanup",
+      "category": "cleanup",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 2,
+      "executed_tools": [
+        "bash"
+      ],
+      "verification_details": [
+        "\u2713 File 'temp.log' deletion matches expected (True)"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-005",
+      "task_name": "Multi-file search and refactor",
+      "category": "refactoring",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 3,
+      "executed_tools": [
+        "write",
+        "write"
+      ],
+      "verification_details": [
+        "\u2713 File 'utils.py' contains expected substring 'def new_helper()'",
+        "\u2713 File 'main.py' contains expected substring 'new_helper()'"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-006",
+      "task_name": "Code review tool integration",
+      "category": "code_review",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 2,
+      "executed_tools": [
+        "code_review"
+      ],
+      "verification_details": [
+        "\u2713 Event 'ToolCallEvent' (value=code_review) occurred during trajectory."
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-007",
+      "task_name": "Sensitive command approval policy",
+      "category": "security_approval",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 2,
+      "executed_tools": [
+        "bash"
+      ],
+      "verification_details": [
+        "\u2713 Event 'ApprovalRequiredEvent' (value=bash) occurred during trajectory."
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-008",
+      "task_name": "Tool loop detection and recovery",
+      "category": "guardrails",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 5,
+      "executed_tools": [
+        "read",
+        "read",
+        "read",
+        "read"
+      ],
+      "verification_details": [
+        "\u2713 Event 'DoneEvent' (value=end_turn) occurred during trajectory."
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-009",
+      "task_name": "Persistent shell stateful commands",
+      "category": "shell_session",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 3,
+      "executed_tools": [
+        "bash",
+        "bash"
+      ],
+      "verification_details": [
+        "\u2713 File 'output/result.txt' existence matches expected (True)"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "task_id": "E2E-010",
+      "task_name": "Multi-turn code inspection and documentation",
+      "category": "multi_turn_doc",
+      "passed": true,
+      "score": 1.0,
+      "turns_used": 3,
+      "executed_tools": [
+        "read",
+        "write"
+      ],
+      "verification_details": [
+        "\u2713 File 'DOCS.md' existence matches expected (True)",
+        "\u2713 File 'DOCS.md' contains expected substring 'Module A'"
+      ],
+      "failure_reasons": []
+    }
+  ]
+}
