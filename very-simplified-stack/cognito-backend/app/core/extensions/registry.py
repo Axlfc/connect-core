@@ -40,7 +40,8 @@ class ExtensionRegistry:
         # Merge Global and project-local tools. Project-local wins.
         from app.core.tools import (
             ReadTool, WriteTool, EditTool, BashTool, UnifiedPatchTool,
-            CodeReviewTool, ListDirectoryTool, SearchFilesTool, ReadSpillTool
+            CodeReviewTool, ListDirectoryTool, SearchFilesTool, ReadSpillTool,
+            SubAgentTool
         )
         patch_tool = UnifiedPatchTool()
         tools = {
@@ -55,6 +56,7 @@ class ExtensionRegistry:
             "apply_unified_patch": patch_tool,
             "unified_patch": patch_tool,
             "code_review": CodeReviewTool(),
+            "delegate_subagent": SubAgentTool(),
         }
         tools.update(self._global_tools)
         if cwd in self._project_tools:
