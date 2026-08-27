@@ -192,11 +192,14 @@ jobs:
           check_lockfile() {
             req_path="$1"
             lock_path="$2"
+            dir=$(dirname "$req_path")
+            req_file=$(basename "$req_path")
+            lock_file=$(basename "$lock_path")
             echo "Checking $lock_path against $req_path..."
             tmp_lock=$(mktemp)
-            uv pip compile --generate-hashes "$req_path" -o "$tmp_lock"
-            if ! diff -u "$lock_path" "$tmp_lock"; then
-              echo "❌ Error: $lock_path is out of sync with $req_path. Please run 'uv pip compile --generate-hashes $req_path -o $lock_path' and commit the result."
+            (cd "$dir" && uv pip compile --generate-hashes "$req_file" -o "$tmp_lock")
+            if ! diff -u "$lock_path" <(sed "s|$tmp_lock|$lock_file|" "$tmp_lock"); then
+              echo "❌ Error: $lock_path is out of sync with $req_path. Please run '(cd $dir && uv pip compile --generate-hashes $req_file -o $lock_file)' and commit the result."
               rm -f "$tmp_lock"
               exit 1
             fi
