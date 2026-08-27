@@ -194,7 +194,7 @@ jobs:
             echo "Checking $component_dir/requirements.lock against $component_dir/requirements.txt..."
             tmp_lock=$(mktemp)
             (cd "$component_dir" && uv pip compile --generate-hashes requirements.txt -o "$tmp_lock")
-            if ! diff -u "$component_dir/requirements.lock" "$tmp_lock"; then
+            if ! diff -u -I "^#" "$component_dir/requirements.lock" "$tmp_lock"; then
               echo "❌ Error: $component_dir/requirements.lock is out of sync with $component_dir/requirements.txt. Please run 'cd $component_dir && uv pip compile --generate-hashes requirements.txt -o requirements.lock' and commit the result."
               rm -f "$tmp_lock"
               exit 1
