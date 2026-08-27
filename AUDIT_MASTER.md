@@ -43,7 +43,7 @@
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Pendiente |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Pendiente |
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente |
-| AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Pendiente |
+| AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
@@ -375,7 +375,7 @@
 - **Descripción del problema:** El mecanismo de compactación en `compaction.py` comprime el historial reemplazando turnos antiguos por un resumen en texto plano narrativo. Durante este proceso se descartan firmas exactas de llamadas a herramientas, esquemas de entrada/salida y rutas de archivos accedidas.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/compaction.py` (líneas 30-110).
 - **Comparación con el estado del arte:** La compactación estructural de referencia (Claude Code / OpenCode) conserva mapas de archivos leídos, firmas de herramientas y fragmentos de código intactos mientras resume solo la conversación accesoria.
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 #### AUD-014
 - **ID:** AUD-014

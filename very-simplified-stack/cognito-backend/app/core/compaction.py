@@ -19,7 +19,7 @@ ES CRÍTICO que preservas:
 
 Devuelve únicamente el texto del resumen, sin preámbulos ni explicaciones adicionales."""
 
-FILE_PATH_KEY_NAMES = {"filepath", "path", "filename", "file", "target", "source", "destination", "files"}
+FILE_PATH_KEY_NAMES = {"filepath", "path", "filename", "file", "target", "source", "destination", "files", "file_path", "file_paths"}
 
 def _parse_embedded_ledgers(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
     merged_files = []
@@ -27,6 +27,18 @@ def _parse_embedded_ledgers(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
     merged_tools = []
 
     for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+
+        cl = msg.get("context_ledger")
+        if isinstance(cl, dict):
+            if "files_touched" in cl and isinstance(cl["files_touched"], list):
+                merged_files.extend(cl["files_touched"])
+            if "function_signatures" in cl and isinstance(cl["function_signatures"], list):
+                merged_signatures.extend(cl["function_signatures"])
+            if "tool_calls" in cl and isinstance(cl["tool_calls"], list):
+                merged_tools.extend(cl["tool_calls"])
+
         content = msg.get("content", "") or ""
         if "Context Ledger" in content or "files_touched" in content:
             matches = re.findall(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
@@ -111,7 +123,7 @@ def extract_context_ledger(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
                         if k.lower() in FILE_PATH_KEY_NAMES and isinstance(v, str):
                             if v and v not in files_touched:
                                 files_touched.append(v)
-                        elif k.lower() == "files" and isinstance(v, list):
+                        elif (k.lower() in FILE_PATH_KEY_NAMES or k.lower().endswith("files") or k.lower().endswith("paths")) and isinstance(v, list):
                             for item in v:
                                 if isinstance(item, str) and item not in files_touched:
                                     files_touched.append(item)

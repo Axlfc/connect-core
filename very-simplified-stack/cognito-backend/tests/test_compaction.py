@@ -119,3 +119,45 @@ async def test_context_ledger_extraction_and_multi_compaction():
         eff_after_2 = sm.get_effective_messages(sid)
         assert "app/core/main.py" in eff_after_2[0]["content"]
         assert "config/settings.py" in eff_after_2[0]["content"]
+
+        # 3. Third compaction (triple compaction survival check)
+        sm.append_message(sid, "user", "Refactor src/utils/helpers.py and def format_time():")
+        eff3 = sm.get_effective_messages(sid)
+        last_line3 = sm.get_last_line_index(sid)
+        summary3, ledger3 = await compact(eff3, keep_last_n=0, backend_router=backend_router)
+
+        sm.append_compaction(sid, summary3, last_line3, ledger3)
+
+        assert "app/core/main.py" in ledger3["files_touched"]
+        assert "config/settings.py" in ledger3["files_touched"]
+        assert "src/utils/helpers.py" in ledger3["files_touched"]
+        assert any("def process_data" in sig for sig in ledger3["function_signatures"])
+        assert any("class AppConfig" in sig for sig in ledger3["function_signatures"])
+        assert any("def format_time" in sig for sig in ledger3["function_signatures"])
+
+        eff_after_3 = sm.get_effective_messages(sid)
+        assert "context_ledger" in eff_after_3[0]
+        assert eff_after_3[0]["context_ledger"] == ledger3
+
+@pytest.mark.asyncio
+async def test_extract_context_ledger_key_variations():
+    msgs = [
+        {
+            "role": "assistant",
+            "content": "Running tool",
+            "tool_calls": [
+                {
+                    "id": "tc1",
+                    "type": "function",
+                    "function": {
+                        "name": "edit_file",
+                        "arguments": '{"file_path": "src/module.py", "file_paths": ["src/other.py"]}'
+                    }
+                }
+            ]
+        }
+    ]
+    ledger = extract_context_ledger(msgs)
+    assert "src/module.py" in ledger["files_touched"]
+    assert "src/other.py" in ledger["files_touched"]
+    assert any(tc["name"] == "edit_file" for tc in ledger["tool_calls"])

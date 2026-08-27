@@ -128,7 +128,9 @@ async def derive_messages_for_llm(
             if ledger_text:
                 compaction_content += f"\n\n{ledger_text}"
 
-        summary_msg = {"role": "system", "content": compaction_content}
+        summary_msg: Dict[str, Any] = {"role": "system", "content": compaction_content}
+        if compaction_event.context_ledger:
+            summary_msg["context_ledger"] = compaction_event.context_ledger
         derived_messages.append(summary_msg)
         start_line = compaction_event.covers_through_line
     else:
