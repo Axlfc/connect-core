@@ -135,7 +135,13 @@ async def test_agent_loop_human_in_the_loop_integration(tmp_path):
 
     async def consume_agent_loop_and_approve():
         with patch("app.core.sandbox.is_bwrap_available", return_value=True), \
-             patch("app.core.sandbox.SandboxedExecutor.execute_cmd", return_value={"stdout": "HEAD is now at 1234\n", "stderr": "", "exit_code": 0}):
+             patch("app.core.sandbox.SandboxedExecutor.execute_cmd", return_value={"stdout": "HEAD is now at 1234\n", "stderr": "", "exit_code": 0}), \
+             patch("asyncio.create_subprocess_shell") as mock_shell:
+
+            mock_proc = AsyncMock()
+            mock_proc.communicate.return_value = (b"HEAD is now at 1234\n", b"")
+            mock_proc.returncode = 0
+            mock_shell.return_value = mock_proc
 
             async for ev in agent_loop(
                 messages=[{"role": "user", "content": "Reset git state"}],

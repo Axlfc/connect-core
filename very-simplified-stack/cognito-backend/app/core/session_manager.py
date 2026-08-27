@@ -4,7 +4,7 @@ import logging
 import fcntl
 import shutil
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
 import anyio
@@ -648,6 +648,55 @@ class SessionManager:
 
         self._get_index()
         return target_path
+
+    def purge_inactive_sessions(self, max_age_days: int) -> List[str]:
+        """
+        Purges inactive sessions whose last update time (updated_at) is older than max_age_days.
+        Returns a list of purged session IDs.
+        """
+        if max_age_days < 0:
+            return []
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=max_age_days)
+
+        index = self._get_index()
+        purged_ids: List[str] = []
+
+        for sid, meta_data in list(index.items()):
+            updated_at_str = meta_data.get("updated_at") or meta_data.get("created_at")
+            is_expired = False
+
+            if updated_at_str:
+                try:
+                    updated_at_dt = datetime.fromisoformat(updated_at_str)
+                    if updated_at_dt.tzinfo is None:
+                        updated_at_dt = updated_at_dt.replace(tzinfo=timezone.utc)
+                    if updated_at_dt < cutoff:
+                        is_expired = True
+                except Exception as e:
+                    logger.warning(f"Error parsing timestamp for session {sid}: {e}")
+                    is_expired = False
+            else:
+                # Fallback to file mtime if timestamp missing
+                session_file = self.sessions_dir / f"{sid}.jsonl"
+                if session_file.exists():
+                    mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=timezone.utc)
+                    if mtime < cutoff:
+                        is_expired = True
+
+            if is_expired:
+                try:
+                    self.delete_session(sid)
+                    purged_ids.append(sid)
+                    logger.info(f"Purged inactive session {sid} (inactive > {max_age_days} days)")
+                except Exception as e:
+                    logger.error(f"Failed to purge session {sid}: {e}")
+
+        return purged_ids
+
+    async def purge_inactive_sessions_async(self, max_age_days: int) -> List[str]:
+        return await anyio.to_thread.run_sync(self.purge_inactive_sessions, max_age_days)
 
     def delete_session(self, session_id: str) -> None:
         session_file = self.sessions_dir / f"{session_id}.jsonl"
