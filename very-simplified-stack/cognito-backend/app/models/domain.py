@@ -169,3 +169,37 @@ class AuditEvent(BaseModel):
     description: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
     timestamp: float = Field(default_factory=time.time)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Multi-tenant Governance & Identity Entities
+# ══════════════════════════════════════════════════════════════════════════════
+
+class Organization(BaseModel):
+    org_id: str = Field(default_factory=lambda: f"org-{uuid.uuid4().hex[:12]}")
+    slug: str
+    display_name: str
+    status: Literal["active", "suspended", "pending_deletion"] = "active"
+    sso_enabled: bool = False
+    sso_provider_config: Dict[str, Any] = Field(default_factory=dict)
+    created_at: float = Field(default_factory=time.time)
+    updated_at: float = Field(default_factory=time.time)
+
+class Project(BaseModel):
+    project_id: str = Field(default_factory=lambda: f"proj-{uuid.uuid4().hex[:12]}")
+    org_id: str
+    slug: str
+    display_name: str
+    description: Optional[str] = None
+    status: Literal["active", "archived"] = "active"
+    created_at: float = Field(default_factory=time.time)
+
+class User(BaseModel):
+    user_id: str = Field(default_factory=lambda: f"usr-{uuid.uuid4().hex[:12]}")
+    org_id: str
+    email: str
+    external_subject_id: Optional[str] = None
+    full_name: Optional[str] = None
+    status: Literal["active", "inactive", "deprovisioned"] = "active"
+    roles: List[str] = Field(default_factory=lambda: ["developer"])
+    created_at: float = Field(default_factory=time.time)
+    last_login_at: Optional[float] = None

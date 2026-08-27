@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 10
-  - **Total con Estado "Pendiente":** 24
+  - **Total con Estado "Corregido":** 11
+  - **Total con Estado "Pendiente":** 23
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -40,7 +40,7 @@
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente (Plan de diseño disponible) |
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
-| AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Pendiente |
+| AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Pendiente |
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente (Plan de diseño disponible) |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
@@ -338,7 +338,19 @@
 - **Descripción del problema:** El control de cuota de consumo (`TokenBudgetManager`) se calcula exclusivamente por sesión individual. No existen mecanismos para definir cuotas financieras o límites de consumo de tokens a nivel de equipo, usuario u organización.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/token_budget.py` (líneas 1-80).
 - **Comparación con el estado del arte:** Los arneses de nivel enterprise gestionan presupuestos agregados jerárquicos con alertas y bloqueos de costes por departamento o proyecto.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se crearon las entidades de dominio y modelos ORM de base de datos `Organization`, `Project` y `User` en `app/models/domain.py` y `app/models/db.py`.
+  - Se extendió `SessionMetadata` y `SessionManager.create()` en `app/core/session_manager.py` para vincular sesiones con los identificadores multi-tenant `org_id`, `project_id` y `user_id`.
+  - Se extendió `TokenBudgetManager` en `app/core/token_budget.py` incorporando soporte para presupuestos definidos jerárquicamente a nivel de `Organization`, `Project`, `User` y `Session`.
+  - Se implementó la agregación de consumo acumulado simultáneo en todas las dimensiones del jerarquía (`record_usage`), evaluando umbrales de aviso configurables (`warning_threshold_ratio`, por defecto 80%) y bloqueos duros (`hard_limit_action="block"` / `TokenBudgetExceededError`).
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_hierarchical_budget.py`:
+    - `test_domain_and_db_models`: Verifica la instanciación e identificadores de `Organization`, `Project` y `User`.
+    - `test_session_manager_tenant_binding`: Comprueba la vinculación de metadatos multi-tenant en sesiones.
+    - `test_hierarchical_budget_setting_and_getting`: Valida la configuración y consulta de presupuestos por alcance.
+    - `test_hierarchical_usage_aggregation_and_org_budget_enforcement`: Demuestra que el presupuesto de organización se respeta agregando el consumo acumulado de múltiples usuarios/sesiones, activando alertas de advertencia y lanzando `TokenBudgetExceededError` al superar la cuota agregada de la organización.
+    - `test_project_and_session_level_blocking`: Confirma el bloqueo independiente a nivel de proyecto y de sesión.
 
 #### AUD-011
 - **ID:** AUD-011

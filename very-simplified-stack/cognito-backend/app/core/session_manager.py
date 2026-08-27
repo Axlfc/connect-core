@@ -23,6 +23,9 @@ class SessionMetadata(BaseModel):
     approval_timeout_seconds: Optional[int] = None
     blocked_actions_count: int = 0
     approval_summary: List[Dict[str, Any]] = []
+    org_id: Optional[str] = None
+    project_id: Optional[str] = None
+    user_id: Optional[str] = None
 
 class SessionManager:
     def __init__(self, sessions_dir: Optional[Path] = None):
@@ -156,7 +159,14 @@ class SessionManager:
             json.dump(index, f, indent=2)
         temp_index_path.replace(self.index_path)
 
-    def create(self, cwd: str, approval_timeout_seconds: Optional[int] = None) -> str:
+    def create(
+        self,
+        cwd: str,
+        approval_timeout_seconds: Optional[int] = None,
+        org_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> str:
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
 
@@ -172,7 +182,10 @@ class SessionManager:
             "message_count": 0,
             "approval_timeout_seconds": approval_timeout_seconds,
             "blocked_actions_count": 0,
-            "approval_summary": []
+            "approval_summary": [],
+            "org_id": org_id,
+            "project_id": project_id,
+            "user_id": user_id
         }
 
         with self._lock_session(session_id, shared=False):
@@ -197,6 +210,9 @@ class SessionManager:
                 approval_timeout_seconds=meta.get("approval_timeout_seconds"),
                 blocked_actions_count=meta.get("blocked_actions_count", 0),
                 approval_summary=meta.get("approval_summary", []),
+                org_id=meta.get("org_id"),
+                project_id=meta.get("project_id"),
+                user_id=meta.get("user_id"),
             )
 
     def set_approval_timeout(self, session_id: str, timeout_seconds: int) -> bool:
