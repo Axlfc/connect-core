@@ -514,7 +514,10 @@ class SessionManager:
                 if ledger_text:
                     compaction_content += f"\n\n{ledger_text}"
 
-            messages.append({"role": "system", "content": compaction_content})
+            summary_msg = {"role": "system", "content": compaction_content}
+            if context_ledger:
+                summary_msg["context_ledger"] = context_ledger
+            messages.append(summary_msg)
             for i, data in all_entries:
                 if i > start_line and data.get("type") == "message":
                     messages.append(self._to_ai_message(data))
