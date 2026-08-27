@@ -11,7 +11,7 @@ from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.uncertainty import compute_uncertainty
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.guardrails.tool_loop_detector import ToolLoopDetector
-from app.core.exec_policy import evaluate_command_execution, ExecVerdict
+from app.core.exec_policy import evaluate_command_execution, evaluate_tool_execution, ExecVerdict
 from app.core.approval import approval_manager, ApprovalManager
 
 logger = logging.getLogger(__name__)
@@ -191,20 +191,20 @@ async def agent_loop(
                 else:
                     logger.info(f"Preparing execution for tool {tool.name} with args {tc['arguments']}")
 
-                    # Check ExecPolicy for shell execution tools
+                    # Check ExecPolicy for tool execution using tool metadata and command policy
                     cmd = tc["arguments"].get("command", "") if isinstance(tc.get("arguments"), dict) else ""
                     user_approved = bool(tc["arguments"].get("user_approved", False)) if isinstance(tc.get("arguments"), dict) else False
                     eff_session_id = session_id or getattr(context, "session_id", None) or "default_session"
 
-                    verdict, reason = ExecVerdict.PERMITIR, "Auto-approved"
-                    if tc["name"] in ("bash", "persistent_shell", "shell_run") and cmd:
-                        verdict, reason = evaluate_command_execution(
-                            command=cmd,
-                            cwd=context.cwd,
-                            trusted=context.trusted,
-                            session_id=eff_session_id,
-                            user_approved=user_approved,
-                        )
+                    verdict, reason = evaluate_tool_execution(
+                        tool=tool,
+                        arguments=tc["arguments"] if isinstance(tc.get("arguments"), dict) else {},
+                        command=cmd,
+                        cwd=context.cwd,
+                        trusted=context.trusted,
+                        session_id=eff_session_id,
+                        user_approved=user_approved,
+                    )
 
                     if verdict == ExecVerdict.DENEGAR:
                         logger.warning(f"Tool execution for '{tc['name']}' denied by ExecPolicy: {reason}")
@@ -223,6 +223,8 @@ async def agent_loop(
                             reason=reason,
                             command=cmd,
                             timeout_seconds=eff_timeout,
+                            is_destructive=getattr(tool, "is_destructive", False),
+                            is_read_only=getattr(tool, "is_read_only", False),
                         )
                         appr_id = appr_req.approval_id
 
@@ -319,7 +321,9 @@ async def agent_loop(
                 })
 
                 # Check for tool call repetition loop guardrail
-                warning_msg = tool_loop_detector.record_and_check(tc["name"], tc["arguments"], output=result.output)
+                warning_msg = tool_loop_detector.record_and_check(
+                    tc["name"], tc["arguments"], output=result.output, tool=tool
+                )
                 if warning_msg:
                     logger.warning(f"Tool loop detected for '{tc['name']}'. Injecting system warning message.")
                     system_warning_msg = {"role": "system", "content": warning_msg}

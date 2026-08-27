@@ -7,6 +7,9 @@ from app.core.fs_observation_policy import FSObservationPolicy
 class EditTool(AgentTool):
     name = "edit"
     description = "DEPRECADA: Usa 'apply_unified_patch' en su lugar. Esta herramienta ya no se recomienda."
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

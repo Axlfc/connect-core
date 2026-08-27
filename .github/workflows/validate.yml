@@ -195,7 +195,7 @@ jobs:
             echo "Checking $lock_path against $req_path..."
             tmp_lock=$(mktemp)
             uv pip compile --generate-hashes "$req_path" -o "$tmp_lock"
-            if ! diff -u "$lock_path" "$tmp_lock"; then
+            if ! diff -u -I '^#    uv pip compile' "$lock_path" "$tmp_lock"; then
               echo "❌ Error: $lock_path is out of sync with $req_path. Please run 'uv pip compile --generate-hashes $req_path -o $lock_path' and commit the result."
               rm -f "$tmp_lock"
               exit 1

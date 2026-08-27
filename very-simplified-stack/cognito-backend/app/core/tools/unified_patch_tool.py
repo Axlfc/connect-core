@@ -184,6 +184,9 @@ class UnifiedPatchTool(AgentTool):
         "Apply a unified diff patch (with ---/+++ headers and @@ hunks) to workspace files. "
         "Validates path safety and protected files prior to application."
     )
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

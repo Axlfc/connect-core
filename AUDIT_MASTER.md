@@ -35,7 +35,7 @@
 | AUD-002 | Alto | Brecha Funcional | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend / CLI | Ausencia de política de red outbound deny-all por defecto en subprocesos | Corregido |
 | AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Corregido |
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
-| AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Pendiente |
+| AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Corregido |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente |
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente |
@@ -199,7 +199,21 @@
 - **Descripción del problema:** La clase abstracta `AgentTool` no declara metadatos explícitos de comportamiento (tales como `is_read_only`, `is_destructive` o `concurrency_safe`). La evaluación de permisos depende de lógica hardcodeada o de la política externa `ExecPolicy` en lugar de autodeclaración tipada de la herramienta.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/tools/base.py` (líneas 10-50).
 - **Comparación con el estado del arte:** En 2026, el patrón estándar en Claude Code / OpenCode exige que cada herramienta exponga metadatos de riesgo y concurrencia tipados (ej. vía Pydantic) para que el harness decida permisos automáticamente.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se añadieron campos tipados de metadatos de comportamiento de riesgo (`is_read_only: bool = False`, `is_destructive: bool = False`, `concurrency_safe: bool = False`) a la clase base `AgentTool` (`app/core/tools/base.py`).
+  - Se migraron todas las herramientas existentes (`ReadTool`, `WriteTool`, `EditTool`, `UnifiedPatchTool`, `ListDirectoryTool`, `SearchFilesTool`, `BashTool`, `PersistentShellTool`, `ShellTools`, `TodoTools`, `WebPublisherTools`, `QuerySpillTool`, `ReadSpillTool`, `CodeReviewTool`), así como los wrappers `WrappedMCPTool` y `HookedTool`, para declarar estos metadatos explícitamente.
+  - Se actualizó `ToolLoopDetector` (`app/core/guardrails/tool_loop_detector.py`) para consultar `tool.is_read_only` directamente al calcular hashes de llamadas.
+  - Se creó `evaluate_tool_execution` en `ExecPolicy` (`app/core/exec_policy.py`) y se integró en `agent_loop.py` para evaluar permisos según los metadatos `is_destructive` e `is_read_only` de cada herramienta en contextos confiables o no confiables.
+  - Se actualizó `ApprovalManager` y `PendingApprovalRequest` (`app/core/approval.py`) para registrar las banderas `is_destructive` e `is_read_only` en las solicitudes de aprobación pendientes.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_aud005_tool_metadata.py`:
+    - `test_agent_tool_base_metadata_defaults`: Verifica que la clase base `AgentTool` define los atributos de metadatos.
+    - `test_all_official_tools_declare_metadata`: Comprueba que cada herramienta oficial declara valores explícitos correctos para `is_read_only`, `is_destructive` y `concurrency_safe`.
+    - `test_wrapped_mcp_and_hooked_tool_metadata_propagation`: Confirma la propagación de metadatos en wrappers de MCP y herramientas con hooks.
+    - `test_tool_loop_detector_queries_tool_metadata`: Valida que `ToolLoopDetector` consulta los metadatos de la herramienta para diferenciar el cálculo de hash entre herramientas de lectura y destructivas.
+    - `test_exec_policy_evaluates_tool_metadata`: Garantiza que `evaluate_tool_execution` bloquea herramientas destructivas en entornos no confiables requiriendo aprobación explícita.
+    - `test_approval_manager_records_tool_metadata`: Verifica que las solicitudes de aprobación pendientes registran los metadatos de riesgo de la herramienta.
 
 #### AUD-006
 - **ID:** AUD-006

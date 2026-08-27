@@ -9,6 +9,9 @@ from app.core.path_safety import is_path_contained
 class WriteTool(AgentTool):
     name = "write"
     description = "Write or overwrite a file with the provided content."
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

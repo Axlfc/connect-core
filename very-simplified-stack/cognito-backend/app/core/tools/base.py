@@ -121,6 +121,11 @@ class AgentTool(ABC):
     parameters_schema: dict[str, Any]  # Standard JSON Schema
     return_schema: Optional[dict[str, Any]] = STANDARD_TOOL_RETURN_SCHEMA  # Standard JSON Schema for ToolResult
 
+    # Explicit behavioral risk metadata
+    is_read_only: bool = False
+    is_destructive: bool = False
+    concurrency_safe: bool = False
+
     @abstractmethod
     async def execute(self, arguments: dict[str, Any], context: ToolContext) -> ToolResult:
         ...
