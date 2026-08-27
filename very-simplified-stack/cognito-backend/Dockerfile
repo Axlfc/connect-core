@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar e instalar requerimientos
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copiar e instalar requerimientos desde lockfile con hashes
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 # Copiar el código
 # Se asume que en el host tienes: cognito-backend/app/main.py
