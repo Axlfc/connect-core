@@ -1,12 +1,59 @@
 import os
+import signal
+import asyncio
 import logging
 from typing import List
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents
 from app.api.routes.openai_compat import router as openai_router
 
 logger = logging.getLogger("cognito.backend.main")
+
+# Global flag to signal shutdown state
+shutdown_event = asyncio.Event()
+
+def handle_sigterm(signum, frame):
+    """
+    Handler for SIGTERM signal using Python standard signal module.
+    Sets shutdown_event to trigger graceful cleanup.
+    """
+    logger.info(f"Received SIGTERM signal (signum={signum}). Initiating graceful shutdown...")
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon_threadsafe(shutdown_event.set)
+    except RuntimeError:
+        # Loop might not be running yet or already closed
+        shutdown_event.set()
+
+# Register SIGTERM signal handler
+try:
+    signal.signal(signal.SIGTERM, handle_sigterm)
+except (ValueError, AttributeError) as e:
+    logger.warning(f"Failed to register SIGTERM handler: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    from app.core.sandbox import is_sandbox_disabled_dev_only
+    is_sandbox_disabled_dev_only()
+
+    from app.core.extensions.registry import extension_registry
+    from app.services.backend_router import backend_router
+    from app.services.semantic_orchestrator import semantic_orchestrator
+
+    extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
+    extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
+
+    yield
+
+    # Shutdown logic
+    logger.info("Executing graceful shutdown tasks for cognito-backend...")
+    # Clean up active resources/sessions if needed
+    logger.info("Cognito backend graceful shutdown complete.")
+
 
 # CSRF PROTECTION NOTE (AUD-004):
 # Cognito uses stateless Bearer authentication (Authorization headers) or token-based MCP authentication.
@@ -41,7 +88,8 @@ def get_allowed_origins() -> List[str]:
 app = FastAPI(
     title="Cognito Stack AI Agent API",
     description="An API for interacting with an AI-powered reasoning engine.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 allowed_origins = get_allowed_origins()
@@ -93,20 +141,6 @@ async def websocket_endpoint(websocket: WebSocket):
 app.include_router(health.router, tags=["Health"])
 app.include_router(ai_agents.router, prefix="/api", tags=["AI Agents"])
 app.include_router(openai_router)          # monta /v1/models y /v1/chat/completions
-
-from app.core.extensions.registry import extension_registry
-from app.services.backend_router import backend_router
-from app.services.semantic_orchestrator import semantic_orchestrator
-
-@app.on_event("startup")
-async def startup_event():
-    # Emit warning if dev sandbox bypass is active
-    from app.core.sandbox import is_sandbox_disabled_dev_only
-    is_sandbox_disabled_dev_only()
-
-    # Load global and configured extensions on startup
-    extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
-    extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
 
 @app.get("/")
 async def root():
