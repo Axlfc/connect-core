@@ -139,10 +139,11 @@ async def test_sandboxed_executor_bwrap_command_building():
 
 
 @pytest.mark.asyncio
-async def test_bash_tool_mandatory_sandbox_by_default(tmp_path):
+async def test_bash_tool_mandatory_sandbox_by_default(monkeypatch, tmp_path):
     from app.core.tools.bash_tool import BashTool
     from app.core.tools.base import ToolContext
 
+    monkeypatch.delenv("COGNITO_DISABLE_SANDBOX_DEV_ONLY", raising=False)
     tool = BashTool()
     ctx = ToolContext(cwd=str(tmp_path), trusted=True, protected_files=set())
 

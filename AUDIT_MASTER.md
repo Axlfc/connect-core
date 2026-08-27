@@ -41,7 +41,7 @@
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
-| AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Pendiente |
+| AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Corregido |
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente (Plan de diseño disponible) |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
@@ -362,7 +362,18 @@
 - **Descripción del problema:** No existen servicios o tareas de fondo para la purga programada o eliminación bajo demanda (derecho al olvido / GDPR) del historial de sesiones o archivos almacenados.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 1-120) y `very-simplified-stack/cognito-backend/app/core/database.py` (líneas 1-50).
 - **Comparación con el estado del arte:** Las políticas de retención de datos corporativos exigen la purga automática de sesiones inactivas tras N días y capacidades de borrado solicitadas por API.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - **Parte 1 (Purga por antigüedad de sesiones inactivas):**
+    - Se agregaron los métodos `purge_inactive_sessions(max_age_days)` y `purge_inactive_sessions_async(max_age_days)` en `app/core/session_manager.py`, permitiendo la inspección y eliminación segura de sesiones cuya última actualización (`updated_at`) supere los días de inactividad configurados. La eliminación destruye atómicamente los archivos de sesión (`.jsonl`), metadatos (`.meta.json`), cerrojos (`.lock`) y sincroniza el índice general (`index.json`).
+    - Se implementó la clase `SessionPurgerTask` en `app/core/session/purger.py` basada en la librería estándar `asyncio`, que ejecuta un bucle periódico en segundo plano. La retención y el intervalo de ejecución son configurables mediante las variables de entorno `COGNITO_SESSION_RETENTION_DAYS` (por defecto 30 días) y `COGNITO_SESSION_PURGE_INTERVAL_SECONDS` (por defecto 3600 segundos).
+    - Se integró la tarea de purga en segundo plano en el gestor de ciclo de vida (`lifespan`) de la aplicación FastAPI en `app/main.py`, asegurando un arranque automático y una cancelación limpia (`graceful shutdown`) al detener la aplicación.
+  - **Parte 2 (Borrado bajo demanda por User/Organization - Bloqueado por RFC):**
+    - *(Nota explicativa explícita)*: La exposición de la API de borrado bajo demanda de todos los datos asociados a un `User` u `Organization` específico está documentada y marcada formalmente como **bloqueada** a la espera de la integración completa del modelo de datos multi-tenant del RFC (entidades `User` u `Organization` persistidas y vinculadas en el motor de base de datos relacional).
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_session_purger.py`:
+    - `test_purge_inactive_sessions_by_age`: Comprueba la eliminación exacta de sesiones con antigüedad superior al umbral configurado (`max_age_days`), preservando las sesiones activas recientes.
+    - `test_session_purger_background_task`: Valida la ejecución del bucle en segundo plano `SessionPurgerTask` y la detención limpia sin fugas de corrutinas.
 
 #### AUD-012
 - **ID:** AUD-012

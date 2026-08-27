@@ -53,11 +53,16 @@ async def lifespan(app: FastAPI):
     extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
     extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
 
+    # Start background session purger task
+    from app.core.session.purger import SessionPurgerTask
+    purger_task = SessionPurgerTask()
+    purger_task.start()
+
     yield
 
     # Shutdown logic
     logger.info("Executing graceful shutdown tasks for cognito-backend...")
-    # Clean up active resources/sessions if needed
+    await purger_task.stop()
     logger.info("Cognito backend graceful shutdown complete.")
 
 
