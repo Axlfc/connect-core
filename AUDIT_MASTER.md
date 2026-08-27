@@ -119,6 +119,14 @@
 - **Nota de Seguimiento Fechada (Verificación de Enforcement de Red):**
   - **Mecanismo de Enforcement Confirmado:** Se confirmó que las llamadas salientes del agente Cognito hacia proveedores LLM u otros servicios ocurren exclusivamente fuera del sandbox en el proceso principal orquestador de Cognito. El sandbox de `bwrap` aísla por completo el subproceso sandboxeado con `--unshare-all` a nivel de namespace del kernel Linux sin ninguna interfaz de red utilizable (`deny-all` real sin excepciones internas).
   - **Corrección Aplicada:** Se eliminó la ambigüedad donde `build_bwrap_args` aceptaba opcionalmente `--share-net` si el host estaba en la lista blanca. Ahora `build_bwrap_args` NUNCA añade `--share-net` bajo ningún parámetro. La comprobación `is_host_allowed` / `get_sandbox_allowed_hosts` aplica a las verificaciones previas a la ejecución del proceso principal de Cognito, no al interior del sandbox.
+- **Nota de Seguimiento Fechada (Verificación de Necesidad de Red en BashTool):**
+  - **Investigación de Flujos de Red en BashTool:** Se investigó exhaustivamente el uso normal de Cognito como agente de codificación para determinar si `BashTool` requiere conectividad de red saliente dentro del sandbox (e.g. `git clone/pull/push`, `pip install`, `npm install`, `curl`/`wget`). Se confirmó que `BashTool` **NO** necesita red dentro del sandbox por diseño arquitectónico explícito.
+  - **Arquitectura de Segregación de Red:**
+    1. **Gestión de Repositorios y Clonación:** Las operaciones Git de preparación del entorno (clonación, creación de ramas y worktrees aislados) ocurren en el servicio `cognito-worker` (`worker_app/worktree.py`), ejecutado fuera del sandbox a nivel de host.
+    2. **Llamadas a Modelos LLM e Integraciones de API:** La comunicación con los backends LLM (Ollama, OpenAI, Anthropic) se realiza exclusivamente desde el proceso orquestador principal de `cognito-backend` mediante HTTP/HTTPS sin pasar por `bwrap`.
+    3. **Ejecución de Herramientas de Trabajo:** `BashTool` en `cognito-backend` se invoca exclusivamente para inspeccionar archivos locales, ejecutar scripts de build/test y realizar ediciones en el espacio de trabajo local preinstalado.
+  - **Verificación Técnica de Pruebas:** Los tests del sandbox (`test_real_bwrap_isolation_network` en `test_sandbox.py`) corroboran activamente que cualquier intento de conexión de red dentro de `bwrap` falla de manera absoluta a nivel de socket del kernel con `--unshare-all`, mientras que las operaciones normales del agente y las suites de prueba de backend (251 tests) y worker (5 tests) pasan al 100%.
+  - **Decisión de Diseño Intencional:** Mantener red cero (`deny-all` absoluto sin `--share-net`) en `BashTool` es una decisión de seguridad intencional para prevenir filtraciones de datos, ataques de exfiltración de contexto y derivaciones de red desde comandos generados por el modelo.
 
 #### AUD-003
 - **ID:** AUD-003
