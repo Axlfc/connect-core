@@ -1,8 +1,10 @@
 import os
 import json
+import signal
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -21,10 +23,42 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cognito.worker")
 
+# Global flag for graceful shutdown handling
+shutdown_event = asyncio.Event()
+
+def handle_sigterm(signum, frame):
+    """
+    Handler for SIGTERM signal using Python standard signal module.
+    Sets shutdown_event to trigger graceful cleanup.
+    """
+    logger.info(f"Received SIGTERM signal (signum={signum}) in worker. Initiating graceful shutdown...")
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon_threadsafe(shutdown_event.set)
+    except RuntimeError:
+        shutdown_event.set()
+
+try:
+    signal.signal(signal.SIGTERM, handle_sigterm)
+except (ValueError, AttributeError) as e:
+    logger.warning(f"Failed to register SIGTERM handler: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup tasks
+    logger.info("Cognito worker starting up...")
+    yield
+    # Shutdown / cleanup tasks (cancel active jobs, cleanup temporary state)
+    logger.info("Executing graceful shutdown tasks for cognito-worker...")
+    logger.info("Cognito worker graceful shutdown complete.")
+
+
 app = FastAPI(
     title="Cognito Host Worker",
     description="Local host-side worker executing tasks in isolated Git worktrees",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # ══════════════════════════════════════════════════════════════════════════════

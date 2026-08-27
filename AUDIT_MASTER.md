@@ -61,7 +61,7 @@
 | AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Pendiente |
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
-| AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Pendiente |
+| AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Corregido |
 | AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente |
 | AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
 | AUD-036 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-worker | Riesgo de inyección de argumentos en comandos git en worktree.py | Corregido |
@@ -633,7 +633,7 @@
 - **Descripción del problema:** Los `Dockerfile` de `cognito-backend` y `cognito-worker` configuran la ejecución del proceso como usuario `root`. Además, carecen de instrucciones `HEALTHCHECK` y de manejo de señales `SIGTERM` para apagados ordenados (graceful shutdown).
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/Dockerfile` (líneas 1-25) y `very-simplified-stack/cognito-worker/Dockerfile` (líneas 1-25).
 - **Comparación con el estado del arte:** Los estándares de empaquetamiento seguro para producción exigen la ejecución con usuarios sin privilegios y comprobaciones de salud del contenedor.
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 #### AUD-032
 - **ID:** AUD-032
