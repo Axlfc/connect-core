@@ -403,6 +403,16 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/compaction.py` (líneas 30-110).
 - **Comparación con el estado del arte:** La compactación estructural de referencia (Claude Code / OpenCode) conserva mapas de archivos leídos, firmas de herramientas y fragmentos de código intactos mientras resume solo la conversación accesoria.
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó la función `extract_context_ledger` en `very-simplified-stack/cognito-backend/app/core/compaction.py` que analiza los mensajes a compactar, parsea ledgers previos embebidos y extrae de forma estructurada `files_touched` (rutas de archivos leídos/modificados), `function_signatures` y `tool_calls` ejecutados.
+  - Se modificó `compact()` en `app/core/compaction.py` para generar y retornar la tupla `(summary, context_ledger)`.
+  - Se actualizó `SessionManager.append_compaction()` en `app/core/session_manager.py` para almacenar `context_ledger` dentro del registro de compactación persistido en disco (`.jsonl`).
+  - Se actualizó `derive_messages_for_llm` en `app/core/session/message_deriver.py` y `format_ledger_for_system_prompt()` en `app/core/compaction.py` para inyectar el ledger estructurado en el mensaje de resumen del System Prompt y adjuntar el diccionario `context_ledger` a los mensajes de la sesión, garantizando que el estado estructurado sobreviva a compactaciones sucesivas.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_compaction.py`:
+    - `test_context_ledger_extraction_and_multi_compaction`: Confirma que rutas de archivos, firmas de funciones y llamadas a herramientas son extraídas, persistidas en disco y sobreviven sin pérdidas a través de 3 compactaciones sucesivas.
+    - `test_extract_context_ledger_key_variations`: Verifica la extracción robusta ante variaciones en las claves de los argumentos de herramientas (`path`, `file_path`, `file`, etc.).
+    - `test_compact_returns_summary_and_ledger`: Valida que `compact()` retorna la tupla `(summary, ledger)`.
 
 #### AUD-014
 - **ID:** AUD-014
@@ -606,6 +616,13 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/metrics.py` (líneas 1-40) y `very-simplified-stack/cognito-backend/app/core/token_budget.py` (líneas 20-60).
 - **Comparación con el estado del arte:** La observabilidad en producción exige métricas estandarizadas de latencia, fallos de herramientas y costes por modelo exportables a tableros corporativos.
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó la clase `CognitoMetrics` en `very-simplified-stack/cognito-backend/app/core/metrics.py` con métodos dedicados: `record_operation_duration` (histrograma de latencia), `record_tool_failure` (contador de fallos de herramientas), `record_retry` (contador de reintentos), `record_tokens` (contador de consumo de tokens por usuario/modelo) y `record_cost` (costo acumulado en dólares). Cada método acepta el parámetro `trace_id` proveniente de AUD-025.
+  - Se implementó `generate_prometheus_text()` en `app/core/metrics.py` para renderizar todas las métricas registradas en formato Prometheus Text Exposition Format (v0.0.4) con anotaciones `# HELP` y `# TYPE`.
+  - Se expuso el endpoint HTTP `GET /metrics` en `very-simplified-stack/cognito-backend/app/main.py` retornando `PlainTextResponse` con tipo de contenido `text/plain; version=0.0.4`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_metrics_endpoint.py`:
+    - `test_metrics_endpoint_scraping_and_format`: Simula la recolección de latencias, fallos, reintentos, tokens y costos asociados a un `trace_id` específico, realiza la petición raspado a `GET /metrics`, y valida las cabeceras HTTP 200 `version=0.0.4`, anotaciones Prometheus y etiquetado exacto de `trace_id`, `tool_name`, `operation`, `model` y `user_id`.
 
 #### AUD-025
 - **ID:** AUD-025
@@ -618,6 +635,17 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/tracing.py` (líneas 1-60) y `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py` (líneas 20-80).
 - **Comparación con el estado del arte:** La resolución de incidentes en entornos distribuidos depende de la propagación de contextos W3C Trace Context en todos los componentes.
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definió la variable contextual `TRACE_ID_VAR = contextvars.ContextVar("trace_id", default="")` e identificadores de correlación en `very-simplified-stack/cognito-backend/app/core/logging_config.py`.
+  - Se implementaron las funciones `set_trace_id()` y `get_trace_id()` en `app/core/logging_config.py` para establecer y consultar dinámicamente el identificador de traza.
+  - Se actualizó `StructuredJSONFormatter` en `app/core/logging_config.py` para inyectar automáticamente el `trace_id` en cada línea de log estructurada en formato JSON.
+  - Se creó el middleware HTTP `trace_id_middleware` y la inicialización de contexto WebSocket en `app/main.py` para extraer o generar `trace_id` desde cabeceras `X-Trace-ID` / `X-Request-ID` o query params, retornando la cabecera `X-Trace-ID` en las respuestas HTTP.
+  - Se integró `get_trace_id()` en la instanciación de eventos (`app/core/events.py`) y trazado de contexto de ejecuciones (`app/core/tracing.py`), propagando el `trace_id` hasta las llamadas a herramientas y registro de métricas.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_trace_id_propagation.py`:
+    - `test_trace_id_context_vars`: Verifica que `set_trace_id` y `get_trace_id` gestionan correctamente las variables de contexto `contextvars`.
+    - `test_structured_json_formatter_includes_trace_id`: Valida que `StructuredJSONFormatter` añade el atributo `trace_id` a la salida JSON formateada del log.
+    - `test_agent_loop_logs_share_same_trace_id`: Captura los registros de log producidos durante un turno de agente y comprueba que todas las líneas generadas comparten el mismo `trace_id`.
 
 ---
 
@@ -634,6 +662,13 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (líneas 35-180).
 - **Comparación con el estado del arte:** La resiliencia enterprise exige la persistencia atómica del estado tras cada turno para permitir la reanudación transparente tras fallos de la infraestructura.
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó la persistencia atómica turno a turno en `very-simplified-stack/cognito-backend/app/core/agent_loop.py` e `very-simplified-stack/cognito-backend/app/api/routes/ai_agents.py`, invocando `session_manager.append_message()` inmediatamente después de cada respuesta del asistente y ejecución de herramientas.
+  - Se actualizó `SessionManager` en `app/core/session_manager.py` para escribir y sincronizar atómicamente los mensajes y metadatos en archivos `.jsonl` de sesión en disco.
+  - Se adaptó `run_agent_loop` en `app/api/routes/ai_agents.py` para que al proporcionar un `session_id` existente, recupere la historia de mensajes efectivas mediante `session_manager.get_effective_messages(session_id)` y reanude la ejecución desde el último turno completado sin reiniciar la tarea ni duplicar mensajes de usuario.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_aud026_turn_checkpointing.py`:
+    - `test_aud026_checkpointing_and_resumption`: Simula una caída abrupta del proceso backend tras completar el turno 1 de una tarea multi-turno, confirma que el estado del turno 1 quedó guardado atómicamente en disco, simula el reinicio del servidor reanudando con el mismo `session_id`, y verifica que la ejecución continúa desde el punto de control del turno 2 sin duplicar entradas ni reiniciar la tarea.
 
 #### AUD-027
 - **ID:** AUD-027
@@ -646,6 +681,15 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/retry.py` (líneas 1-50) y `very-simplified-stack/cognito-backend/app/services/worker_client.py` (líneas 40-90).
 - **Comparación con el estado del arte:** Los arneses robustos gestionan tokens de idempotencia y estado de efectos secundarios antes de autorizar reintentos de red.
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se extendió `retry_transient_async` en `very-simplified-stack/cognito-backend/app/core/retry.py` añadiendo soporte para claves de idempotencia (`idempotency_key`), un callback opcional de comprobación de estado persistido (`idempotency_check`) y el almacén `_IDEMPOTENCY_STORE`.
+  - Para herramientas no idempotentes o destructivas (`is_destructive=True`), se genera o asigna una clave de idempotencia única. El resultado de la operación se registra en el almacén de idempotencia inmediatamente tras completarse la acción en el destino.
+  - Al desencadenarse un reintento por fallo de red o timeout transitorio posterior a la ejecución del efecto secundario, `retry_transient_async` consulta el almacén o invoca `idempotency_check`, retornando el resultado registrado sin volver a ejecutar la herramienta ni repetir sus efectos secundarios.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_retry_idempotency.py`:
+    - `test_generate_idempotency_key`: Valida la generación de claves de idempotencia con prefijos.
+    - `test_retry_transient_async_file_write_idempotency_network_failure`: Simula una caída de red con error 502 Bad Gateway ocurrida *después* de realizar una escritura no idempotente en archivo; verifica que el reintento recupera el resultado previo registrado, confirmando que la escritura en disco ocurrió exactamente 1 vez sin duplicar contenido.
+    - `test_retry_transient_async_custom_persisted_idempotency_check`: Prueba el callback personalizado `idempotency_check` comprobando la existencia previa de archivos en disco para omitir reejecuciones.
 
 ---
 
@@ -662,6 +706,14 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/evals/` (revisión completa de la estructura de evals).
 - **Comparación con el estado del arte:** La ingeniería de agentes 2026 basa la prevención de regresiones en benchmarks automáticos de trayectorias completas (ej. SWE-bench Lite / custom eval harnesses).
 - **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se creó el conjunto de datos de evaluación E2E `very-simplified-stack/evals/e2e/dataset.py` conteniendo 10 tareas de trayectoria completa (`E2E-001` a `E2E-010`) que cubren escenarios reales de codificación, edición, parcheo, delegación a sub-agentes, manejo de errores y recuperación.
+  - Se implementó el arnés de ejecución `very-simplified-stack/evals/e2e/runner.py` (`run_e2e_evaluation` y `run_single_e2e_task`) y esquemas de métricas en `very-simplified-stack/evals/e2e/schemas.py` que evalúan trayectorias completas contra el bucle de agente real y verifican criterios de éxito.
+  - Se integró el Eval Harness en la suite de pruebas del backend en `very-simplified-stack/cognito-backend/tests/test_e2e_eval_harness.py`, asegurando su ejecución continua en los flujos de CI.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_e2e_eval_harness.py`:
+    - `test_e2e_tasks_dataset_completeness`: Confirma que el dataset de evaluación contiene entre 8 y 12 tareas E2E completas con criterios de verificación definidos.
+    - `test_e2e_evaluation_harness_trajectory_run`: Ejecuta la suite de evaluación E2E completa `run_e2e_evaluation()`, validando que todas las tareas se completan exitosamente con una tasa de aprobación del 100% (pass_rate 1.0) y cero fallos de trayectoria.
 
 #### AUD-029
 - **ID:** AUD-029
