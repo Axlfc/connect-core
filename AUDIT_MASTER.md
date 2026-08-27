@@ -37,12 +37,12 @@
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Corregido |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
-| AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente |
-| AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente |
-| AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente |
+| AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente (Plan de diseño disponible) |
+| AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
+| AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Pendiente |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Pendiente |
-| AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente |
+| AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente (Plan de diseño disponible) |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
@@ -62,7 +62,7 @@
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Corregido |
-| AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente |
+| AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente (Plan de diseño disponible) |
 | AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
 | AUD-036 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-worker | Riesgo de inyección de argumentos en comandos git en worktree.py | Corregido |
 
@@ -299,7 +299,8 @@
 - **Descripción del problema:** El modelo de datos de Cognito (`app/models/db.py` y `app/models/domain.py`) únicamente contempla los conceptos de `Session`, `Message` y `Execution`. No existen las entidades `Organization`, `Project` ni `User`, asumiendo una arquitectura de único inquilino y único operador.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/models/db.py` (líneas 1-60) y `very-simplified-stack/cognito-backend/app/models/domain.py` (líneas 1-50).
 - **Comparación con el estado del arte:** El software enterprise requiere RBAC granular y segmentación explícita por usuario, proyecto y organización.
-- **Estado:** Pendiente
+- **Estado:** Pendiente (Plan de diseño disponible)
+- **Nota de Plan de Diseño:** Se diseñó el modelo de datos multi-tenant (`Organization`, `Project`, `User`, `Role`, `Session`) y su flujo de vinculación de sesiones en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 #### AUD-008
 - **ID:** AUD-008
@@ -311,7 +312,8 @@
 - **Descripción del problema:** No existe ninguna integración con esquemas de autenticación federada SSO, SAML 2.0 ni OpenID Connect (OIDC) para validar la identidad de los usuarios humanos que interactúan con el backend o la CLI.
 - **Evidencia de Ubicación en Código:** Revisión completa del directorio `very-simplified-stack/cognito-backend/app/api/routes/` (ausencia de módulos de OAuth/OIDC/SAML).
 - **Comparación con el estado del arte:** El soporte de SSO/OIDC/SAML es un requisito no negociable en las evaluaciones de seguridad corporativa para permitir el control de acceso centralizado.
-- **Estado:** Pendiente
+- **Estado:** Pendiente (Plan de diseño disponible)
+- **Nota de Plan de Diseño:** Se definió la integración SSO/OIDC/SAML con verificación de firmas asimétricas (`PyJWT` / `python-saml`) y reglas de mapeo de claims a usuarios/roles en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 #### AUD-009
 - **ID:** AUD-009
@@ -323,7 +325,8 @@
 - **Descripción del problema:** Cognito registra eventos en consola o archivos de log locales sin un formato estructurado de auditoría (Audit Trail) exportable vía Syslog, OTLP o conectores SIEM (e.g., Splunk, Datadog). No se registran eventos firmados con timestamp de identidad humana.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/logging_config.py` (líneas 1-40) y `very-simplified-stack/cognito-backend/app/core/tracing.py` (líneas 1-50).
 - **Comparación con el estado del arte:** Los estándares de cumplimiento 2026 exigen audit logs inmutables de todas las llamadas a herramientas y accesos a archivos exportables a SIEM.
-- **Estado:** Pendiente
+- **Estado:** Pendiente (Plan de diseño disponible)
+- **Nota de Plan de Diseño:** Se diseñó el esquema del Audit Log estructurado con correlación de `trace_id` (AUD-025), reutilización de auditoría de aprobaciones (AUD-021) y exportación SIEM/OTLP en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 #### AUD-010
 - **ID:** AUD-010
@@ -359,7 +362,8 @@
 - **Descripción del problema:** `SessionManager` escribe el estado de las sesiones y la base de datos SQLite directamente en rutas del disco local (`./data/sessions/`). Esto impide el despliegue de Cognito en entornos BYOC (Bring Your Own Cloud) donde los contenedores backend deben ser efímeros.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 45-90).
 - **Comparación con el estado del arte:** Los despliegues enterprise modernos abstraen la capa de persistencia mediante bases de datos gestionadas y almacenamiento de objetos (S3/GCS).
-- **Estado:** Pendiente
+- **Estado:** Pendiente (Plan de diseño disponible)
+- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-032 mediante el diseño de almacenamiento compartido distribuido (PostgreSQL + Redis) para eliminar la dependencia de almacenamiento de sesión local en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 ---
 
@@ -690,7 +694,8 @@
 - **Descripción del problema:** La arquitectura asume una única instancia del backend debido al uso de SQLite local y bloqueos en memoria por sesión (`SessionManager`). Múltiples réplicas del backend detrás de un balanceador de carga no podrían compartir ni coordinar el estado de las sesiones.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/database.py` (líneas 10-40) y `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 20-60).
 - **Comparación con el estado del arte:** La alta disponibilidad en producción requiere escalabilidad horizontal con estado distribuido en Redis o bases de datos relacionales compartidas.
-- **Estado:** Pendiente
+- **Estado:** Pendiente (Plan de diseño disponible)
+- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-012 en `ARCHITECTURE_RFC_GOBERNANZA.md` mediante un esquema de almacenamiento compartido en PostgreSQL y locks distribuidos/PubSub en Redis para escalado horizontal multi-réplica.
 
 ---
 
