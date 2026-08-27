@@ -231,6 +231,11 @@
   - `very-simplified-stack/cognito-backend/tests/test_sandbox.py`:
     - `test_build_bwrap_args_deny_all_by_default`: Comprueba que `--share-net` jamás se añade a los argumentos de `bwrap` independientemente de los parámetros provistos.
     - `test_real_bwrap_isolation_network`: Ejecuta un comando real de prueba de socket dentro del sandbox intentando conectarse a `127.0.0.1:8080` (host de lista blanca) y confirma que la conexión falla a nivel de red con excepción de socket.
+- **Nota de Seguimiento y Decisión de Alcance (Instalación de Dependencias Mid-Sesión):**
+  - **Confirmación del Comportamiento Actual:** Si un usuario o agente solicita una tarea que requiere instalar dependencias adicionales mid-sesión (por ejemplo `npm install axios` o `pip install requests`), `BashTool` intentará ejecutar el comando dentro del sandbox `bwrap` y fallará por falta de conectividad a la red debido a la imposición de `--unshare-all`. Actualmente no existe ningún mecanismo previo (ni en `cognito-worker` ni en la preparación del workspace) que instale dependencias antes de entregar el control al agente.
+  - **Limitación de Alcance del MVP Actual:** Esta conducta se define formalmente como una **limitación de alcance explícita del MVP actual** derivada del diseño de aislamiento estricto, y no como un efecto secundario accidental.
+  - **Estrategia Futura Recomendada:** Para permitir la instalación de paquetes mid-sesión sin comprometer la superficie de red de `BashTool`, se sugiere diseñar una herramienta dedicada (ej. `PackageInstallTool`) o un hook de preparación en `cognito-worker` fuera del sandbox, que procese paquetes a través de una whitelist auditada de registros (e.g. npm/PyPI enterprise), evitando la apertura de red genérica a `BashTool`.
+  - **Decisión de Producto:** El equipo de producto debe evaluar explícitamente si esta limitación de no soportar instalación de paquetes mid-sesión en `BashTool` es aceptable para el MVP actual o si requiere priorizar la herramienta dedicada en la hoja de ruta.
 
 ---
 
