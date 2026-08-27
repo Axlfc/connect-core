@@ -49,6 +49,8 @@ class AgentLoopRequest(BaseModel):
     session_id: Optional[str] = None
     model_params: Optional[Dict[str, Any]] = None
     approval_timeout_seconds: Optional[int] = None
+    planning_phase: Optional[bool] = True
+    read_only_turns: int = 1
 
 class SteerRequest(BaseModel):
     message: str
@@ -268,6 +270,8 @@ async def run_agent_loop(request: AgentLoopRequest):
                     session_id=session_id,
                     steering_manager=steering_manager,
                     approval_timeout_seconds=request.approval_timeout_seconds,
+                    planning_phase=request.planning_phase if request.planning_phase is not None else True,
+                    read_only_turns=request.read_only_turns,
                 )
             except TypeError:
                 loop_iter = agent_loop(
@@ -276,6 +280,8 @@ async def run_agent_loop(request: AgentLoopRequest):
                     context=context,
                     backend_router=backend_router,
                     model_params=request.model_params,
+                    planning_phase=request.planning_phase if request.planning_phase is not None else True,
+                    read_only_turns=request.read_only_turns,
                 )
             async for event in loop_iter:
                 if isinstance(event, TextDeltaEvent):

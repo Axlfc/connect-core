@@ -243,12 +243,28 @@ def evaluate_tool_execution(
     user_approved: bool = False,
     exec_policy: Optional[ExecPolicy] = None,
     approval_cache: Optional[SessionApprovalCache] = None,
+    turn: int = 1,
+    planning_phase: bool = True,
+    read_only_turns: int = 1,
 ) -> Tuple[ExecVerdict, str]:
     """
-    Evaluates execution of an AgentTool or command using tool metadata (is_read_only, is_destructive) and command policy.
+    Evaluates execution of an AgentTool or command using tool metadata (is_read_only, is_destructive),
+    read-only planning phase policy, and command policy.
     """
     args = arguments or {}
     cmd = command or (args.get("command", "") if isinstance(args, dict) else "")
+
+    is_read_only = getattr(tool, "is_read_only", False) if tool is not None else False
+    tool_name = getattr(tool, "name", tool.__class__.__name__) if tool is not None else "tool"
+
+    # Enforce read-only planning phase for untrusted workspaces during initial turns
+    if planning_phase and not trusted and turn <= read_only_turns:
+        if not is_read_only:
+            return ExecVerdict.DENEGAR, (
+                f"Fase de planificación de solo lectura activa (turno {turn}/{read_only_turns}): "
+                f"la herramienta '{tool_name}' no es de solo lectura. "
+                "Debe generar un plan antes de realizar modificaciones en un workspace no confiado."
+            )
 
     if cmd:
         return evaluate_command_execution(
@@ -263,8 +279,6 @@ def evaluate_tool_execution(
 
     if tool is not None:
         is_destructive = getattr(tool, "is_destructive", False)
-        is_read_only = getattr(tool, "is_read_only", False)
-        tool_name = getattr(tool, "name", tool.__class__.__name__)
 
         if is_destructive and not trusted and not user_approved:
             return ExecVerdict.REQUIERE_APROBACION, f"Herramienta destructiva '{tool_name}' requiere aprobación en contexto no confiable."

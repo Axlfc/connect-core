@@ -47,6 +47,8 @@ async def agent_loop(
     session_id: Optional[str] = None,
     steering_manager: Optional[Any] = None,
     approval_timeout_seconds: Optional[int] = None,
+    planning_phase: bool = True,
+    read_only_turns: int = 1,
 ) -> AsyncIterator[AgentEvent]:
     """
     Main Agent Loop:
@@ -204,6 +206,9 @@ async def agent_loop(
                         trusted=context.trusted,
                         session_id=eff_session_id,
                         user_approved=user_approved,
+                        turn=turn,
+                        planning_phase=planning_phase,
+                        read_only_turns=read_only_turns,
                     )
 
                     if verdict == ExecVerdict.DENEGAR:

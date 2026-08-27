@@ -61,7 +61,7 @@ async def test_agent_loop_system_message_integration(monkeypatch):
 
         # Mock del agent_loop para capturar los mensajes finales
         captured_messages = []
-        async def mock_agent_loop(messages, tools, context, backend_router, model_params=None):
+        async def mock_agent_loop(messages, tools, context, backend_router, model_params=None, **kwargs):
             nonlocal captured_messages
             captured_messages = messages
             from app.core.events import TextDeltaEvent, DoneEvent
@@ -142,7 +142,7 @@ async def test_agent_loop_consecutive_system_messages_under_compaction(monkeypat
         monkeypatch.setattr("app.api.routes.ai_agents.backend_router", mock_router)
 
         captured_messages = []
-        async def mock_agent_loop(messages, tools, context, backend_router, model_params=None):
+        async def mock_agent_loop(messages, tools, context, backend_router, model_params=None, **kwargs):
             nonlocal captured_messages
             captured_messages = messages
             from app.core.events import TextDeltaEvent, DoneEvent

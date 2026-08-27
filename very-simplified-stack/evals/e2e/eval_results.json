@@ -26,7 +26,7 @@
         "read"
       ],
       "verification_details": [
-        "\u2713 Event 'ToolCallEvent' (value=read) occurred during trajectory."
+        "✓ Event 'ToolCallEvent' (value=read) occurred during trajectory."
       ],
       "failure_reasons": []
     },
@@ -42,8 +42,8 @@
         "write"
       ],
       "verification_details": [
-        "\u2713 File 'src/version.py' contains expected substring '2.0.0'",
-        "\u2713 File 'README.md' contains expected substring '2.0.0'"
+        "✓ File 'src/version.py' contains expected substring '2.0.0'",
+        "✓ File 'README.md' contains expected substring '2.0.0'"
       ],
       "failure_reasons": []
     },
@@ -60,8 +60,8 @@
         "bash"
       ],
       "verification_details": [
-        "\u2713 File 'src/math_utils.py' contains expected substring 'return a + b'",
-        "\u2713 Test command 'python test_math.py' passed with code 0"
+        "✓ File 'src/math_utils.py' contains expected substring 'return a + b'",
+        "✓ Test command 'python test_math.py' passed with code 0"
       ],
       "failure_reasons": []
     },
@@ -76,7 +76,7 @@
         "bash"
       ],
       "verification_details": [
-        "\u2713 File 'temp.log' deletion matches expected (True)"
+        "✓ File 'temp.log' deletion matches expected (True)"
       ],
       "failure_reasons": []
     },
@@ -92,8 +92,8 @@
         "write"
       ],
       "verification_details": [
-        "\u2713 File 'utils.py' contains expected substring 'def new_helper()'",
-        "\u2713 File 'main.py' contains expected substring 'new_helper()'"
+        "✓ File 'utils.py' contains expected substring 'def new_helper()'",
+        "✓ File 'main.py' contains expected substring 'new_helper()'"
       ],
       "failure_reasons": []
     },
@@ -108,7 +108,7 @@
         "code_review"
       ],
       "verification_details": [
-        "\u2713 Event 'ToolCallEvent' (value=code_review) occurred during trajectory."
+        "✓ Event 'ToolCallEvent' (value=code_review) occurred during trajectory."
       ],
       "failure_reasons": []
     },
@@ -123,7 +123,7 @@
         "bash"
       ],
       "verification_details": [
-        "\u2713 Event 'ApprovalRequiredEvent' (value=bash) occurred during trajectory."
+        "✓ Event 'ApprovalRequiredEvent' (value=bash) occurred during trajectory."
       ],
       "failure_reasons": []
     },
@@ -141,7 +141,7 @@
         "read"
       ],
       "verification_details": [
-        "\u2713 Event 'DoneEvent' (value=end_turn) occurred during trajectory."
+        "✓ Event 'DoneEvent' (value=end_turn) occurred during trajectory."
       ],
       "failure_reasons": []
     },
@@ -157,7 +157,7 @@
         "bash"
       ],
       "verification_details": [
-        "\u2713 File 'output/result.txt' existence matches expected (True)"
+        "✓ File 'output/result.txt' existence matches expected (True)"
       ],
       "failure_reasons": []
     },
@@ -173,8 +173,8 @@
         "write"
       ],
       "verification_details": [
-        "\u2713 File 'DOCS.md' existence matches expected (True)",
-        "\u2713 File 'DOCS.md' contains expected substring 'Module A'"
+        "✓ File 'DOCS.md' existence matches expected (True)",
+        "✓ File 'DOCS.md' contains expected substring 'Module A'"
       ],
       "failure_reasons": []
     }

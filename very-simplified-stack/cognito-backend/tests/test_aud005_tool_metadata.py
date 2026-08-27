@@ -126,7 +126,7 @@ def test_exec_policy_evaluates_tool_metadata():
     read_tool = CustomReadOnlyTool()
 
     # Destructive tool in untrusted environment requires approval
-    verdict, reason = evaluate_tool_execution(tool=dest_tool, trusted=False)
+    verdict, reason = evaluate_tool_execution(tool=dest_tool, trusted=False, planning_phase=False)
     assert verdict == ExecVerdict.REQUIERE_APROBACION
     assert "Herramienta destructiva" in reason
 
