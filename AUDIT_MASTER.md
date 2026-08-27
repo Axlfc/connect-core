@@ -5,13 +5,13 @@
 - **Alcance del Documento:** Auditoría exhaustiva basada al 100% en evidencia de código del repositorio Cognito (`cognito-backend`, `cognito-worker`, y `cognito_agent.py`). Evaluado frente al listón de referencia enterprise 2026 para agent harnesses (características de referencia observadas en harnesses como Claude Code, Codex CLI, OpenCode, Hermes Agent, Pi Agent y OpenClaw).
 - **Metodología Aplicada:** Inspección estática del código fuente y suite de pruebas de los componentes backend, worker y CLI. Contrastación directa de cada directiva del listón de referencia A-J contra la implementación real o la evidencia de ausencia en las rutas de código del repositorio.
 - **Resumen Cuantitativo de Hallazgos:**
-  - **Total de Hallazgos:** 33
-  - **Desglose por Severidad:** Crítico: 5 | Alto: 14 | Medio: 13 | Bajo: 1
-  - **Desglose por Tipo:** Defecto: 5 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 6
+  - **Total de Hallazgos:** 34
+  - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
+  - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
+  - **Total con Estado "Corregido":** 7
   - **Total con Estado "Pendiente":** 27
   - **Desglose por Categoría (A-J):**
-    - A. Seguridad y Aislamiento de Ejecución: 7 hallazgos
+    - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
     - C. Gestión de Contexto y Memoria: 4 hallazgos
     - D. Orquestación de Herramientas y Sub-Agentes: 5 hallazgos
@@ -64,6 +64,7 @@
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Pendiente |
 | AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente |
 | AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
+| AUD-036 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-worker | Riesgo de inyección de argumentos en comandos git en worktree.py | Corregido |
 
 ---
 
@@ -236,6 +237,31 @@
   - **Limitación de Alcance del MVP Actual:** Esta conducta se define formalmente como una **limitación de alcance explícita del MVP actual** derivada del diseño de aislamiento estricto, y no como un efecto secundario accidental.
   - **Estrategia Futura Recomendada:** Para permitir la instalación de paquetes mid-sesión sin comprometer la superficie de red de `BashTool`, se sugiere diseñar una herramienta dedicada (ej. `PackageInstallTool`) o un hook de preparación en `cognito-worker` fuera del sandbox, que procese paquetes a través de una whitelist auditada de registros (e.g. npm/PyPI enterprise), evitando la apertura de red genérica a `BashTool`.
   - **Decisión de Producto:** El equipo de producto debe evaluar explícitamente si esta limitación de no soportar instalación de paquetes mid-sesión en `BashTool` es aceptable para el MVP actual o si requiere priorizar la herramienta dedicada en la hoja de ruta.
+
+#### AUD-036
+- **ID:** AUD-036
+- **Severidad:** Alto
+- **Tipo:** Defecto
+- **Categoría:** A. Seguridad y Aislamiento de Ejecución
+- **Componente:** cognito-worker
+- **Prioridad MVP Enterprise:** P0 Bloqueante
+- **Descripción del problema:** La clase `GitWorktreeManager` en `worker_app/worktree.py` ejecuta operaciones de Git (`rev-parse`, `branch`, `worktree add`, `diff`, `worktree remove`) sin sanitización estricta de parámetros de entrada como la URL o ruta del repositorio, identificadores (`repo_id`, `task_id`) y referencias Git (`base_commit`, `branch_name`). Aunque los comandos se ejecutaban mediante listas de argumentos en `subprocess.run` (sin `shell=True`), la falta de delimitadores `--` y de validación de entradas permitía que valores iniciados por `-` (por ejemplo, `--upload-pack` o `-o`) o esquemas de transporte inseguros de Git (como `ext::`) fueran interpretados como flags o comandos arbitrarios por el binario `git`.
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-worker/worker_app/worktree.py` (métodos `_run_git`, `validate_git_repo`, `create_worktree`, `get_diff` y `cleanup_worktree`).
+- **Comparación con el estado del arte:** La ejecución segura de herramientas en arneses enterprise exige la prevención absoluta de argument injection en invocaciones a binarios CLI, asegurando que ningún parámetro de usuario no confiable pueda alterar las opciones de ejecución mediante separadores explícitos `--` y validación de esquemas/sintaxis.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se añadieron las funciones de validación sanitizadora `validate_repo_url_or_path`, `validate_git_ref` y `validate_identifier` en `worker_app/worktree.py`.
+  - Se restringieron las URLs/rutas de repositorios para rechazar esquemas de protocolo inseguros (`ext::`, `fd::`, `file::`) o valores que inicien con el prefijo `-`.
+  - Se impuso la validación de identificadores y nombres de referencia Git para que rechacen caracteres nulos, secuencias inválidas de refspec y prefijos con `-`.
+  - Se incorporó el separador `--` antes de los argumentos posicionales en todos los subcomandos de Git (`branch`, `worktree add`, `worktree remove`) para impedir la inyección de opciones.
+  - Se eliminaron los argumentos vacíos de marcador de posición (`""`) en las invocaciones de `worktree remove`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-worker/tests/test_worktree.py`:
+    - `test_validate_repo_url_or_path_*`: Verifica la aceptación de URLs/rutas válidas y el rechazo de URLs con el prefijo `-`, byte nulo o esquemas prohibidos (`ext::`, `fd::`, `file::`).
+    - `test_validate_git_ref_*`: Comprueba que referencias Git o ramas que inician con `-` o contienen caracteres no permitidos son rechazadas antes de invocar Git.
+    - `test_validate_identifier_*`: Comprueba el rechazo de `repo_id` o `task_id` maliciosos que intenten inyectar flags.
+    - `test_worktree_manager_normal_lifecycle`: Valida el ciclo de vida completo de un worktree legítimo en un repositorio de prueba real.
+    - `test_worktree_manager_rejects_malicious_inputs`: Confirma que `GitWorktreeManager` cancela la ejecución lanzando `ValueError` al recibir parámetros con inyección de flags sin llegar a invocar `git`.
 
 ---
 
