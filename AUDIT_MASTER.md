@@ -58,7 +58,7 @@
 | AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
 | AUD-026 | Alto | Brecha Funcional | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Falta de checkpointing de ejecución que permita reanudar el estado tras una caída del proceso | Pendiente |
 | AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Pendiente |
-| AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Pendiente |
+| AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Corregido |
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Corregido |
@@ -612,7 +612,7 @@
 - **Descripción del problema:** Las evaluaciones presentes en la carpeta `evals/` (`evals/router` y `evals/system_prompt`) se limitan a probar la selección de prompts y enrutamiento en aislamientos unitarios. No existe una suite de evaluación end-to-end (Eval Harness) que ponga a prueba el comportamiento multi-turno del agente completo y compare sus trayectorias contra referencias (baselines).
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/evals/` (revisión completa de la estructura de evals).
 - **Comparación con el estado del arte:** La ingeniería de agentes 2026 basa la prevención de regresiones en benchmarks automáticos de trayectorias completas (ej. SWE-bench Lite / custom eval harnesses).
-- **Estado:** Pendiente
+- **Estado:** Corregido
 
 #### AUD-029
 - **ID:** AUD-029
