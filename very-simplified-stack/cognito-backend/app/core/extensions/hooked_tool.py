@@ -5,7 +5,10 @@ class HookedTool(AgentTool):
     def __init__(self, inner, registry, session_id: str, cwd: str):
         self.name = inner.name
         self.description = inner.description
-        self.parameters_schema = inner.parameters_schema
+        self.parameters_schema = getattr(inner, "parameters_schema", {})
+        self.is_read_only = getattr(inner, "is_read_only", False)
+        self.is_destructive = getattr(inner, "is_destructive", False)
+        self.concurrency_safe = getattr(inner, "concurrency_safe", False)
         self._inner = inner
         self._registry = registry
         self._session_id = session_id

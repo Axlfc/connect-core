@@ -8,6 +8,9 @@ class ShellTools(AgentTool):
     """
     name = "shell_run"
     description = "Executes shell commands inside a persistent bash session."
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {
@@ -34,6 +37,9 @@ class TodoTools(AgentTool):
     """
     name = "todo_manage"
     description = "Add or view elements in your TODO list."
+    is_read_only = False
+    is_destructive = False
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {
@@ -58,6 +64,9 @@ class TodoTools(AgentTool):
 class WebPublisherTools(AgentTool):
     name = "web_publish"
     description = "Exports a simple HTML report to local static server path."
+    is_read_only = False
+    is_destructive = True
+    concurrency_safe = False
     parameters_schema = {
         "type": "object",
         "properties": {

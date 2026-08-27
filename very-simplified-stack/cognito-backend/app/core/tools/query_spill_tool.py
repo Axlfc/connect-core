@@ -8,6 +8,9 @@ class QuerySpillTool(AgentTool):
         "Query content from external spill memory using a spill_id. "
         "Allows searching for specific terms/keywords or retrieving specific line ranges."
     )
+    is_read_only = True
+    is_destructive = False
+    concurrency_safe = True
     parameters_schema = {
         "type": "object",
         "properties": {
