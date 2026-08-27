@@ -98,6 +98,20 @@ El backend incluye un cliente ligero en Python con tres modos de operación:
   python -m cli.cognito_cli --mode rpc
   ```
 
+### Gestión de Lockfiles y Dependencias Congeladas (AUD-006)
+`cognito-backend` utiliza un archivo `requirements.lock` con hashes criptográficos sha256 fijados para garantizar instalaciones reproducibles e inmunes a ataques en la cadena de suministro.
+
+- **Instalación con validación de hashes**:
+  ```bash
+  pip install --no-cache-dir --require-hashes -r requirements.lock
+  ```
+- **Regenerar Lockfile tras modificar `requirements.txt`**:
+  ```bash
+  uv pip compile --generate-hashes requirements.txt -o requirements.lock
+  # O utilizando pip-tools:
+  # pip-compile --generate-hashes requirements.txt -o requirements.lock
+  ```
+
 ### Herramientas Disponibles
 1. `read`: Lee archivos del sistema (restringido al `cwd`).
 2. `write`: Crea o sobrescribe archivos (requiere `trust`).

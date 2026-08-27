@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 7
-  - **Total con Estado "Pendiente":** 27
+  - **Total con Estado "Corregido":** 8
+  - **Total con Estado "Pendiente":** 26
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -36,7 +36,7 @@
 | AUD-003 | Alto | Deuda Técnica | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Almacenamiento plano de secreto de autenticación MCP sin rotación/revocación dinámica | Corregido |
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Pendiente |
-| AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Pendiente |
+| AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente |
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente |
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente |
@@ -208,10 +208,18 @@
 - **Categoría:** A. Seguridad y Aislamiento de Ejecución
 - **Componente:** cognito-backend / worker
 - **Prioridad MVP Enterprise:** P1 Esperado
-- **Descripción del problema:** Los archivos `requirements.txt` del backend y del worker especifican nombres de librerías sin fijar versiones exactas con hashes cryptographic (lockfiles). Esto expone el despliegue a ataques de cadena de suministro o incompatibilidades transitorias.
-- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/requirements.txt` (líneas 1-6) y `very-simplified-stack/cognito-worker/requirements.txt` (líneas 1-6).
-- **Comparación con el estado del arte:** Las normativas de compliance enterprise exigen escaneo de dependencias y lockfiles congelados (`poetry.lock`, `pip-compile --generate-hashes`).
-- **Estado:** Pendiente
+- **Descripción del problema:** Los archivos `requirements.txt` del backend y del worker especificaban nombres de librerías sin fijar versiones exactas ni hashes criptográficos en lockfiles dedicados. Esto exponía el despliegue a ataques de cadena de suministro o incompatibilidades transitorias.
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/requirements.txt` y `very-simplified-stack/cognito-worker/requirements.txt`.
+- **Comparación con el estado del arte:** Las normativas de compliance enterprise exigen escaneo de dependencias y lockfiles congelados (`poetry.lock`, `pip-compile --generate-hashes`, `uv pip compile --generate-hashes`).
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se generaron los archivos `requirements.lock` con hashes sha256 fijados para todas las dependencias directas e indirectas de `cognito-backend` y `cognito-worker` utilizando `uv pip compile --generate-hashes`.
+  - Se actualizó `very-simplified-stack/cognito-backend/Dockerfile` para copiar e instalar las dependencias desde `requirements.lock` utilizando `pip install --no-cache-dir --require-hashes -r requirements.lock`.
+  - Se agregó el trabajo `validate-lockfiles` en `.github/workflows/validate.yml` que valida automáticamente en la canalización de CI que los archivos `requirements.lock` coinciden exactamente con la compilación actual de `requirements.txt`, fallando la build si divergen.
+  - Se documentó el procedimiento de instalación segura con hashes y regeneración del lockfile (`uv pip compile --generate-hashes requirements.txt -o requirements.lock`) en `very-simplified-stack/cognito-backend/README.md` y `very-simplified-stack/cognito-worker/README.md`.
+- **Test de Regresión:**
+  - Se verificó que la instalación mediante `pip install --require-hashes -r requirements.lock` reproduce exactamente las mismas versiones y valida correctamente la integridad criptográfica sha256 de los paquetes.
+  - Se verificó mediante un script de validación idéntico al de CI que cualquier inconsistencia o divergencia entre `requirements.txt` y `requirements.lock` resulta en un fallo inmediato (código de retorno distinto de cero).
 
 #### AUD-033
 - **ID:** AUD-033

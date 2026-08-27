@@ -23,12 +23,19 @@ sudo apt-get install -y python3-venv git
 ```
 
 ### 2. Entorno Virtual
-Crea e instala las dependencias de Python del worker:
+Crea e instala las dependencias de Python del worker desde el lockfile congelado con hashes (AUD-006):
 ```bash
 cd very-simplified-stack/cognito-worker/
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock
+```
+
+Para regenerar `requirements.lock` al añadir o actualizar dependencias en `requirements.txt`:
+```bash
+uv pip compile --generate-hashes requirements.txt -o requirements.lock
+# O con pip-tools:
+# pip-compile --generate-hashes requirements.txt -o requirements.lock
 ```
 
 ### 3. Ejecución Directa (Desarrollo)
