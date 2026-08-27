@@ -127,3 +127,42 @@ class DBOutboxEvent(Base):
     payload = Column(JSON, nullable=False)
     is_delivered = Column(Boolean, default=False)
     timestamp = Column(Float, default=time.time)
+
+class DBOrganization(Base):
+    __tablename__ = "organizations"
+    __table_args__ = TABLE_ARGS
+
+    org_id = Column(String(64), primary_key=True)
+    slug = Column(String(64), unique=True, nullable=False)
+    display_name = Column(String(255), nullable=False)
+    status = Column(String(32), default="active", nullable=False)
+    sso_enabled = Column(Boolean, default=False, nullable=False)
+    sso_provider_config = Column(JSON, nullable=True)
+    created_at = Column(Float, default=time.time, nullable=False)
+    updated_at = Column(Float, default=time.time, nullable=False)
+
+class DBProject(Base):
+    __tablename__ = "projects"
+    __table_args__ = TABLE_ARGS
+
+    project_id = Column(String(64), primary_key=True)
+    org_id = Column(String(64), nullable=False)
+    slug = Column(String(64), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(String(32), default="active", nullable=False)
+    created_at = Column(Float, default=time.time, nullable=False)
+
+class DBUser(Base):
+    __tablename__ = "users"
+    __table_args__ = TABLE_ARGS
+
+    user_id = Column(String(64), primary_key=True)
+    org_id = Column(String(64), nullable=False)
+    email = Column(String(255), nullable=False)
+    external_subject_id = Column(String(255), nullable=True)
+    full_name = Column(String(255), nullable=True)
+    status = Column(String(32), default="active", nullable=False)
+    roles = Column(JSON, nullable=False)
+    created_at = Column(Float, default=time.time, nullable=False)
+    last_login_at = Column(Float, nullable=True)
