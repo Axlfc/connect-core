@@ -5,8 +5,10 @@ import logging
 from typing import List
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents
+from app.core.metrics import metrics
 from app.api.routes.openai_compat import router as openai_router
 from app.core.logging_config import configure_structured_logging, set_trace_id, clear_correlation_context
 
@@ -171,6 +173,18 @@ async def websocket_endpoint(websocket: WebSocket):
 app.include_router(health.router, tags=["Health"])
 app.include_router(ai_agents.router, prefix="/api", tags=["AI Agents"])
 app.include_router(openai_router)          # monta /v1/models y /v1/chat/completions
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def get_metrics():
+    """
+    Prometheus metrics scraping endpoint.
+    Returns metrics in Prometheus plain-text exposition format (v0.0.4).
+    """
+    prometheus_data = metrics.generate_prometheus_text()
+    return PlainTextResponse(
+        content=prometheus_data,
+        media_type="text/plain; version=0.0.4; charset=utf-8"
+    )
 
 @app.get("/")
 async def root():
