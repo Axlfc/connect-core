@@ -63,8 +63,9 @@ class CognitoClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def fork_session(self, session_id: str) -> str:
-        resp = await self._client.post(f"{self.endpoint}/api/agent/sessions/{session_id}/fork")
+    async def fork_session(self, session_id: str, turn: Optional[int] = None) -> str:
+        payload = {"turn": turn} if turn is not None else {}
+        resp = await self._client.post(f"{self.endpoint}/api/agent/sessions/{session_id}/fork", json=payload)
         resp.raise_for_status()
         return resp.json()["session_id"]
 

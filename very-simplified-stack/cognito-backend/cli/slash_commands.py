@@ -80,6 +80,30 @@ async def handle_slash_command(
 
         return True, current_session_id
 
+    elif cmd == "/fork":
+        if not current_session_id:
+            print("[Advertencia: No hay sesión activa para ramificar.]")
+            return True, current_session_id
+
+        turn_val = None
+        if args_str:
+            try:
+                turn_val = int(args_str)
+            except ValueError:
+                print(f"[Turno inválido '{args_str}'. Debe ser un número entero.]")
+                return True, current_session_id
+
+        try:
+            session_manager = SessionManager()
+            new_sid = session_manager.fork_from(current_session_id, turn=turn_val)
+            turn_msg = f" en el turno {turn_val}" if turn_val is not None else ""
+            print(f"[Sesión ramificada exitosamente{turn_msg}. Nueva sesión ID: {new_sid}]")
+            return True, new_sid
+        except Exception as e:
+            logger.error(f"Error al ramificar sesión: {e}")
+            print(f"[Error al ramificar sesión {current_session_id}: {str(e)}]")
+            return True, current_session_id
+
     else:
-        print(f"[Comando no reconocido: {cmd}. Comandos disponibles: /clear, /status, /trust, /compact]")
+        print(f"[Comando no reconocido: {cmd}. Comandos disponibles: /clear, /status, /trust, /compact, /fork]")
         return True, current_session_id
