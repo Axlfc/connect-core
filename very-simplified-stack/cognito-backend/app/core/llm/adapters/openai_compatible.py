@@ -8,11 +8,13 @@ from app.core.llm.adapters.base import (
     LLMRetryableError,
     LLMNonRetryableError,
     is_retryable_http_status,
+    register_provider,
 )
 
 logger = logging.getLogger(__name__)
 
 
+@register_provider("openai", "openai_compatible", "openai-compatible", "deepseek", "openrouter")
 class OpenAICompatibleAdapter(LLMAdapter):
     """
     Adapter for OpenAI-compatible APIs (OpenAI, DeepSeek, OpenRouter, vLLM, etc.).

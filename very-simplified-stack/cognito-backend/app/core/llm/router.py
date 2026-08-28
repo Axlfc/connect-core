@@ -2,39 +2,29 @@ import logging
 from pathlib import Path
 from typing import AsyncIterator, Dict, Any, List, Optional, Union
 
-from app.core.llm.adapters.base import LLMAdapter, LLMError
-from app.core.llm.adapters.ollama import OllamaAdapter
-from app.core.llm.adapters.openai_compatible import OpenAICompatibleAdapter
+from app.core.llm.adapters.base import (
+    LLMAdapter,
+    LLMError,
+    get_provider_class,
+)
+import app.core.llm.adapters  # Ensures all adapter modules are imported and registered
 from app.core.llm.config import RouterConfig, AdapterConfig, RouteConfig, load_config_from_file
 
 logger = logging.getLogger(__name__)
 
 
 def create_adapter_from_config(cfg: AdapterConfig) -> LLMAdapter:
-    """Factory function to build LLMAdapter instances from AdapterConfig."""
-    adapter_type = cfg.type.lower()
-    if adapter_type == "ollama":
-        return OllamaAdapter(
-            model_name=cfg.model_name,
-            base_url=cfg.base_url,
-            api_key=cfg.api_key,
-            max_retries=cfg.max_retries,
-            initial_backoff=cfg.initial_backoff,
-            backoff_factor=cfg.backoff_factor,
-            timeout=cfg.timeout,
-        )
-    elif adapter_type in ("openai", "openai_compatible", "openai-compatible", "deepseek", "openrouter"):
-        return OpenAICompatibleAdapter(
-            model_name=cfg.model_name,
-            base_url=cfg.base_url,
-            api_key=cfg.api_key,
-            max_retries=cfg.max_retries,
-            initial_backoff=cfg.initial_backoff,
-            backoff_factor=cfg.backoff_factor,
-            timeout=cfg.timeout,
-        )
-    else:
-        raise ValueError(f"Unsupported adapter type: {cfg.type}")
+    """Factory function to build LLMAdapter instances from AdapterConfig using dynamic provider lookup."""
+    adapter_cls = get_provider_class(cfg.type)
+    return adapter_cls(
+        model_name=cfg.model_name,
+        base_url=cfg.base_url,
+        api_key=cfg.api_key,
+        max_retries=cfg.max_retries,
+        initial_backoff=cfg.initial_backoff,
+        backoff_factor=cfg.backoff_factor,
+        timeout=cfg.timeout,
+    )
 
 
 class LLMRouter:
