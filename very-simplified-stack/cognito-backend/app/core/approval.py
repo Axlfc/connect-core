@@ -194,6 +194,12 @@ class ApprovalManager:
 
         self._append_audit_log_to_disk(decision)
 
+        try:
+            from app.core.audit import record_approval_decision
+            record_approval_decision(decision)
+        except Exception as e:
+            logger.warning(f"Failed recording approval decision in unified audit log: {e}")
+
         if decision.status in ("timed_out", "denied"):
             logger.warning(
                 f"[APPROVAL_BLOCKED] Session {session_id} action '{decision.action}' "
@@ -275,7 +281,7 @@ class ApprovalManager:
 
     async def get_audit_logs(self, session_id: Optional[str] = None) -> List[ApprovalDecisionAudit]:
         """
-        Retrieves recorded structured audit decision logs from memory and disk.
+        Retrieves recorded structured audit decision logs from memory, disk, and unified audit logger.
         """
         async with self._lock:
             mem_logs = list(self._audit_log)
@@ -289,6 +295,20 @@ class ApprovalManager:
         for l in mem_logs:
             if not session_id or l.session_id == session_id:
                 combined[l.approval_id] = l
+
+        try:
+            from app.core.audit import audit_logger
+            audit_records = audit_logger.get_records(session_id=session_id)
+            for rec in audit_records:
+                if rec.action == "approval.decision" and rec.approval_metadata:
+                    appr = ApprovalDecisionAudit(**rec.approval_metadata)
+                    if appr.approval_id not in combined:
+                        if not mem_logs and not disk_logs:
+                            combined[appr.approval_id] = appr
+                        elif any(m.approval_id == appr.approval_id for m in mem_logs + disk_logs):
+                            combined[appr.approval_id] = appr
+        except Exception as e:
+            logger.warning(f"Failed querying unified audit log for approvals: {e}")
 
         return list(combined.values())
 
