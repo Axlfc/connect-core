@@ -166,3 +166,42 @@ class DBUser(Base):
     roles = Column(JSON, nullable=False)
     created_at = Column(Float, default=time.time, nullable=False)
     last_login_at = Column(Float, nullable=True)
+
+class DBSession(Base):
+    __tablename__ = "sessions"
+    __table_args__ = TABLE_ARGS
+
+    session_id = Column(String(64), primary_key=True)
+    org_id = Column(String(64), nullable=True)
+    project_id = Column(String(64), nullable=True)
+    user_id = Column(String(64), nullable=True)
+    auth_type = Column(String(32), default="anonymous", nullable=False)
+    status = Column(String(32), default="active", nullable=False)
+    cwd = Column(String(1024), nullable=False)
+    created_at = Column(String(64), nullable=False)
+    updated_at = Column(String(64), nullable=False)
+    message_count = Column(Integer, default=0, nullable=False)
+    approval_timeout_seconds = Column(Integer, nullable=True)
+    blocked_actions_count = Column(Integer, default=0, nullable=False)
+    approval_summary = Column(JSON, default=list, nullable=False)
+    metadata_fields = Column(JSON, name="metadata", default=dict, nullable=False)
+
+class DBSessionMessage(Base):
+    __tablename__ = "session_messages"
+    __table_args__ = TABLE_ARGS
+
+    message_id = Column(String(64), primary_key=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    seq = Column(Integer, nullable=False)
+    type = Column(String(32), default="message", nullable=False)
+    role = Column(String(32), nullable=True)
+    content = Column(String, nullable=True)
+    tool_name = Column(String(255), nullable=True)
+    tool_call_id = Column(String(255), nullable=True)
+    tool_calls = Column(JSON, nullable=True)
+    summary = Column(String, nullable=True)
+    covers_through_line = Column(Integer, nullable=True)
+    context_ledger = Column(JSON, nullable=True)
+    delivered = Column(Boolean, default=False, nullable=True)
+    steering_id = Column(String(64), nullable=True)
+    ts = Column(String(64), nullable=False)

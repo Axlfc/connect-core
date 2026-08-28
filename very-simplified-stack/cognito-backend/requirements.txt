@@ -4,3 +4,7 @@ pydantic
 python-dotenv
 httpx
 prompt_toolkit
+asyncpg
+redis
+psycopg2-binary
+fakeredis
