@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 23
-  - **Total con Estado "Pendiente":** 11
+  - **Total con Estado "Corregido":** 24
+  - **Total con Estado "Pendiente":** 10
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -45,7 +45,7 @@
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente (Plan de diseño disponible) |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
-| AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación estrictamente lineal sin ramificación (branching/checkpoints) | Pendiente |
+| AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación strictly lineal sin ramificación (branching/checkpoints) | Pendiente |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Corregido |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
@@ -60,7 +60,7 @@
 | AUD-027 | Medio | Defecto | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Reintentos transitorios de streaming con riesgo de duplicar llamadas no idempotentes | Corregido |
 | AUD-028 | Alto | Brecha Funcional | H. Precisión y Evaluación | P1 Esperado | evals / cognito-backend | Ausencia de suite de evaluación E2E de trayectorias completas del agente contra baselines | Corregido |
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
-| AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Pendiente |
+| AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Corregido |
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Corregido |
 | AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente (Plan de diseño disponible) |
 | AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
@@ -104,7 +104,7 @@
 - **Prioridad MVP Enterprise:** P0 Bloqueante
 - **Descripción del problema:** No existe un control de red de salida saliente (egress network policy) tipo deny-all por defecto para los subprocesos o herramientas ejecutadas por el agente. El módulo `build_bwrap_args` en `sandbox.py` incluye la opción `--share-net` o deja activa la pila de red sin filtrar IP salientes ni requerir lista blanca explícita de endpoints.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/sandbox.py` (líneas 34-45) y `cognito_agent.py` (líneas 1-200).
-- **Comparación con el estado del arte:** Los arneses enterprise de 2026 bloquean por defecto cualquier tráfico de red saliente de las herramientas ejecutadas por el agente, permitiendo únicamente dominios o IPs autorizadas explícitamente en una lista blanca.
+- **Comparación con el estado del arte:** Los harnesses enterprise de 2026 bloquean por defecto cualquier tráfico de red saliente de las herramientas ejecutadas por el agente, permitiendo únicamente dominios o IPs autorizadas explícitamente en una lista blanca.
 - **Estado:** Corregido
 - **Resolución y Evidencia Técnica:**
   - Se modificó `build_bwrap_args` en `very-simplified-stack/cognito-backend/app/core/sandbox.py` para aplicar una política de red deny-all por defecto (espacio de nombres de red aislado con `--unshare-all`, eliminando `--share-net` por defecto).
@@ -748,7 +748,18 @@
 - **Descripción del problema:** El enrutador de modelos `BackendRouter` contiene ramificaciones de código específicas con condicionales para conmutar entre Ollama y OpenAI. Integrar un nuevo proveedor (como Anthropic o una API propietaria) requiere modificar la lógica central del enrutador.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/llm/router.py` (líneas 40-120) y `very-simplified-stack/cognito-backend/app/core/llm/adapters/base.py` (líneas 1-50).
 - **Comparación con el estado del arte:** Un arnés enterprise abstrae la interfaz de los modelos mediante un registro dinámico de proveedores sin código condicional disperso.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definió la interfaz genérica `LLMProviderAdapter` / `LLMAdapter` en `very-simplified-stack/cognito-backend/app/core/llm/adapters/base.py` declarando los métodos de generación y streaming (`chat_completion`, `stream_completion`, `_do_chat_completion`, `_do_stream_completion`).
+  - Se implementó el registro dinámico global de proveedores (`PROVIDER_REGISTRY`, `register_provider`, `get_provider_class`) en `app/core/llm/adapters/base.py`.
+  - Se migró `OllamaAdapter` (`app/core/llm/adapters/ollama.py`) y `OpenAICompatibleAdapter` (`app/core/llm/adapters/openai_compatible.py`) para registrarse dinámicamente vía el decorador `@register_provider`.
+  - Se agregó `AnthropicAdapter` (`very-simplified-stack/cognito-backend/app/core/llm/adapters/anthropic.py`) registrado como tercer proveedor para la API de Anthropic Messages (`/v1/messages`) y exportado en `app/core/llm/adapters/__init__.py`.
+  - Se refactorizó la fábrica `create_adapter_from_config` en `very-simplified-stack/cognito-backend/app/core/llm/router.py` para instanciar clases buscando dinámicamente en el registro (`get_provider_class(cfg.type)`), eliminando todos los condicionales `if/elif` hardcodeados.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_aud030_provider_registry.py`:
+    - `test_provider_registration_and_lookup`: Comprueba que `PROVIDER_REGISTRY` contiene las claves de proveedores registradas.
+    - `test_anthropic_adapter_chat_completion`: Mokea la API de Anthropic y valida el formateo de peticiones/respuestas del adaptador.
+    - `test_dynamic_provider_dispatch_without_modifying_router`: Registra un adaptador custom de prueba y demuestra que `LLMRouter` puede instanciarlo y despachar solicitudes sin tocar una sola línea de `router.py`.
 
 ---
 

@@ -8,11 +8,13 @@ from app.core.llm.adapters.base import (
     LLMRetryableError,
     LLMNonRetryableError,
     is_retryable_http_status,
+    register_provider,
 )
 
 logger = logging.getLogger(__name__)
 
 
+@register_provider("ollama")
 class OllamaAdapter(LLMAdapter):
     """
     Adapter for Ollama local/remote LLM instances using Ollama native REST API (/api/chat).

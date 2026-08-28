@@ -1,9 +1,41 @@
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Dict, Any, List, Optional, Union
+from typing import AsyncIterator, Dict, Any, List, Optional, Union, Type, TypeVar, Callable
 
 logger = logging.getLogger(__name__)
+
+# Registry for dynamic LLM Provider registration
+PROVIDER_REGISTRY: Dict[str, Type["LLMAdapter"]] = {}
+
+TypeAdapter = TypeVar("TypeAdapter", bound=Type["LLMAdapter"])
+
+
+def register_provider(*names: str) -> Callable[[TypeAdapter], TypeAdapter]:
+    """
+    Decorator to register an LLMAdapter class under one or more provider names.
+    """
+    def decorator(cls: TypeAdapter) -> TypeAdapter:
+        for name in names:
+            normalized = name.lower().strip()
+            PROVIDER_REGISTRY[normalized] = cls
+            logger.info(f"Registered LLM provider '{normalized}' -> {cls.__name__}")
+        return cls
+    return decorator
+
+
+def get_provider_class(provider_name: str) -> Type["LLMAdapter"]:
+    """
+    Retrieves the adapter class registered for a given provider name.
+    """
+    normalized = provider_name.lower().strip()
+    if normalized not in PROVIDER_REGISTRY:
+        supported = list(PROVIDER_REGISTRY.keys())
+        raise ValueError(
+            f"Unsupported or unregistered LLM provider type: '{provider_name}'. "
+            f"Registered providers: {supported}"
+        )
+    return PROVIDER_REGISTRY[normalized]
 
 
 class LLMError(Exception):
@@ -169,3 +201,7 @@ class LLMAdapter(ABC):
                 )
                 await asyncio.sleep(current_backoff)
                 current_backoff *= self.backoff_factor
+
+
+# Alias for explicitly requested interface name
+LLMProviderAdapter = LLMAdapter
