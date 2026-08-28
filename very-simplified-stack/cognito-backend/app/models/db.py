@@ -185,6 +185,8 @@ class DBSession(Base):
     blocked_actions_count = Column(Integer, default=0, nullable=False)
     approval_summary = Column(JSON, default=list, nullable=False)
     metadata_fields = Column(JSON, name="metadata", default=dict, nullable=False)
+    parent_session_id = Column(String(64), nullable=True)
+    branch_turn = Column(Integer, nullable=True)
 
 class DBSessionMessage(Base):
     __tablename__ = "session_messages"

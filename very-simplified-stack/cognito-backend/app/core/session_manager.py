@@ -30,6 +30,8 @@ class SessionMetadata(BaseModel):
     org_id: Optional[str] = None
     project_id: Optional[str] = None
     user_id: Optional[str] = None
+    parent_session_id: Optional[str] = None
+    branch_turn: Optional[int] = None
 
 def is_postgres_backend() -> bool:
     return os.getenv("COGNITO_STORAGE_BACKEND", "local").lower() in ("postgres_redis", "postgres")
@@ -109,6 +111,8 @@ class SessionManager:
                         "org_id": row.org_id,
                         "project_id": row.project_id,
                         "user_id": row.user_id,
+                        "parent_session_id": row.parent_session_id,
+                        "branch_turn": row.branch_turn,
                     }
                 return None
             finally:
@@ -154,6 +158,8 @@ class SessionManager:
                         org_id=data.get("org_id"),
                         project_id=data.get("project_id"),
                         user_id=data.get("user_id"),
+                        parent_session_id=data.get("parent_session_id"),
+                        branch_turn=data.get("branch_turn"),
                     )
                     db.add(row)
                 else:
@@ -166,6 +172,8 @@ class SessionManager:
                     if data.get("org_id"): row.org_id = data["org_id"]
                     if data.get("project_id"): row.project_id = data["project_id"]
                     if data.get("user_id"): row.user_id = data["user_id"]
+                    if data.get("parent_session_id"): row.parent_session_id = data["parent_session_id"]
+                    if data.get("branch_turn") is not None: row.branch_turn = data["branch_turn"]
                 db.commit()
                 return
             finally:
@@ -232,6 +240,8 @@ class SessionManager:
                         "org_id": row.org_id,
                         "project_id": row.project_id,
                         "user_id": row.user_id,
+                        "parent_session_id": row.parent_session_id,
+                        "branch_turn": row.branch_turn,
                     }
                 return index
             finally:
@@ -325,6 +335,8 @@ class SessionManager:
                 org_id=meta.get("org_id"),
                 project_id=meta.get("project_id"),
                 user_id=meta.get("user_id"),
+                parent_session_id=meta.get("parent_session_id"),
+                branch_turn=meta.get("branch_turn"),
             )
 
     def set_approval_timeout(self, session_id: str, timeout_seconds: int) -> bool:
@@ -377,26 +389,28 @@ class SessionManager:
             self.get_effective_messages, session_id, cwd, include_system_prompt
         )
 
-    def fork_from(self, source_session_id: str, new_session_id: Optional[str] = None) -> str:
+    def fork_from(self, source_session_id: str, new_session_id: Optional[str] = None, turn: Optional[int] = None) -> str:
         source_meta = self.open(source_session_id)
         target_session_id = new_session_id or str(uuid.uuid4())
-
         now = datetime.now(timezone.utc).isoformat()
-        meta_data = {
-            "cwd": source_meta.cwd,
-            "created_at": now,
-            "updated_at": now,
-            "message_count": source_meta.message_count,
-            "org_id": source_meta.org_id,
-            "project_id": source_meta.project_id,
-            "user_id": source_meta.user_id,
-        }
+
+        copied_msgs_count = 0
+        branch_turn_val = turn
 
         if is_postgres_backend():
             from app.models.db import DBSessionMessage
             db = get_db_sync_session()
             try:
                 source_msgs = db.query(DBSessionMessage).filter(DBSessionMessage.session_id == source_session_id).order_by(DBSessionMessage.seq.asc()).all()
+                if turn is not None:
+                    user_turn_seqs = [m.seq for m in source_msgs if m.type == "message" and m.role == "user"]
+                    if turn <= 0:
+                        source_msgs = []
+                    elif turn <= len(user_turn_seqs):
+                        cutoff_user_seq = user_turn_seqs[turn - 1]
+                        next_user_seq = user_turn_seqs[turn] if turn < len(user_turn_seqs) else float('inf')
+                        source_msgs = [m for m in source_msgs if m.seq < next_user_seq]
+
                 for msg in source_msgs:
                     new_msg = DBSessionMessage(
                         message_id=str(uuid.uuid4()),
@@ -416,15 +430,65 @@ class SessionManager:
                         ts=now,
                     )
                     db.add(new_msg)
+                    if msg.type == "message":
+                        copied_msgs_count += 1
                 db.commit()
             finally:
                 db.close()
         else:
             source_file = self.sessions_dir / f"{source_session_id}.jsonl"
             target_file = self.sessions_dir / f"{target_session_id}.jsonl"
+            lines_to_copy = []
+
             with self._lock_session(source_session_id, shared=True):
                 if source_file.exists():
-                    shutil.copy2(source_file, target_file)
+                    with open(source_file, "r") as f:
+                        lines = f.readlines()
+
+                    if turn is not None:
+                        user_turn_line_indices = []
+                        for idx, line in enumerate(lines):
+                            if not line.strip(): continue
+                            try:
+                                data = json.loads(line)
+                                if isinstance(data, dict) and data.get("type") == "message" and data.get("role") == "user":
+                                    user_turn_line_indices.append(idx)
+                            except json.JSONDecodeError:
+                                pass
+
+                        if turn <= 0:
+                            lines_to_copy = []
+                        elif turn <= len(user_turn_line_indices):
+                            cutoff_idx = user_turn_line_indices[turn] if turn < len(user_turn_line_indices) else len(lines)
+                            lines_to_copy = lines[:cutoff_idx]
+                        else:
+                            lines_to_copy = lines
+                    else:
+                        lines_to_copy = lines
+
+            with open(target_file, "w") as f:
+                f.writelines(lines_to_copy)
+
+            for line in lines_to_copy:
+                if not line.strip(): continue
+                try:
+                    data = json.loads(line)
+                    if isinstance(data, dict) and data.get("type") == "message":
+                        copied_msgs_count += 1
+                except json.JSONDecodeError:
+                    pass
+
+        meta_data = {
+            "cwd": source_meta.cwd,
+            "created_at": now,
+            "updated_at": now,
+            "message_count": copied_msgs_count,
+            "org_id": source_meta.org_id,
+            "project_id": source_meta.project_id,
+            "user_id": source_meta.user_id,
+            "parent_session_id": source_session_id,
+            "branch_turn": branch_turn_val,
+        }
 
         with self._lock_session(target_session_id, shared=False):
             self._write_session_meta(target_session_id, meta_data)

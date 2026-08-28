@@ -52,6 +52,9 @@ class AgentLoopRequest(BaseModel):
     planning_phase: Optional[bool] = True
     read_only_turns: int = 1
 
+class ForkSessionRequest(BaseModel):
+    turn: Optional[int] = None
+
 class SteerRequest(BaseModel):
     message: str
 
@@ -376,14 +379,15 @@ async def get_session(session_id: str):
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
 @router.post("/agent/sessions/{session_id}/fork")
-async def fork_session(session_id: str):
+async def fork_session(session_id: str, req: Optional[ForkSessionRequest] = None, turn: Optional[int] = None):
     """
-    Fork an existing session into a new one.
+    Fork an existing session into a new one, optionally at a specific turn.
     """
     session_manager = SessionManager()
+    target_turn = req.turn if req and req.turn is not None else turn
     try:
-        new_id = session_manager.fork_from(session_id)
-        return {"session_id": new_id}
+        new_id = session_manager.fork_from(session_id, turn=target_turn)
+        return {"session_id": new_id, "parent_session_id": session_id, "branch_turn": target_turn}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
