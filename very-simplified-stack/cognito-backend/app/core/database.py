@@ -101,7 +101,8 @@ async def run_migrations():
     from app.models.db import (
         DBTask, DBRouteDecision, DBExecutionAttempt, DBApprovalRequest,
         DBVerificationRun, DBEscalationRecord, DBAuditEvent, DBOutboxEvent,
-        DBOrganization, DBProject, DBUser, DBSession, DBSessionMessage
+        DBOrganization, DBProject, DBUser, DBSession, DBSessionMessage,
+        DBStructuredAuditLog
     )
 
     async with engine.begin() as conn:

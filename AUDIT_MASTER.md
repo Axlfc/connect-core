@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 27
-  - **Total con Estado "Pendiente":** 7
+  - **Total con Estado "Corregido":** 28
+  - **Total con Estado "Pendiente":** 6
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -39,7 +39,7 @@
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Corregido |
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
-| AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
+| AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Corregido |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Corregido |
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Corregido |
@@ -332,8 +332,23 @@
 - **Descripción del problema:** Cognito registra eventos en consola o archivos de log locales sin un formato estructurado de auditoría (Audit Trail) exportable vía Syslog, OTLP o conectores SIEM (e.g., Splunk, Datadog). No se registran eventos firmados con timestamp de identidad humana.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/logging_config.py` (líneas 1-40) y `very-simplified-stack/cognito-backend/app/core/tracing.py` (líneas 1-50).
 - **Comparación con el estado del arte:** Los estándares de cumplimiento 2026 exigen audit logs inmutables de todas las llamadas a herramientas y accesos a archivos exportables a SIEM.
-- **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Se diseñó el esquema del Audit Log estructurado vinculado con los identificadores `org_id`, `project_id` y `user_id` de los modelos unificados (`app/models/domain.py` y `app/models/db.py`), con correlación de `trace_id` (AUD-025), reutilización de auditoría de aprobaciones (AUD-021) y exportación SIEM/OTLP en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definió la entidad y modelo Pydantic `AuditLogRecord` (`app/core/audit.py`) conteniendo el esquema de auditoría estructurado completo: `actor` (`user_id`, `org_id`, `type`, `id`), `action`, `resource`, `timestamp` (ISO 8601 UTC), `trace_id` (AUD-025), `status`/`result`, `session_id`, `project_id`, `security_context` y `approval_metadata`.
+  - Se creó la tabla ORM `DBStructuredAuditLog` (`app/models/db.py`) y persistencia atómica en `app/core/audit.py` que almacena los registros de auditoría en la base de datos compartida (AUD-012/032) y en archivos `.jsonl` locales de forma estrictamente inmutable y **append-only** (sin consultas `UPDATE` o `DELETE` desde código de aplicación).
+  - Se implementó la captura de eventos mediante los hooks del ciclo de vida de AUD-020 (`on_agent_start`, `on_tool_pre_exec`, `on_tool_post_exec`), eliminando la necesidad de sembrar llamadas manuales de auditoría por el `agent_loop`.
+  - Se unificó `ApprovalDecisionAudit` (AUD-021) en este mismo Audit Log mediante `record_approval_decision` y consulta cruzada en `ApprovalManager`, estableciendo una única fuente de verdad para la auditoría en Cognito.
+  - Se implementó la exportación SIEM en tiempo real:
+    - Exportador Syslog RFC 5424 en formato de texto plano sobre UDP/TCP utilizando la librería estándar `socket`.
+    - Forwarder Webhook HTTP enviando payloads JSON estructurados mediante `urllib` / `http.client`.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_audit_log_siem.py`:
+    - `test_audit_log_schema_actor_trace_timestamp`: Valida la estructura del esquema con `actor` (`user_id`/`org_id`), `trace_id`, `timestamp` e identificadores correctos.
+    - `test_audit_log_append_only_persistence`: Confirma que la persistencia en disco y base de datos es inmutable y estrictamente append-only.
+    - `test_syslog_rfc5424_exporter_formatting_and_sending`: Comprueba el formateo y envío correcto de mensajes Syslog RFC 5424 usando `socket`.
+    - `test_webhook_exporter_sending`: Verifica el envío de payloads JSON formateados vía webhook HTTP.
+    - `test_aud020_lifecycle_hooks_capture`: Confirma la captura automática de eventos a través de los hooks de ciclo de vida (`on_agent_start`, `on_tool_pre_exec`, `on_tool_post_exec`).
+    - `test_aud021_approval_decision_unification`: Valida la unificación de decisiones de aprobación en el Audit Log como única fuente de verdad.
 
 #### AUD-010
 - **ID:** AUD-010

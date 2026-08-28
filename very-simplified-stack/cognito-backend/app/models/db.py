@@ -205,3 +205,24 @@ class DBSessionMessage(Base):
     delivered = Column(Boolean, default=False, nullable=True)
     steering_id = Column(String(64), nullable=True)
     ts = Column(String(64), nullable=False)
+
+
+class DBStructuredAuditLog(Base):
+    __tablename__ = "structured_audit_logs"
+    __table_args__ = TABLE_ARGS
+
+    audit_id = Column(String(64), primary_key=True)
+    timestamp = Column(String(64), nullable=False, index=True)
+    org_id = Column(String(64), nullable=False, index=True)
+    project_id = Column(String(64), nullable=True, index=True)
+    session_id = Column(String(64), nullable=True, index=True)
+    user_id = Column(String(64), nullable=True, index=True)
+    actor = Column(JSON, nullable=False)
+    action = Column(String(255), nullable=False)
+    resource = Column(String(1024), nullable=False)
+    trace_id = Column(String(64), nullable=False, index=True)
+    request_id = Column(String(64), nullable=True)
+    status = Column(String(32), nullable=False)
+    approval_metadata = Column(JSON, nullable=True)
+    security_context = Column(JSON, nullable=True)
+    raw_payload = Column(JSON, nullable=False)
