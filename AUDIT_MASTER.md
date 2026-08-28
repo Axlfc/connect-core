@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 25
-  - **Total con Estado "Pendiente":** 9
+  - **Total con Estado "Corregido":** 27
+  - **Total con Estado "Pendiente":** 7
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -42,7 +42,7 @@
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Corregido |
-| AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Pendiente (Plan de diseño disponible) |
+| AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Corregido |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación strictly lineal sin ramificación (branching/checkpoints) | Pendiente |
@@ -62,7 +62,7 @@
 | AUD-029 | Medio | Brecha Funcional | H. Precisión y Evaluación | P2 Diferenciador | cognito-backend | Inexistencia de un paso interno de autocrítica o verificación previa a la entrega final | Pendiente |
 | AUD-030 | Bajo | Deuda Técnica | I. Portabilidad de Proveedores | P2 Diferenciador | cognito-backend | Abstracción del LLM Router con condicionales específicos dificultando la adición de nuevos rimes | Corregido |
 | AUD-031 | Medio | Deuda Técnica | J. Despliegue y Producción | P1 Esperado | Dockerfiles | Contenedores Docker ejecutados como root y sin instrucciones HEALTHCHECK o graceful shutdown | Corregido |
-| AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Pendiente (Plan de diseño disponible) |
+| AUD-032 | Alto | Brecha Funcional | J. Despliegue y Producción | P0 Bloqueante | cognito-backend | Estado de sesión acoplado a SQLite y locks locales imprevistos para escalado horizontal | Corregido |
 | AUD-033 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Brecha de aislamiento de red: paso condicional de --share-net en bwrap según lista blanca | Corregido |
 | AUD-036 | Alto | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-worker | Riesgo de inyección de argumentos en comandos git en worktree.py | Corregido |
 
@@ -392,8 +392,14 @@
 - **Descripción del problema:** `SessionManager` escribe el estado de las sesiones y la base de datos SQLite directamente en rutas del disco local (`./data/sessions/`). Esto impide el despliegue de Cognito en entornos BYOC (Bring Your Own Cloud) donde los contenedores backend deben ser efímeros.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 45-90).
 - **Comparación con el estado del arte:** Los despliegues enterprise modernos abstraen la capa de persistencia mediante bases de datos gestionadas y almacenamiento de objetos (S3/GCS).
-- **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-032 mediante el diseño de almacenamiento compartido distribuido (PostgreSQL + Redis) para eliminar la dependencia de almacenamiento de sesión local en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definieron los modelos ORM de SQLAlchemy `DBSession` y `DBSessionMessage` en `very-simplified-stack/cognito-backend/app/models/db.py` alojando metadatos de sesión e historial de mensajes estructurados vinculados con `Organization`, `Project` y `User` (AUD-007).
+  - Se extendió `SessionManager` en `app/core/session_manager.py` para soportar la variable de entorno `COGNITO_STORAGE_BACKEND`. En modo `postgres_redis` / `postgres`, PostgreSQL actúa como la fuente de verdad persistente de estado y mensajes de sesión, abstrayendo por completo el almacenamiento de disco local para despliegues BYOC sin estado (stateless).
+  - Se implementó el script de migración de datos `very-simplified-stack/cognito-backend/scripts/migrate_sessions_local_to_postgres.py` que lee las sesiones locales existentes (SQLite y archivos JSONL/.meta.json) y las migra atómicamente a PostgreSQL sin pérdida de historial.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_postgres_redis_shared_storage.py`:
+    - `test_local_to_postgres_migration_script`: Crea una sesión con historial en almacenamiento local, ejecuta la migración a PostgreSQL, conmuta el backend a `COGNITO_STORAGE_BACKEND=postgres_redis` y verifica la integridad completa del historial recuperado desde PostgreSQL.
 
 ---
 
@@ -800,8 +806,15 @@
 - **Descripción del problema:** La arquitectura asume una única instancia del backend debido al uso de SQLite local y bloqueos en memoria por sesión (`SessionManager`). Múltiples réplicas del backend detrás de un balanceador de carga no podrían compartir ni coordinar el estado de las sesiones.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/database.py` (líneas 10-40) y `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 20-60).
 - **Comparación con el estado del arte:** La alta disponibilidad en producción requiere escalabilidad horizontal con estado distribuido en Redis o bases de datos relacionales compartidas.
-- **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-012 en `ARCHITECTURE_RFC_GOBERNANZA.md` mediante un esquema de almacenamiento compartido en PostgreSQL y locks distribuidos/PubSub en Redis para escalado horizontal multi-réplica que aloje las tablas ORM `DBOrganization`, `DBProject` y `DBUser` (`app/models/db.py`).
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se implementó la coordinación asíncrona y síncrona de cierres distribuidos en `very-simplified-stack/cognito-backend/app/core/redis_lock.py` (`RedisDistributedLock` / `AsyncRedisDistributedLock`) utilizando primitivas de Redis (`SET key token NX PX`) con script Lua de liberación atómica y fallback a `fcntl` local para desarrollo.
+  - Se refactorizaron los bloqueos por sesión y por índice en `SessionManager` (`app/core/session_manager.py`) para utilizar las claves de Redis `cognito:lock:session:{session_id}` y `cognito:lock:index`, permitiendo que múltiples réplicas concurrentes del backend coordinen operaciones sobre la misma sesión sin condiciones de carrera.
+  - Se añadieron `asyncpg`, `redis`, `psycopg2-binary` y `fakeredis` a `requirements.txt` y `requirements.lock` con hashes sha256 verificados.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_postgres_redis_shared_storage.py`:
+    - `test_postgres_redis_shared_session_concurrency`: Simula dos réplicas concurrentes (`Replica A` y `Replica B`) sirviendo la misma sesión en paralelo sobre PostgreSQL+Redis; confirma cero pérdida de mensajes y consistencia de contadores.
+    - `test_postgres_redis_steering_concurrency`: Prueba la entrega e inspección concurrente de mensajes de steering entre réplicas independientes.
 
 ---
 

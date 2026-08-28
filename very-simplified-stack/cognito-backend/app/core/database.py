@@ -48,6 +48,32 @@ async def get_db_session():
         finally:
             await session.close()
 
+_sync_engine = None
+_SyncSessionFactory = None
+
+def get_db_sync_session():
+    global _sync_engine, _SyncSessionFactory
+    if _SyncSessionFactory is None:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+
+        url = DATABASE_URL
+        if url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        elif url.startswith("sqlite+aiosqlite://"):
+            url = url.replace("sqlite+aiosqlite://", "sqlite://")
+
+        if "sqlite" in url and ":memory:" in url:
+            _sync_engine = create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool, echo=False)
+        else:
+            _sync_engine = create_engine(url, echo=False, pool_pre_ping=True)
+
+        Base.metadata.create_all(_sync_engine)
+        _SyncSessionFactory = sessionmaker(bind=_sync_engine, expire_on_commit=False)
+
+    return _SyncSessionFactory()
+
 async def check_schema_health() -> bool:
     """
     Validates if cognito schema and tables are correctly created.
@@ -72,7 +98,11 @@ async def run_migrations():
     Runs DDL migrations to set up the 'cognito' schema and its tables.
     """
     logger.info("Initializing schema 'cognito' and its tables...")
-    from app.models.db import DBTask, DBRouteDecision, DBExecutionAttempt, DBApprovalRequest, DBVerificationRun, DBEscalationRecord, DBAuditEvent, DBOutboxEvent
+    from app.models.db import (
+        DBTask, DBRouteDecision, DBExecutionAttempt, DBApprovalRequest,
+        DBVerificationRun, DBEscalationRecord, DBAuditEvent, DBOutboxEvent,
+        DBOrganization, DBProject, DBUser, DBSession, DBSessionMessage
+    )
 
     async with engine.begin() as conn:
         if not DATABASE_URL.startswith("sqlite"):
