@@ -9,6 +9,7 @@ from app.core.events import (
     AgentEvent, TextDeltaEvent, ToolCallEvent, ToolResultEvent, DoneEvent, ErrorEvent, ApprovalRequiredEvent
 )
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
+from app.core.tools.remember_fact_tool import RememberFactTool
 from app.core.uncertainty import compute_uncertainty
 from app.core.token_budget import apply_token_budget_reminder, estimate_messages_tokens
 from app.core.guardrails.tool_loop_detector import ToolLoopDetector

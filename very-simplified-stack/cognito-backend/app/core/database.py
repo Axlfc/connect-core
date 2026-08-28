@@ -102,7 +102,7 @@ async def run_migrations():
         DBTask, DBRouteDecision, DBExecutionAttempt, DBApprovalRequest,
         DBVerificationRun, DBEscalationRecord, DBAuditEvent, DBOutboxEvent,
         DBOrganization, DBProject, DBUser, DBSession, DBSessionMessage,
-        DBStructuredAuditLog
+        DBStructuredAuditLog, DBFact
     )
 
     async with engine.begin() as conn:

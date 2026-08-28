@@ -203,3 +203,13 @@ class User(BaseModel):
     roles: List[str] = Field(default_factory=lambda: ["developer"])
     created_at: float = Field(default_factory=time.time)
     last_login_at: Optional[float] = None
+
+class Fact(BaseModel):
+    fact_id: str = Field(default_factory=lambda: f"fact-{uuid.uuid4().hex[:12]}")
+    org_id: Optional[str] = None
+    project_id: Optional[str] = None
+    user_id: Optional[str] = None
+    category: str = "general"
+    fact_text: str
+    created_at: float = Field(default_factory=time.time)
+    updated_at: float = Field(default_factory=time.time)

@@ -234,11 +234,15 @@ async def run_agent_loop(request: AgentLoopRequest):
     model_name = (request.model_params or {}).get("model", "")
 
     # Derivar el array completo de mensajes usando el patron Event Log vs. Derived Messages
+    sess_meta = session_manager.open(session_id)
     derivation_config = DerivationConfig(
         cwd=request.cwd,
         model_name=model_name,
         sessions_dir=session_manager.sessions_dir,
-        extra_messages=new_messages
+        extra_messages=new_messages,
+        user_id=sess_meta.user_id,
+        project_id=sess_meta.project_id,
+        org_id=sess_meta.org_id,
     )
     full_messages_for_loop = await derive_messages_for_llm(session_id, config=derivation_config)
     total_tokens = estimate_messages_tokens(full_messages_for_loop, model=model_name)

@@ -753,17 +753,28 @@ class SessionManager:
 
         if include_system_prompt:
             resolved_cwd = cwd
-            if not resolved_cwd:
-                try:
-                    meta = self.open(session_id)
+            user_id = None
+            project_id = None
+            org_id = None
+            try:
+                meta = self.open(session_id)
+                if not resolved_cwd:
                     resolved_cwd = meta.cwd
-                except Exception:
-                    resolved_cwd = None
+                user_id = meta.user_id
+                project_id = meta.project_id
+                org_id = meta.org_id
+            except Exception:
+                pass
 
             if resolved_cwd:
                 try:
                     from app.core.system_prompt import build_system_message
-                    system_prompt = build_system_message(resolved_cwd)
+                    system_prompt = build_system_message(
+                        resolved_cwd,
+                        user_id=user_id,
+                        project_id=project_id,
+                        org_id=org_id,
+                    )
                     messages.append({"role": "system", "content": system_prompt})
                 except Exception as e:
                     logger.warning(f"Failed to build system message for session {session_id} in {resolved_cwd}: {e}")
