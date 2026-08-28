@@ -49,10 +49,11 @@ async def rpc_mode(client: CognitoClient, config: CognitoConfig):
 
             elif method == "agent.sessions.fork":
                 sid = params.get("session_id")
+                turn = params.get("turn")
                 if not sid:
                     send_error(request_id, -32602, "Invalid params: session_id required")
                 else:
-                    result = await client.fork_session(sid)
+                    result = await client.fork_session(sid, turn=turn)
                     send_result(request_id, {"session_id": result})
 
             elif method == "agent.loop":

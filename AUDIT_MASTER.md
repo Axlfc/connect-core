@@ -45,7 +45,7 @@
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Corregido |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
 | AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Corregido |
-| AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación strictly lineal sin ramificación (branching/checkpoints) | Pendiente |
+| AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación strictly lineal sin ramificación (branching/checkpoints) | Corregido |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Corregido |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
@@ -490,7 +490,17 @@
 - **Descripción del problema:** La estructura de almacenamiento de mensajes de la sesión es estrictamente lineal. No soporta un modelo de árbol de mensajes que permita volver a checkpoints anteriores o crear ramas alternas de trabajo (session branching).
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 50-100) y `very-simplified-stack/cognito-backend/app/models/db.py` (líneas 20-40).
 - **Comparación con el estado del arte:** Arneses de vanguardia como Codex CLI incorporan comandos `/fork` o navegación por árbol de contexto para probar enfoques alternativos sin destruir la sesión original.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se extendió el modelo de datos de sesión `DBSession` (`app/models/db.py`) y `SessionMetadata` (`app/core/session_manager.py`) con los campos `parent_session_id` y `branch_turn`.
+  - Se actualizó `SessionManager.fork_from` para soportar ramificación por número de turno (`turn: Optional[int]`), copiando el contexto de mensajes de la sesión origen de forma exacta hasta el turno especificado N y registrando los metadatos de linaje.
+  - Se expuso la ramificación por turno en el endpoint API `POST /api/agent/sessions/{session_id}/fork` (`app/api/routes/ai_agents.py`), cliente HTTP `CognitoClient.fork_session` (`cli/http_client.py`), modo RPC (`cli/modes/rpc_mode.py`) y en la CLI interactiva mediante el comando slash `/fork [turn]` (`cli/slash_commands.py`).
+  - Se verificó la integración sin contaminación cruzada entre ramas madre e hijas, así como la compatibilidad con el ledger de compactación (AUD-013) y el checkpointing por turno (AUD-026).
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_aud015_session_branching.py`:
+    - `test_session_branching_divergence_no_cross_contamination`: Valida la creación de la rama en el turno N y confirma la independencia completa e inexistencia de contaminación cruzada tras hacer divergir ambas ramas.
+    - `test_branching_with_compaction_and_context_ledger`: Verifica el funcionamiento de la compactación (AUD-013) sobre sesiones ramificadas.
+    - `test_branching_with_turn_checkpointing`: Confirma que el checkpointing atómico de turnos (AUD-026) funciona correctamente en sesiones ramificadas.
 
 #### AUD-016
 - **ID:** AUD-016
