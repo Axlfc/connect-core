@@ -10,6 +10,7 @@ from app.core.tools.fs_tools import ListDirectoryTool, SearchFilesTool
 from app.core.tools.query_spill_tool import QuerySpillTool
 from app.core.tools.read_spill_tool import ReadSpillTool
 from app.core.tools.subagent_tool import SubAgentTool
+from app.core.tools.remember_fact_tool import RememberFactTool
 
 __all__ = [
     "AgentTool",
@@ -26,4 +27,5 @@ __all__ = [
     "SearchFilesTool",
     "QuerySpillTool",
     "ReadSpillTool",
+    "RememberFactTool",
 ]

@@ -46,6 +46,9 @@ class DerivationConfig(BaseModel):
     spill_threshold_tokens: int = 2000
     spill_manager: Optional[Any] = None
     extra_messages: List[Dict[str, Any]] = Field(default_factory=list)
+    user_id: Optional[str] = None
+    project_id: Optional[str] = None
+    org_id: Optional[str] = None
 
 def _parse_event_line(line: str) -> Optional[SessionEvent]:
     line_str = line.strip()
@@ -117,7 +120,12 @@ async def derive_messages_for_llm(
 
     # 1. System Prompt injection if cwd provided
     if config.cwd:
-        system_prompt = build_system_message(config.cwd)
+        system_prompt = build_system_message(
+            config.cwd,
+            user_id=config.user_id,
+            project_id=config.project_id,
+            org_id=config.org_id,
+        )
         derived_messages.append({"role": "system", "content": system_prompt})
 
     # 2. Compaction summary injection

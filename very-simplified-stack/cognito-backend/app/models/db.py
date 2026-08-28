@@ -226,3 +226,16 @@ class DBStructuredAuditLog(Base):
     approval_metadata = Column(JSON, nullable=True)
     security_context = Column(JSON, nullable=True)
     raw_payload = Column(JSON, nullable=False)
+
+class DBFact(Base):
+    __tablename__ = "facts"
+    __table_args__ = TABLE_ARGS
+
+    fact_id = Column(String(64), primary_key=True)
+    org_id = Column(String(64), nullable=True, index=True)
+    project_id = Column(String(64), nullable=True, index=True)
+    user_id = Column(String(64), nullable=True, index=True)
+    category = Column(String(64), default="general", nullable=False)
+    fact_text = Column(String, nullable=False)
+    created_at = Column(Float, default=time.time, nullable=False)
+    updated_at = Column(Float, default=time.time, nullable=False)

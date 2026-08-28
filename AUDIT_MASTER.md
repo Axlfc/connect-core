@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 29
-  - **Total con Estado "Pendiente":** 5
+  - **Total con Estado "Corregido":** 30
+  - **Total con Estado "Pendiente":** 4
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -44,7 +44,7 @@
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Corregido |
 | AUD-012 | Alto | Deuda Técnica | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Acoplamiento rígido al sistema de archivos local que impide despliegues BYOC/stateless | Corregido |
 | AUD-013 | Medio | Defecto | C. Gestión de Contexto | P1 Esperado | cognito-backend | Pérdida de estructura (rutas, firmas, tool calls) durante la compactación narrativa de contexto | Corregido |
-| AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Pendiente |
+| AUD-014 | Alto | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Ausencia de memoria de hechos del proyecto o usuario persistente entre sesiones | Corregido |
 | AUD-015 | Medio | Brecha Funcional | C. Gestión de Contexto | P2 Diferenciador | cognito-backend | Historial de conversación strictly lineal sin ramificación (branching/checkpoints) | Pendiente |
 | AUD-016 | Medio | Deuda Técnica | C. Gestión de Contexto | P1 Esperado | cognito-backend | Descubrimiento de AGENTS.md restringido a la raíz del CWD sin anidamiento ni tolerancia a fallos | Corregido |
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Corregido |
@@ -463,10 +463,22 @@
 - **Categoría:** C. Gestión de Contexto y Memoria
 - **Componente:** cognito-backend
 - **Prioridad MVP Enterprise:** P2 Diferenciador
-- **Descripción del problema:** `nooa_memory.py` gestiona memoria volátil de corto plazo por sesión. No existe un subsistema de memoria persistente de largo plazo (ej. vector store o archivo de hechos) que mantenga el conocimiento aprendido sobre el usuario o el proyecto entre sesiones independientes.
-- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/nooa_memory.py` (líneas 1-60).
+- **Descripción del problema:** `nooa_memory.py` gestionaba exclusivamente memoria volátil de corto plazo por sesión. No existía un subsistema de memoria persistente de hechos de largo plazo que mantuviera preferencias del usuario, reglas de estilo o datos del proyecto entre sesiones independientes del mismo usuario o proyecto.
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/nooa_memory.py`.
 - **Comparación con el estado del arte:** Los arneses avanzados de 2026 aprenden y persisten autónomamente preferencias, reglas de estilo y arquitectura de proyectos a lo largo del tiempo.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - **Almacén de Hechos Estructurado:** Se diseñó e implementó la entidad ORM `DBFact` (`app/models/db.py`) y el modelo Pydantic `Fact` (`app/models/domain.py`) con persistencia en el almacenamiento compartido relacional (`facts` table en PostgreSQL/SQLite) indexado por `user_id`, `project_id` u `org_id`.
+  - **Gestor de Memoria de Hechos (`FactMemoryManager`):** Se creó `app/core/fact_memory.py` gestionando operaciones de guardado y consulta asociadas al contexto multi-tenant de la sesión.
+  - **Herramienta Explícita del Agente (`RememberFactTool` / `remember_fact`):** Se creó la herramienta `RememberFactTool` (`app/core/tools/remember_fact_tool.py`) permitiendo al agente registrar hechos de forma explícita y determinista durante la conversación (en lugar de extracción automática imprecisa en el MVP).
+  - **Inyección en System Prompt:** Se actualizó `build_system_message` en `app/core/system_prompt.py` y el derivation manager (`message_deriver.py`) para inyectar automáticamente los hechos guardados del `user_id` y `project_id` en el System Prompt de cualquier sesión posterior.
+  - **Exclusión Explícita de Embeddings / Vector Store para MVP:** Se documentó explícitamente la decisión arquitectónica de posponer la búsqueda semántica por embeddings y bases de datos vectoriales como un diferenciador futuro. Esto evita introducir dependencias pesadas de vector store en el MVP, manteniendo la política de dependencias mínimas y ofreciendo una recuperación de hechos determinista, liviana y predecible a través de PostgreSQL/SQLite.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_persistent_facts_memory.py`:
+    - `test_fact_memory_manager_save_and_retrieve`: Verifica el guardado, actualización idempotente y recuperación de hechos estructurados por ámbito de usuario/proyecto.
+    - `test_remember_fact_tool_execution`: Valida la ejecución de `RememberFactTool` con metadatos de riesgo y formato de retorno.
+    - `test_facts_injection_across_independent_sessions`: Demuestra que un hecho registrado en la sesión A (User X / Project P) se inyecta correctamente en el System Prompt de una sesión B posterior e independiente del mismo User X / Project P.
+    - `test_facts_tenant_isolation`: Confirma el aislamiento estricto garantizando que sesiones de User Y / Project Q no reciben los hechos pertenecientes a User X / Project P.
 
 #### AUD-015
 - **ID:** AUD-015
