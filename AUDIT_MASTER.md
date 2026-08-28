@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 24
-  - **Total con Estado "Pendiente":** 10
+  - **Total con Estado "Corregido":** 25
+  - **Total con Estado "Pendiente":** 9
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -50,7 +50,7 @@
 | AUD-017 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Bucle de agente estrictamente secuencial y mono-agente por sesión | Corregido |
 | AUD-018 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Ausencia de fase forzada de planificación de solo lectura previa a modificaciones de archivos | Corregido |
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Corregido |
-| AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Pendiente |
+| AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Corregido |
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
 | AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
@@ -538,7 +538,20 @@
 - **Descripción del problema:** `ExtensionRegistry` y `HookedTool` permiten envolver herramientas individuales, pero no existen hooks globales del ciclo de vida del agente (`on_agent_start`, `on_tool_pre_exec`, `on_tool_post_exec`, `on_pre_compact`).
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/agent_loop.py` (líneas 100-150) y `very-simplified-stack/cognito-backend/app/core/extensions/registry.py` (líneas 1-60).
 - **Comparación con el estado del arte:** Los puntos de extensión de ciclo de vida permiten a los integradores inyectar validadores de seguridad corporativos sin modificar el núcleo del arnés.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se crearon las clases Pydantic de payload para eventos globales del ciclo de vida (`AgentStartPayload`, `ToolPreExecPayload`, `ToolPostExecPayload`, `PreCompactPayload`) en `app/core/extensions/api.py`.
+  - Se ampliaron los tipos `HookEvent` y los métodos helper de registro en `ExtensionAPI` (`on_agent_start`, `on_tool_pre_exec`, `on_tool_post_exec`, `on_pre_compact`).
+  - Se actualizó `ExtensionRegistry.fire()` en `app/core/extensions/registry.py` para permitir veto/bloqueo de acciones cuando un handler de `on_tool_pre_exec` o `before_tool_call` retorna un mensaje de rechazo.
+  - Se conectó `agent_loop.py` para disparar `on_agent_start` al inicio de cada bucle, `on_tool_pre_exec` antes de la ejecución de herramientas (bloqueando la acción y retornando `ToolResult(is_error=True)` si el hook retorna rechazo), y `on_tool_post_exec` tras completarse la herramienta con el resultado y metadatos.
+  - Se conectó `compact()` en `app/core/compaction.py` y `ai_agents.py` para disparar `on_pre_compact` con el historial de mensajes, metadatos y `trace_id` antes de la compactación.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_agent_lifecycle_hooks.py`:
+    - `test_on_tool_pre_exec_blocks_tool_execution`: Confirma que un hook en `on_tool_pre_exec` puede bloquear y vetar una herramienta sensible retornando un mensaje de rechazo de seguridad corporativa.
+    - `test_on_agent_start_event_fires_at_loop_start`: Valida que `on_agent_start` se dispara al inicio del bucle del agente con la lista de mensajes, metadatos de sesión y `trace_id`.
+    - `test_on_tool_post_exec_event_fires_after_execution`: Verifica que `on_tool_post_exec` se dispara tras la ejecución de herramientas con la salida generada y el estado de error.
+    - `test_on_pre_compact_event_fires_before_compaction`: Comprueba que `on_pre_compact` se dispara antes de la compactación con la lista de mensajes y `session_id`.
+    - `test_extension_api_helper_registration_and_origin_isolation`: Prueba la registración fluida vía `ExtensionAPI` y el aislamiento por `cwd` (hooks globales vs específicos por proyecto).
 
 #### AUD-021
 - **ID:** AUD-021

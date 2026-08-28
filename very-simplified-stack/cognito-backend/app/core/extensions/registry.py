@@ -74,10 +74,10 @@ class ExtensionRegistry:
             if origin is None or origin == cwd:
                 try:
                     res = await handler(payload)
-                    if event == "before_tool_call" and res:
+                    if event in ("before_tool_call", "on_tool_pre_exec") and res:
                         return str(res)
                 except Exception as e:
-                    logger.warning(f"Handler {handler.__name__} for event {event} failed: {e}", exc_info=True)
+                    logger.warning(f"Handler {getattr(handler, '__name__', str(handler))} for event {event} failed: {e}", exc_info=True)
         return None
 
     def clear_project_local(self, cwd: str):
