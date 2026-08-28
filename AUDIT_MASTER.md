@@ -37,7 +37,7 @@
 | AUD-004 | Crítico | Defecto | A. Seguridad y Aislamiento | P0 Bloqueante | cognito-backend | Falta de validación de Origin header y protección CSRF/CORS en conexiones HTTP/WebSocket MCP | Corregido |
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Corregido |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
-| AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Pendiente (Plan de diseño disponible) |
+| AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Corregido |
 | AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Pendiente (Plan de diseño disponible) |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
@@ -297,10 +297,17 @@
 - **Componente:** cognito-backend
 - **Prioridad MVP Enterprise:** P0 Bloqueante
 - **Descripción del problema:** El modelo de datos de Cognito (`app/models/db.py` y `app/models/domain.py`) únicamente contempla los conceptos de `Session`, `Message` y `Execution`. No existen las entidades `Organization`, `Project` ni `User`, asumiendo una arquitectura de único inquilino y único operador.
-- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/models/db.py` (líneas 1-60) y `very-simplified-stack/cognito-backend/app/models/domain.py` (líneas 1-50).
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/models/db.py` y `very-simplified-stack/cognito-backend/app/models/domain.py`.
 - **Comparación con el estado del arte:** El software enterprise requiere RBAC granular y segmentación explícita por usuario, proyecto y organización.
-- **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Se diseñó el modelo de datos multi-tenant (`Organization`, `Project`, `User`, `Role`, `Session`) y su flujo de vinculación de sesiones en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se crearon los modelos de dominio (`Organization`, `Project`, `User`) en `very-simplified-stack/cognito-backend/app/models/domain.py` y las tablas ORM SQLAlchemy (`DBOrganization`, `DBProject`, `DBUser`) en `very-simplified-stack/cognito-backend/app/models/db.py`, de acuerdo fiel con el diseño especificado en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+  - Se vincularon las sesiones (`SessionMetadata`, `SessionManager`) y los presupuestos de tokens jerárquicos (`TokenBudgetManager`) con los identificadores de jerarquía multi-tenant `org_id`, `project_id` y `user_id`.
+  - Los ítems subsiguientes del plan de gobernanza enterprise AUD-008 (autenticación SSO/SAML/OIDC), AUD-009 (audit logging estructurado SIEM) y AUD-032 (almacenamiento compartido) se construyen y referencian sobre este modelo de datos unificado de verdad (`Organization`, `Project`, `User`).
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_hierarchical_budget.py`:
+    - `test_domain_and_db_models`: Verifica la instanciación e identificadores de `Organization`, `Project` y `User`.
+    - `test_session_manager_tenant_binding`: Comprueba la vinculación de metadatos multi-tenant en sesiones.
 
 #### AUD-008
 - **ID:** AUD-008
@@ -313,7 +320,7 @@
 - **Evidencia de Ubicación en Código:** Revisión completa del directorio `very-simplified-stack/cognito-backend/app/api/routes/` (ausencia de módulos de OAuth/OIDC/SAML).
 - **Comparación con el estado del arte:** El soporte de SSO/OIDC/SAML es un requisito no negociable en las evaluaciones de seguridad corporativa para permitir el control de acceso centralizado.
 - **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Se definió la integración SSO/OIDC/SAML con verificación de firmas asimétricas (`PyJWT` / `python-saml`) y reglas de mapeo de claims a usuarios/roles en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Nota de Plan de Diseño:** Se definió la integración SSO/OIDC/SAML con verificación de firmas asimétricas (`PyJWT` / `python-saml`) y reglas de mapeo de claims a usuarios/roles sobre los modelos unificados `Organization`, `Project` y `User` (`app/models/domain.py` / `app/models/db.py`) en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 #### AUD-009
 - **ID:** AUD-009
@@ -326,7 +333,7 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/logging_config.py` (líneas 1-40) y `very-simplified-stack/cognito-backend/app/core/tracing.py` (líneas 1-50).
 - **Comparación con el estado del arte:** Los estándares de cumplimiento 2026 exigen audit logs inmutables de todas las llamadas a herramientas y accesos a archivos exportables a SIEM.
 - **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Se diseñó el esquema del Audit Log estructurado con correlación de `trace_id` (AUD-025), reutilización de auditoría de aprobaciones (AUD-021) y exportación SIEM/OTLP en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Nota de Plan de Diseño:** Se diseñó el esquema del Audit Log estructurado vinculado con los identificadores `org_id`, `project_id` y `user_id` de los modelos unificados (`app/models/domain.py` y `app/models/db.py`), con correlación de `trace_id` (AUD-025), reutilización de auditoría de aprobaciones (AUD-021) y exportación SIEM/OTLP en `ARCHITECTURE_RFC_GOBERNANZA.md`.
 
 #### AUD-010
 - **ID:** AUD-010
@@ -770,7 +777,7 @@
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/database.py` (líneas 10-40) y `very-simplified-stack/cognito-backend/app/core/session_manager.py` (líneas 20-60).
 - **Comparación con el estado del arte:** La alta disponibilidad en producción requiere escalabilidad horizontal con estado distribuido en Redis o bases de datos relacionales compartidas.
 - **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-012 en `ARCHITECTURE_RFC_GOBERNANZA.md` mediante un esquema de almacenamiento compartido en PostgreSQL y locks distribuidos/PubSub en Redis para escalado horizontal multi-réplica.
+- **Nota de Plan de Diseño:** Resuelto conjuntamente con AUD-012 en `ARCHITECTURE_RFC_GOBERNANZA.md` mediante un esquema de almacenamiento compartido en PostgreSQL y locks distribuidos/PubSub en Redis para escalado horizontal multi-réplica que aloje las tablas ORM `DBOrganization`, `DBProject` y `DBUser` (`app/models/db.py`).
 
 ---
 
