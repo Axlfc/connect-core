@@ -53,7 +53,7 @@
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Corregido |
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
 | AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Corregido |
-| AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
+| AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Corregido |
 | AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Corregido |
 | AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
 | AUD-026 | Alto | Brecha Funcional | G. Resiliencia y Recuperación | P1 Esperado | cognito-backend | Falta de checkpointing de ejecución que permita reanudar el estado tras una caída del proceso | Corregido |
@@ -689,7 +689,14 @@
 - **Descripción del problema:** El cargador de extensiones (`ExtensionLoader`) intenta importar archivos `.py` locales de forma dinámica vía `importlib`. No soporta un sistema formal de paquetes de plugins distribuibles o aislados en entornos virtuales independientes.
 - **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/extensions/loader.py` (líneas 15-60).
 - **Comparación con el estado del arte:** Los ecosistemas enterprise requieren empaquetamiento de plugins independientes para evitar colisiones de dependencias con el core.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definió la estructura formal de paquete de plugin (directorios con manifiesto `plugin.json` o `manifest.json` indicando `entrypoint`, `dependencies` y/o archivo `requirements.txt`).
+  - Se implementó la clase `PluginEnvironment` en `app/core/extensions/loader.py` que crea/reutiliza un entorno virtual aislado (`.venv`) mediante la librería estándar `venv` e instala sus dependencias invocando `pip` vía `subprocess` (`[venv_python, "-m", "pip", "install", ...]`).
+  - Se implementó `IsolatedExtensionAPI` junto con gestores de contexto para `sys.path` y `sys.modules`, aislando las importaciones del plugin y envolviendo la ejecución de sus herramientas y hooks en el entorno virtual activado.
+  - Se actualizaron las funciones de descubrimiento (`discover_global`, `discover_configured`, `discover_project_local`) y carga (`load_extension_package`, `load_extension_file`) en `app/core/extensions/loader.py` para soportar paquetes de plugins con entornos virtuales en conjunto con archivos `.py` individuales.
+- **Test de Regresión:**
+  - `test_extension_loader.py` (`test_load_packaged_plugin_venv_creation`, `test_conflicting_dependencies_plugin_isolation`): Demuestra que dos plugins con versiones distintas y conflictivas de la misma librería pueden cargarse y utilizarse simultáneamente sin colisión ni alteración entre ellos.
 
 ---
 
