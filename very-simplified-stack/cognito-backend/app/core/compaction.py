@@ -207,11 +207,30 @@ async def compact(
     effective_messages: List[Dict],
     keep_last_n: int = KEEP_LAST_N_MESSAGES,
     backend_router = None,
+    session_id: Optional[str] = None,
+    cwd: Optional[str] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Summarizes messages except the last N using the backend router,
     and returns a tuple of (summary, context_ledger).
+    Fires the global on_pre_compact lifecycle hook before summarizing.
     """
+    from app.core.extensions.registry import extension_registry
+    from app.core.extensions.api import PreCompactPayload
+    from app.core.logging_config import get_trace_id
+
+    await extension_registry.fire(
+        "on_pre_compact",
+        PreCompactPayload(
+            session_id=session_id,
+            cwd=cwd,
+            messages=effective_messages,
+            keep_last_n=keep_last_n,
+            trace_id=get_trace_id()
+        ),
+        cwd=cwd or "."
+    )
+
     if not backend_router:
         from app.services.backend_router import backend_router as global_router
         backend_router = global_router

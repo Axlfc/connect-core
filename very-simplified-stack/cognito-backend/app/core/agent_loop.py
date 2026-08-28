@@ -14,6 +14,9 @@ from app.core.token_budget import apply_token_budget_reminder, estimate_messages
 from app.core.guardrails.tool_loop_detector import ToolLoopDetector
 from app.core.exec_policy import evaluate_command_execution, evaluate_tool_execution, ExecVerdict
 from app.core.approval import approval_manager, ApprovalManager
+from app.core.extensions.registry import extension_registry
+from app.core.extensions.api import AgentStartPayload, ToolPreExecPayload, ToolPostExecPayload
+from app.core.logging_config import get_trace_id
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +116,20 @@ async def agent_loop(
     turn = 0
     model_name = (model_params or {}).get("model", "")
     tool_loop_detector = ToolLoopDetector(window_size=4, threshold=3)
+    eff_session_id = session_id or getattr(context, "session_id", None) or "default_session"
+
+    await extension_registry.fire(
+        "on_agent_start",
+        AgentStartPayload(
+            session_id=eff_session_id,
+            cwd=context.cwd,
+            messages=current_messages,
+            model_name=model_name,
+            max_turns=max_turns,
+            trace_id=get_trace_id()
+        ),
+        cwd=context.cwd
+    )
 
     while turn < max_turns:
         turn += 1
@@ -230,13 +247,51 @@ async def agent_loop(
                     logger.info(f"Executing {len(batch_items)} tool calls in parallel using concurrency_safe metadata")
 
                     async def _exec_single_parallel(tc_item: dict, tool_obj: Optional[AgentTool]) -> ToolResult:
-                        try:
-                            if isinstance(tool_obj, AgentTool):
-                                return await tool_obj.validate_and_execute(tc_item["arguments"], context)
-                            else:
-                                return await tool_obj.execute(tc_item["arguments"], context)
-                        except Exception as ex:
-                            return ToolResult(is_error=True, output=f"Error executing parallel tool '{tc_item['name']}': {ex}")
+                        p_args = tc_item["arguments"] if isinstance(tc_item.get("arguments"), dict) else {"raw": tc_item.get("arguments")}
+                        p_id = tc_item.get("id", "")
+                        p_name = tc_item.get("name", "")
+
+                        veto = await extension_registry.fire(
+                            "on_tool_pre_exec",
+                            ToolPreExecPayload(
+                                session_id=eff_session_id,
+                                cwd=context.cwd,
+                                tool_name=p_name,
+                                arguments=p_args,
+                                tool_call_id=p_id,
+                                turn=turn,
+                                trace_id=get_trace_id()
+                            ),
+                            cwd=context.cwd
+                        )
+
+                        if veto:
+                            res = ToolResult(is_error=True, output=f"Acción bloqueada por hook de seguridad (on_tool_pre_exec): {veto}")
+                        else:
+                            try:
+                                if isinstance(tool_obj, AgentTool):
+                                    res = await tool_obj.validate_and_execute(p_args, context)
+                                else:
+                                    res = await tool_obj.execute(p_args, context)
+                            except Exception as ex:
+                                res = ToolResult(is_error=True, output=f"Error executing parallel tool '{p_name}': {ex}")
+
+                        await extension_registry.fire(
+                            "on_tool_post_exec",
+                            ToolPostExecPayload(
+                                session_id=eff_session_id,
+                                cwd=context.cwd,
+                                tool_name=p_name,
+                                arguments=p_args,
+                                tool_call_id=p_id,
+                                output=res.output,
+                                is_error=res.is_error,
+                                turn=turn,
+                                trace_id=get_trace_id()
+                            ),
+                            cwd=context.cwd
+                        )
+                        return res
 
                     exec_tasks = [_exec_single_parallel(tc_item, tool_obj) for tc_item, tool_obj in batch_items]
                     results = await asyncio.gather(*exec_tasks)
@@ -276,14 +331,34 @@ async def agent_loop(
                 else:
                     # Sequential execution path (single tool call or unsafe tool call)
                     for tc, tool in batch_items:
-                        if not tool:
-                            result = ToolResult(is_error=True, output=f"Tool '{tc['name']}' not found.")
+                        tc_args = tc["arguments"] if isinstance(tc.get("arguments"), dict) else {"raw": tc.get("arguments")}
+                        tc_id = tc.get("id", "")
+                        tc_name = tc.get("name", "")
+
+                        veto = await extension_registry.fire(
+                            "on_tool_pre_exec",
+                            ToolPreExecPayload(
+                                session_id=eff_session_id,
+                                cwd=context.cwd,
+                                tool_name=tc_name,
+                                arguments=tc_args,
+                                tool_call_id=tc_id,
+                                turn=turn,
+                                trace_id=get_trace_id()
+                            ),
+                            cwd=context.cwd
+                        )
+
+                        if veto:
+                            logger.warning(f"Tool execution for '{tc_name}' blocked by on_tool_pre_exec hook: {veto}")
+                            result = ToolResult(is_error=True, output=f"Acción bloqueada por hook de seguridad (on_tool_pre_exec): {veto}")
+                        elif not tool:
+                            result = ToolResult(is_error=True, output=f"Tool '{tc_name}' not found.")
                         else:
                             logger.info(f"Preparing execution for tool {tool.name} with args {tc['arguments']}")
 
                             cmd = tc["arguments"].get("command", "") if isinstance(tc.get("arguments"), dict) else ""
                             user_approved = bool(tc["arguments"].get("user_approved", False)) if isinstance(tc.get("arguments"), dict) else False
-                            eff_session_id = session_id or getattr(context, "session_id", None) or "default_session"
 
                             verdict, reason = evaluate_tool_execution(
                                 tool=tool,
@@ -388,6 +463,22 @@ async def agent_loop(
                                     result = await tool.validate_and_execute(tc["arguments"], context)
                                 else:
                                     result = await tool.execute(tc["arguments"], context)
+
+                        await extension_registry.fire(
+                            "on_tool_post_exec",
+                            ToolPostExecPayload(
+                                session_id=eff_session_id,
+                                cwd=context.cwd,
+                                tool_name=tc_name,
+                                arguments=tc_args,
+                                tool_call_id=tc_id,
+                                output=result.output,
+                                is_error=result.is_error,
+                                turn=turn,
+                                trace_id=get_trace_id()
+                            ),
+                            cwd=context.cwd
+                        )
 
                         turn_nonce = uuid.uuid4().hex[:12]
                         sanitized_output = sanitize_tool_output(result.output)
