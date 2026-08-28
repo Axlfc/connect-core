@@ -49,4 +49,15 @@ def build_system_message(
     if agents_md and agents_md.strip():
         parts.append(f"---\n\nContexto específico de este repositorio (AGENTS.md):\n\n{agents_md}")
 
+    skills = loader.discover_skills()
+    if skills:
+        skills_blocks = []
+        for s in skills:
+            header = f"### Skill: {s.name}" if s.name else "### Skill"
+            desc = f"\n*Descripción:* {s.description}" if s.description else ""
+            tools_str = f"\n*Herramientas permitidas:* {', '.join(s.allowed_tools)}" if s.allowed_tools else ""
+            instr = f"\n\n{s.instructions}" if s.instructions else ""
+            skills_blocks.append(f"{header}{desc}{tools_str}{instr}")
+        parts.append(f"---\n\nHabilidades disponibles (SKILL.md):\n\n" + "\n\n---\n\n".join(skills_blocks))
+
     return "\n\n".join(parts)

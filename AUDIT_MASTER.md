@@ -52,7 +52,7 @@
 | AUD-019 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P1 Esperado | cognito-backend | Cliente MCP simulado (mock) en lugar de transporte real stdio/SSE para servidores externos | Corregido |
 | AUD-020 | Medio | Brecha Funcional | D. Orquestación y Sub-Agentes | P2 Diferenciador | cognito-backend | Inexistencia de lifecycle hooks globales pre/post ejecución y pre/post compactación | Corregido |
 | AUD-021 | Alto | Brecha Funcional | D. Orquestación y Sub-Agentes | P0 Bloqueante | cognito-backend | Ausencia de canal interactivo de aprobación humana (Human-in-the-Loop) para acciones de riesgo | Corregido |
-| AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Pendiente |
+| AUD-022 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Ausencia de un formato estándar declarativo de definición de habilidades (tipo SKILL.md) | Corregido |
 | AUD-023 | Medio | Brecha Funcional | E. Extensibilidad y Ecosistema | P2 Diferenciador | cognito-backend | Carga de extensiones acoplada a la estructura de archivos local del repositorio | Pendiente |
 | AUD-024 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Inexistencia de exportación de métricas de costo/tokens por usuario a Prometheus/OpenTelemetry | Corregido |
 | AUD-025 | Alto | Brecha Funcional | F. Observabilidad y Telemetría | P1 Esperado | cognito-backend | Ausencia de Trace ID / Request ID correlacionado entre HTTP, agente y herramientas | Corregido |
@@ -661,10 +661,23 @@
 - **Categoría:** E. Extensibilidad y Ecosistema
 - **Componente:** cognito-backend
 - **Prioridad MVP Enterprise:** P2 Diferenciador
-- **Descripción del problema:** Cognito no cuenta con un parser ni motor de ejecución para esquemas declarativos de habilidades como el estándar `SKILL.md` (agentskills.io). Las capacidades adicionales requieren escribir clases en Python.
-- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/skills.py` (líneas 1-50) y `very-simplified-stack/cognito-backend/app/core/extensions/loader.py` (líneas 1-70).
+- **Descripción del problema:** Cognito no contaba con un parser ni motor de ejecución para esquemas declarativos de habilidades como el estándar `SKILL.md` (agentskills.io). Las capacidades adicionales requerían escribir clases en Python.
+- **Evidencia de Ubicación en Código:** `very-simplified-stack/cognito-backend/app/core/skills.py` (líneas 1-135) y `very-simplified-stack/cognito-backend/app/core/resource_loader.py` (líneas 65-115).
 - **Comparación con el estado del arte:** Claude Code y OpenCode soportan la extensión de habilidades mediante simples archivos Markdown declarativos colocados en el repositorio.
-- **Estado:** Pendiente
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se definió la especificación del formato declarativo `SKILL.md`: un archivo Markdown compuesto por un frontmatter plano (delimitado por `---` con claves `name`, `description` y la lista o elementos opcionales `allowed_tools`) seguido de instrucciones en texto libre.
+  - Se implementó la clase `Skill` y la función `parse_skill_md` en `very-simplified-stack/cognito-backend/app/core/skills.py` utilizando únicamente manipulaciones de cadenas de la librería estándar de Python (`str.split`, `str.partition`, `str.strip`), sin requerir ni utilizar la dependencia PyYAML.
+  - Se extendió `ResourceLoader` en `app/core/resource_loader.py` para implementar el descubrimiento recursivo de archivos `SKILL.md` (reutilizando el patrón ascendente/descendente de AUD-016).
+  - Se conectó la inyección automática de las instrucciones de habilidades en el System Prompt generado en `build_system_message` (`app/core/system_prompt.py`).
+  - Se integró la restricción de herramientas autorizadas (`allowed_tools`) mediante el hook de ciclo de vida AUD-020 `on_tool_pre_exec` (`register_skill_hooks` y `skill_tool_restriction_hook`), bloqueando limpiamente la ejecución de herramientas no permitidas por la habilidad.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_skills.py`:
+    - `test_parse_skill_md_flat_frontmatter_without_pyyaml`: Valida el parsing de frontmatter plano y extracción de metadatos/instrucciones sin PyYAML.
+    - `test_parse_skill_md_alternative_keys_and_inline_list`: Comprueba soporte de claves alternativas (e.g. `nombre`, `descripcion`, `tools`) y listas inline (`[read_file, code_review]`).
+    - `test_parse_skill_md_no_frontmatter_fallback_header`: Verifica el comportamiento de fallback al encabezado Markdown si no hay frontmatter.
+    - `test_recursive_skill_discovery_and_system_prompt_injection`: Confirma el descubrimiento recursivo en subdirectorios e inyección en System Prompt.
+    - `test_skill_tool_restriction_hook_aud020`: Demuestra que el hook `on_tool_pre_exec` autoriza herramientas permitidas y veta/bloquea herramientas no autorizadas por `allowed_tools`.
 
 #### AUD-023
 - **ID:** AUD-023

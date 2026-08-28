@@ -49,9 +49,11 @@ async def lifespan(app: FastAPI):
     from app.core.extensions.registry import extension_registry
     from app.services.backend_router import backend_router
     from app.services.semantic_orchestrator import semantic_orchestrator
+    from app.core.skills import register_skill_hooks
 
     extension_registry.refresh("global", None, backend_router, semantic_orchestrator)
     extension_registry.refresh("configured", None, backend_router, semantic_orchestrator)
+    register_skill_hooks(extension_registry)
 
     # Start background session purger task
     from app.core.session.purger import SessionPurgerTask
