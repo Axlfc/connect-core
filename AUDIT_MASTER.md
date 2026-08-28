@@ -8,8 +8,8 @@
   - **Total de Hallazgos:** 34
   - **Desglose por Severidad:** Crítico: 5 | Alto: 15 | Medio: 13 | Bajo: 1
   - **Desglose por Tipo:** Defecto: 6 | Deuda Técnica: 6 | Brecha Funcional: 22
-  - **Total con Estado "Corregido":** 28
-  - **Total con Estado "Pendiente":** 6
+  - **Total con Estado "Corregido":** 29
+  - **Total con Estado "Pendiente":** 5
   - **Desglose por Categoría (A-J):**
     - A. Seguridad y Aislamiento de Ejecución: 8 hallazgos
     - B. Gobernanza Empresarial y Multi-tenencia: 6 hallazgos
@@ -38,7 +38,7 @@
 | AUD-005 | Medio | Brecha Funcional | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend | Ausencia de metadatos de comportamiento (read-only/destructive/concurrency) en esquema de herramientas | Corregido |
 | AUD-006 | Medio | Deuda Técnica | A. Seguridad y Aislamiento | P1 Esperado | cognito-backend / worker | Rango abierto de dependencias Python sin lockfile con hashes integrados | Corregido |
 | AUD-007 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Ausencia de modelo de datos multi-tenant (Org / Tenant / User) | Corregido |
-| AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Pendiente (Plan de diseño disponible) |
+| AUD-008 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de autenticación SSO/SAML/OIDC para operadores humanos | Corregido |
 | AUD-009 | Crítico | Brecha Funcional | B. Gobernanza y Multi-tenencia | P0 Bloqueante | cognito-backend | Inexistencia de audit log estructurado exportable hacia sistemas SIEM | Corregido |
 | AUD-010 | Alto | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Control de presupuesto de tokens restringido al ámbito de sesión individual | Corregido |
 | AUD-011 | Medio | Brecha Funcional | B. Gobernanza y Multi-tenencia | P1 Esperado | cognito-backend | Inexistencia de políticas automatizadas de retención y borrado de datos de usuario/sesión | Corregido |
@@ -319,8 +319,22 @@
 - **Descripción del problema:** No existe ninguna integración con esquemas de autenticación federada SSO, SAML 2.0 ni OpenID Connect (OIDC) para validar la identidad de los usuarios humanos que interactúan con el backend o la CLI.
 - **Evidencia de Ubicación en Código:** Revisión completa del directorio `very-simplified-stack/cognito-backend/app/api/routes/` (ausencia de módulos de OAuth/OIDC/SAML).
 - **Comparación con el estado del arte:** El soporte de SSO/OIDC/SAML es un requisito no negociable en las evaluaciones de seguridad corporativa para permitir el control de acceso centralizado.
-- **Estado:** Pendiente (Plan de diseño disponible)
-- **Nota de Plan de Diseño:** Se definió la integración SSO/OIDC/SAML con verificación de firmas asimétricas (`PyJWT` / `python-saml`) y reglas de mapeo de claims a usuarios/roles sobre los modelos unificados `Organization`, `Project` y `User` (`app/models/domain.py` / `app/models/db.py`) en `ARCHITECTURE_RFC_GOBERNANZA.md`.
+- **Estado:** Corregido
+- **Resolución y Evidencia Técnica:**
+  - Se creó el módulo `very-simplified-stack/cognito-backend/app/core/sso/` definiendo la interfaz abstracta `SSOProvider` (`base.py`) y la implementación real `OIDCProvider` (`oidc.py`).
+  - Se implementó la verificación real de firmas asimétricas (RS256 / ES256) de los ID Tokens OIDC contra el JWKS (JSON Web Key Set) del proveedor utilizando `PyJWT` y `cryptography`. Tokens con firma manipulada o expirados son explícitamente rechazados (`InvalidTokenSignatureError`).
+  - Se implementó la clase `SSOService` (`service.py`) que resuelve la vinculación de `Organization` mediante reglas configurables de mapeo por dominio de email (`COGNITO_SSO_DOMAIN_MAP`), realiza el auto-aprovisionamiento de nuevos usuarios (`User`) o actualización de existentes en su primer login, y vincula la sesión de Cognito (`SessionManager` con `auth_type="authenticated_sso"`).
+  - Se integró el registro de eventos de auditoría SIEM (`auth.sso_login` y `auth.sso_logout`) en el Audit Log estructurado (AUD-009).
+  - Se expusieron las rutas HTTP REST en `app/api/routes/auth.py` (`GET /api/auth/sso/login`, `GET/POST /api/auth/sso/callback`, `POST /api/auth/sso/logout`) y se montaron en `app/main.py`.
+  - Se implementó la clase `SAMLProvider` (`saml.py`) como stub documentado siguiendo el mismo patrón arquitectónico de `VaultSecretsProvider` (AUD-003), permitiendo extender el soporte completo a SAML 2.0 en el futuro sin romper contratos de API.
+- **Test de Regresión:**
+  - `very-simplified-stack/cognito-backend/tests/test_sso_oidc.py`:
+    - `test_oidc_authorization_url_generation`: Valida la generación de URLs de autorización OIDC con `state` y `client_id`.
+    - `test_oidc_valid_id_token_verification`: Verifica la validación exitosa de firmas asimétricas RS256 usando pares de claves RSA y JWKS.
+    - `test_oidc_tampered_signature_token_rejected`: Prueba explícitamente que tokens con firma o payload manipulados son rechazados lanzando `InvalidTokenSignatureError`.
+    - `test_oidc_end_to_end_callback_flow_and_auto_provisioning`: Prueba E2E del callback SSO con mock IdP, verificando el auto-aprovisionamiento de usuario, vinculación multi-tenant a la organización por dominio, emisión de sesión Cognito y registro en el Audit Log.
+    - `test_sso_logout_endpoint_and_audit`: Confirma el cierre de sesión y la presencia del evento `auth.sso_logout` en el Audit Log.
+    - `test_saml_provider_stub_instantiation_and_callback`: Verifica el comportamiento e instanciación del stub documentado de SAML 2.0.
 
 #### AUD-009
 - **ID:** AUD-009
