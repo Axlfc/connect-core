@@ -1,0 +1,39 @@
+[
+  {
+    "name": "sessions/10001",
+    "id": "10001",
+    "title": "Synthetic Test Session 10001",
+    "prompt": "Fix bug in hypenosys.github.io repository",
+    "state": "COMPLETED",
+    "url": "https://jules.google/sessions/10001",
+    "createTime": "2025-01-15T10:00:00.123456789Z",
+    "updateTime": "2025-01-15T10:05:00.987654321Z",
+    "sourceContext": {
+      "source": "sources/github/hypenosys/hypenosys.github.io",
+      "githubRepoContext": {
+        "startingBranch": "main"
+      }
+    },
+    "outputs": [
+      {
+        "changeSet": {
+          "source": "sources/github/hypenosys/hypenosys.github.io",
+          "gitPatch": {
+            "unidiffPatch": "--- a/index.html\n+++ b/index.html\n@@ -1 +1 @@\n-Hello World\n+Hello Jules\n",
+            "baseCommitId": "a1b2c3d4e5f60789",
+            "suggestedCommitMessage": "Update index.html greeting"
+          }
+        }
+      },
+      {
+        "pullRequest": {
+          "url": "https://github.com/hypenosys/hypenosys.github.io/pull/42",
+          "title": "Fix greeting in index.html",
+          "description": "Replaced Hello World with Hello Jules",
+          "baseRef": "main",
+          "headRef": "jules-fix-greeting"
+        }
+      }
+    ]
+  }
+]

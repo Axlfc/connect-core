@@ -8,6 +8,8 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents, auth
+from app.api.routes.jules_v1alpha import router as jules_v1alpha_router, jules_error_response
+from app.core.jules_auth import JulesAPIError
 from app.core.metrics import metrics
 from app.api.routes.openai_compat import router as openai_router
 from app.core.logging_config import configure_structured_logging, set_trace_id, clear_correlation_context
@@ -94,6 +96,7 @@ def get_allowed_origins() -> List[str]:
             "http://127.0.0.1:3000",
             "http://127.0.0.1:8000",
             "http://127.0.0.1:5173",
+            "https://dev.hypenosys.com",
         ]
     return origins
 
@@ -113,8 +116,8 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Trace-ID", "X-Request-ID"],
-    expose_headers=["X-Trace-ID", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-Trace-ID", "X-Request-ID", "x-goog-api-key", "X-Goog-Api-Key"],
+    expose_headers=["X-Trace-ID", "X-Request-ID", "Retry-After"],
 )
 
 @app.middleware("http")
@@ -176,11 +179,17 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
 
+# Custom exception handler for /v1alpha Jules API errors
+@app.exception_handler(JulesAPIError)
+async def jules_api_exception_handler(request: Request, exc: JulesAPIError):
+    return jules_error_response(exc.status_code, exc.message, exc.gcp_status)
+
 # Include the API routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(ai_agents.router, prefix="/api", tags=["AI Agents"])
 app.include_router(auth.router, prefix="/api", tags=["SSO Authentication"])
 app.include_router(openai_router)          # monta /v1/models y /v1/chat/completions
+app.include_router(jules_v1alpha_router)  # monta /v1alpha
 
 @app.get("/metrics", response_class=PlainTextResponse)
 async def get_metrics():

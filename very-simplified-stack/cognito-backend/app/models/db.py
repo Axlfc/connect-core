@@ -4,7 +4,9 @@ from app.core.database import Base
 import time
 
 import sys
-is_testing = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+from app.core.database import DATABASE_URL
+
+is_testing = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv) or "sqlite" in DATABASE_URL
 TABLE_ARGS = {} if is_testing else {"schema": "cognito"}
 
 class DBTask(Base):
@@ -241,3 +243,57 @@ class DBFact(Base):
     fact_text = Column(String, nullable=False)
     created_at = Column(Float, default=time.time, nullable=False)
     updated_at = Column(Float, default=time.time, nullable=False)
+
+
+class DBJulesSession(Base):
+    __tablename__ = "jules_sessions"
+    __table_args__ = TABLE_ARGS
+
+    session_id = Column(String(255), primary_key=True)
+    payload = Column(JSON, nullable=False)
+    create_time = Column(String(64), nullable=False)
+    update_time = Column(String(64), nullable=False)
+    state = Column(String(64), nullable=False, index=True)
+    source = Column(String(255), nullable=True)
+    owner = Column(String(64), nullable=True, index=True)
+    task_id = Column(String(64), nullable=True)
+    cognito_session_id = Column(String(64), nullable=True)
+
+
+class DBJulesActivity(Base):
+    __tablename__ = "jules_activities"
+    __table_args__ = TABLE_ARGS
+
+    session_id = Column(String(255), primary_key=True)
+    activity_id = Column(String(255), primary_key=True)
+    seq = Column(Integer, nullable=False)
+    payload = Column(JSON, nullable=False)
+    originator = Column(String(64), nullable=False, index=True)
+    create_time = Column(String(64), nullable=False, index=True)
+
+
+class DBSource(Base):
+    __tablename__ = "jules_sources"
+    __table_args__ = TABLE_ARGS
+
+    name = Column(String(255), primary_key=True)  # e.g. "sources/github/{owner}/{repo}"
+    id = Column(String(255), nullable=False)
+    owner = Column(String(255), nullable=False)
+    repo = Column(String(255), nullable=False)
+    is_private = Column(Boolean, default=False, nullable=False)
+    default_branch = Column(String(255), nullable=False)
+    branches = Column(JSON, nullable=False)
+    created_at = Column(Float, default=time.time, nullable=False)
+
+
+class DBApiKey(Base):
+    __tablename__ = "jules_api_keys"
+    __table_args__ = TABLE_ARGS
+
+    key_id = Column(String(64), primary_key=True)
+    key_hash = Column(String(128), nullable=False, unique=True, index=True)
+    visible_prefix = Column(String(16), nullable=False)  # e.g. "cgk_a1b2c3"
+    owner = Column(String(64), nullable=False, index=True)
+    is_revoked = Column(Boolean, default=False, nullable=False)
+    created_at = Column(Float, default=time.time, nullable=False)
+    last_used_at = Column(Float, nullable=True)
