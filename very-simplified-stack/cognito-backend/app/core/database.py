@@ -17,7 +17,13 @@ DATABASE_URL = os.getenv(
 
 # Enable SQLite fallback for testing purposes if configured
 if DATABASE_URL.startswith("sqlite"):
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    from sqlalchemy.pool import StaticPool
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
 else:
     # PostgreSQL standard options
     engine = create_async_engine(
@@ -102,7 +108,8 @@ async def run_migrations():
         DBTask, DBRouteDecision, DBExecutionAttempt, DBApprovalRequest,
         DBVerificationRun, DBEscalationRecord, DBAuditEvent, DBOutboxEvent,
         DBOrganization, DBProject, DBUser, DBSession, DBSessionMessage,
-        DBStructuredAuditLog, DBFact
+        DBStructuredAuditLog, DBFact, DBJulesSession, DBJulesActivity,
+        DBSource, DBApiKey
     )
 
     async with engine.begin() as conn:

@@ -1,0 +1,75 @@
+[
+  {
+    "name": "sessions/10001/activities/32a1b2c3d4e5f678901234567890abcdef",
+    "id": "32a1b2c3d4e5f678901234567890abcdef",
+    "originator": "user",
+    "createTime": "2025-01-15T10:00:00.123456789Z",
+    "userMessaged": {
+      "userMessage": "Fix bug in hypenosys.github.io repository"
+    }
+  },
+  {
+    "name": "sessions/10001/activities/task-10001-activity-step-1",
+    "id": "task-10001-activity-step-1",
+    "originator": "agent",
+    "createTime": "2025-01-15T10:01:00.123456789Z",
+    "planGenerated": {
+      "plan": {
+        "id": "plan-1",
+        "createTime": "2025-01-15T10:01:00.123456789Z",
+        "steps": [
+          {
+            "id": "step-1",
+            "index": 1,
+            "title": "Inspect index.html",
+            "description": "Check file contents"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "sessions/10001/activities/task-10001-activity-step-2",
+    "id": "task-10001-activity-step-2",
+    "originator": "agent",
+    "createTime": "2025-01-15T10:02:00.123456789Z",
+    "progressUpdated": {},
+    "artifacts": [
+      {
+        "bashOutput": {
+          "command": "cat index.html",
+          "output": "Hello World\n",
+          "exitCode": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "sessions/10001/activities/task-10001-activity-step-3",
+    "id": "task-10001-activity-step-3",
+    "originator": "agent",
+    "createTime": "2025-01-15T10:03:00.123456789Z",
+    "agentMessaged": {
+      "agentMessage": "I have updated index.html with the greeting."
+    },
+    "artifacts": [
+      {
+        "changeSet": {
+          "source": "sources/github/hypenosys/hypenosys.github.io",
+          "gitPatch": {
+            "unidiffPatch": "--- a/index.html\n+++ b/index.html\n@@ -1 +1 @@\n-Hello World\n+Hello Jules\n",
+            "baseCommitId": "a1b2c3d4e5f60789",
+            "suggestedCommitMessage": "Update index.html greeting"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "sessions/10001/activities/task-10001-activity-step-4",
+    "id": "task-10001-activity-step-4",
+    "originator": "system",
+    "createTime": "2025-01-15T10:05:00.987654321Z",
+    "sessionCompleted": {}
+  }
+]
