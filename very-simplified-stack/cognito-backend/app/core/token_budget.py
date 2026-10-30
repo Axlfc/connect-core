@@ -1,5 +1,6 @@
 import os
 import logging
+from functools import lru_cache
 import tiktoken
 from typing import List, Dict, Any, Tuple, Optional, Literal
 
@@ -252,6 +253,10 @@ def get_model_context_limit(model: str = "") -> int:
     return DEFAULT_CONTEXT_LIMIT
 
 
+# Performance Optimization (Bolt):
+# Memoize model encoding instances to avoid expensive tiktoken lookup/initialization
+# on every single string token calculation in loops.
+@lru_cache(maxsize=32)
 def _get_encoding_for_model(model: str = ""):
     """
     Safely retrieves a tiktoken encoding for a model, falling back to cl100k_base.
