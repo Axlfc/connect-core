@@ -3,7 +3,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.fs_observation_policy import FSObservationPolicy
+from app.core.path_safety import resolve_in_workspace
 from app.core.context_spill import default_spill_manager, SpillManager, spill_large_content
+
 
 class ReadTool(AgentTool):
     name = "read"
@@ -37,13 +39,15 @@ class ReadTool(AgentTool):
             protected_files=getattr(context, "protected_files", None),
         )
 
+        resolved_target = resolve_in_workspace(path, context.cwd)
+        if resolved_target is None:
+            return ToolResult(is_error=True, output=policy.get_generic_error_message())
+
         target_path = Path(context.cwd) / path
 
         # Check observation policy and path safety
-        if policy.is_path_ignored(target_path):
+        if policy.is_path_ignored(target_path) or policy.is_path_ignored(resolved_target):
             return ToolResult(is_error=True, output=policy.get_generic_error_message())
-
-        resolved_target = target_path.resolve()
 
         if not resolved_target.exists():
             return ToolResult(is_error=True, output=policy.get_generic_error_message())

@@ -6,6 +6,7 @@ from typing import Any, Dict
 from app.core.tools.base import AgentTool, ToolContext, ToolResult
 from app.core.path_safety import is_path_contained
 
+
 class WriteTool(AgentTool):
     name = "write"
     description = "Write or overwrite a file with the provided content."
@@ -20,6 +21,9 @@ class WriteTool(AgentTool):
         },
         "required": ["path", "content"],
     }
+
+    def _normalize_protected_file(self, pf: str) -> str:
+        return os.path.normpath(pf.lstrip("./\\"))
 
     async def execute(self, arguments: Dict[str, Any], context: ToolContext) -> ToolResult:
         path = arguments.get("path")
@@ -36,8 +40,16 @@ class WriteTool(AgentTool):
         if not is_path_contained(target_path, abs_cwd):
             return ToolResult(is_error=True, output=f"Error: Access denied. Path '{path}' is outside of workspace.")
 
-        # Protected files check
-        if norm_path in context.protected_files:
+        # Normalize protected files set
+        protected_set = {self._normalize_protected_file(pf) for pf in context.protected_files}
+
+        # Check user-provided relative path
+        norm_user_path = self._normalize_protected_file(norm_path)
+
+        # Check real resolved path relative to cwd (resolving symlinks)
+        real_rel_path = self._normalize_protected_file(os.path.relpath(target_path, abs_cwd))
+
+        if norm_user_path in protected_set or real_rel_path in protected_set:
             return ToolResult(is_error=True, output=f"Archivo protegido: {norm_path}. No se puede modificar vía agente.")
 
         # Trust check

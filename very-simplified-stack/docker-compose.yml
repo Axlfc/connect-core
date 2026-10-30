@@ -34,7 +34,7 @@ services:
       - backend
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-admin}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin_password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
@@ -150,12 +150,12 @@ services:
     networks:
       - backend
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - ./data/redis:/data
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-redis_password}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
 
   # Git Hosting
   forgejo:

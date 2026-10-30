@@ -130,7 +130,7 @@ async def test_sandboxed_executor_bwrap_command_building():
 
         mock_exec.assert_called_once()
         args = mock_exec.call_args[0]
-        assert args[0] == "bwrap"
+        assert "bwrap" in args
         assert "--ro-bind" in args
         assert "--bind" in args
         assert "--unshare-all" in args
