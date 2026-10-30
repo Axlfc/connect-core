@@ -31,19 +31,58 @@ def validate_session_id(session_id: str) -> None:
             gcp_status="NOT_FOUND"
         )
 
+MAX_OFFSET = 10_000_000
+
 def encode_page_token(offset: int) -> str:
     payload = json.dumps({"offset": offset}).encode("utf-8")
-    return base64.b64encode(payload).decode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("utf-8").rstrip("=")
 
 def decode_page_token(token: str) -> int:
+    if not token or not isinstance(token, str):
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Invalid pageToken provided.",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    padding_needed = -len(token) % 4
+    padded_token = token + ("=" * padding_needed)
+
+    raw_json = None
     try:
-        raw = base64.b64decode(token.encode("utf-8")).decode("utf-8")
-        data = json.loads(raw)
-        return int(data.get("offset", 0))
+        raw_bytes = base64.urlsafe_b64decode(padded_token.encode("utf-8"))
+        raw_json = raw_bytes.decode("utf-8")
     except Exception:
+        try:
+            raw_bytes = base64.b64decode(padded_token.encode("utf-8"))
+            raw_json = raw_bytes.decode("utf-8")
+        except Exception:
+            pass
+
+    if raw_json is None:
         raise JulesAPIError(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=f"Invalid pageToken provided: '{token}'",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    try:
+        data = json.loads(raw_json)
+        if not isinstance(data, dict) or "offset" not in data:
+            raise ValueError("Missing offset field")
+
+        offset = data["offset"]
+        if isinstance(offset, bool) or not isinstance(offset, int):
+            raise ValueError("Offset must be an integer")
+
+        if offset < 0 or offset > MAX_OFFSET:
+            raise ValueError(f"Offset {offset} out of bounds (0 <= offset <= {MAX_OFFSET})")
+
+        return offset
+    except Exception as e:
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Invalid pageToken provided: '{token}' ({str(e)})",
             gcp_status="INVALID_ARGUMENT"
         )
 
@@ -88,16 +127,19 @@ async def list_sources(
 
     sources_list = []
     for s in sources_rows:
+        gh_repo = {
+            "owner": s.owner,
+            "repo": s.repo,
+            "defaultBranch": {"displayName": s.default_branch},
+            "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
+        }
+        if s.is_private:
+            gh_repo["isPrivate"] = True
+
         sources_list.append({
             "name": s.name,
             "id": s.id,
-            "githubRepo": {
-                "owner": s.owner,
-                "repo": s.repo,
-                "isPrivate": s.is_private,
-                "defaultBranch": {"displayName": s.default_branch},
-                "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
-            }
+            "githubRepo": gh_repo
         })
 
     resp = {"sources": sources_list}
@@ -125,16 +167,19 @@ async def get_source(
             gcp_status="NOT_FOUND"
         )
 
+    gh_repo = {
+        "owner": s.owner,
+        "repo": s.repo,
+        "defaultBranch": {"displayName": s.default_branch},
+        "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
+    }
+    if s.is_private:
+        gh_repo["isPrivate"] = True
+
     return {
         "name": s.name,
         "id": s.id,
-        "githubRepo": {
-            "owner": s.owner,
-            "repo": s.repo,
-            "isPrivate": s.is_private,
-            "defaultBranch": {"displayName": s.default_branch},
-            "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
-        }
+        "githubRepo": gh_repo
     }
 
 # SESSIONS ENDPOINTS

@@ -10,7 +10,7 @@ from app.main import app
 from app.core.database import get_db_session, get_db_sync_session, Base
 from app.models.db import DBJulesSession, DBJulesActivity, DBSource, DBApiKey
 from app.core.jules_auth import generate_api_key, hash_api_key
-from scripts.import_jules_export import import_export_dir_sync
+from scripts.import_jules_export import import_jules_export
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "synthetic_jules_export"
 
@@ -54,7 +54,7 @@ def test_import_idempotency_and_byte_for_byte_preservation(setup_test_db):
     db = setup_test_db
 
     # First import
-    import_export_dir_sync(FIXTURE_DIR, owner="owner_test_1")
+    import_jules_export([str(FIXTURE_DIR)], owner="owner_test_1")
 
     session_count_1 = db.query(DBJulesSession).count()
     activity_count_1 = db.query(DBJulesActivity).count()
@@ -73,7 +73,7 @@ def test_import_idempotency_and_byte_for_byte_preservation(setup_test_db):
     assert act2.create_time == "2025-01-15T10:01:00.123456789Z"
 
     # Re-import (idempotency check)
-    import_export_dir_sync(FIXTURE_DIR, owner="owner_test_1")
+    import_jules_export([str(FIXTURE_DIR)], owner="owner_test_1")
 
     session_count_2 = db.query(DBJulesSession).count()
     activity_count_2 = db.query(DBJulesActivity).count()
@@ -83,7 +83,7 @@ def test_import_idempotency_and_byte_for_byte_preservation(setup_test_db):
 
 def test_jules_v1alpha_auth_and_endpoints(setup_test_db):
     db = setup_test_db
-    import_export_dir_sync(FIXTURE_DIR, owner="owner_test_1")
+    import_jules_export([str(FIXTURE_DIR)], owner="owner_test_1")
 
     full_key, key_hash, visible_prefix = generate_api_key()
     api_key_obj = DBApiKey(
@@ -134,8 +134,9 @@ def test_jules_v1alpha_auth_and_endpoints(setup_test_db):
     resp_sources = client.get("/v1alpha/sources", headers=headers)
     assert resp_sources.status_code == 200
     sources = resp_sources.json()["sources"]
-    assert len(sources) == 1
-    assert sources[0]["name"] == "sources/github/hypenosys/hypenosys.github.io"
+    assert len(sources) == 2
+    source_names = [s["name"] for s in sources]
+    assert "sources/github/hypenosys/hypenosys.github.io" in source_names
 
     # GET specific source path with dots
     resp_single_source = client.get("/v1alpha/sources/github/hypenosys/hypenosys.github.io", headers=headers)

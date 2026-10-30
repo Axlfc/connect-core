@@ -51,11 +51,11 @@ async def verify_jules_api_key(
     Validates hash using constant-time comparison (hmac.compare_digest).
     Ensures keys are never logged.
     """
-    api_key = request.headers.get("x-goog-api-key") or request.query_params.get("key")
+    api_key = request.headers.get("x-goog-api-key")
     if not api_key:
         raise JulesAPIError(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Missing required x-goog-api-key header or key query parameter.",
+            message="Missing required x-goog-api-key header.",
             gcp_status="UNAUTHENTICATED"
         )
 
