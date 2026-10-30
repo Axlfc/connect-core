@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+from typing import Optional
+
 
 def is_path_contained(target_path: str, base_path: str) -> bool:
     """
@@ -22,3 +25,32 @@ def is_path_contained(target_path: str, base_path: str) -> bool:
         return common == abs_base
     except Exception:
         return False
+
+
+def resolve_in_workspace(path: str, cwd: str) -> Optional[Path]:
+    """
+    Safely resolves a path relative to cwd inside workspace.
+    - Rejects null bytes and absolute paths.
+    - Resolves symbolic links and relative path traversals via realpath.
+    - Ensures resolved target is contained within the canonical cwd.
+    - Returns resolved Path object if safe, or None if path escapes workspace.
+    """
+    try:
+        if not path or not isinstance(path, str) or '\x00' in path:
+            return None
+
+        # Reject absolute paths directly to prevent referencing root paths
+        p = Path(path)
+        if p.is_absolute():
+            return None
+
+        abs_cwd = os.path.realpath(cwd)
+        joined_target = os.path.join(abs_cwd, path)
+        resolved_target = os.path.realpath(joined_target)
+
+        if not is_path_contained(resolved_target, abs_cwd):
+            return None
+
+        return Path(resolved_target)
+    except Exception:
+        return None

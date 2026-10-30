@@ -12,10 +12,13 @@ from app.core.exec_policy import default_exec_policy, session_approval_cache, Ex
 
 logger = logging.getLogger(__name__)
 
+SAFE_ENV_KEYS = ("PATH", "LANG", "LC_ALL", "TERM")
+
 
 class SandboxUnavailableError(RuntimeError):
     """
-    Exception raised when bubblewrap ('bwrap') is not installed or available on the host system.
+    Exception raised when bubblewrap ('bwrap') or resource limiter ('prlimit')
+    is not installed or available on the host system.
     """
     pass
 
@@ -37,6 +40,13 @@ def is_bwrap_available() -> bool:
     return shutil.which("bwrap") is not None
 
 
+def is_prlimit_available() -> bool:
+    """
+    Checks if prlimit binary is available on the host system.
+    """
+    return shutil.which("prlimit") is not None
+
+
 def is_sandbox_disabled_dev_only() -> bool:
     """
     Checks if sandbox is explicitly disabled via COGNITO_DISABLE_SANDBOX_DEV_ONLY env var.
@@ -52,22 +62,86 @@ def is_sandbox_disabled_dev_only() -> bool:
     return disabled
 
 
-def get_sandbox_allowed_hosts() -> List[str]:
+def build_safe_env() -> Dict[str, str]:
     """
-    Retrieves the whitelist of hosts/IPs permitted for outbound network access from Cognito main orchestrator process.
-    By default, includes:
-    1. Localhost and standard loopback addresses ("localhost", "127.0.0.1", "::1", "host.docker.internal").
-    2. Hosts of active LLM backends configured in BackendRouter / BACKENDS_BY_PRIORITY.
-    3. Hosts configured via environment variables (OPENAI_BASE_URL, OLLAMA_HOST, COGNITO_WORKER_URL).
-    4. Custom operator-defined hosts provided in COGNITO_SANDBOX_ALLOWED_HOSTS (comma-separated).
+    Builds a sanitized environment dictionary containing only safe environment keys.
+    Prevents leaking host secrets, credentials, and API tokens to sandboxed subprocesses.
+    """
+    safe_env = {}
+    for key in SAFE_ENV_KEYS:
+        if key in os.environ:
+            safe_env[key] = os.environ[key]
 
-    NOTE: This whitelist governs outbound connections made by the main Cognito process (e.g., LLM provider calls,
-    worker HTTP calls). Subprocesses running inside the bwrap sandbox have total kernel-level network isolation
-    (--unshare-all without --share-net) and cannot establish network connections to any host.
+    if "PATH" not in safe_env:
+        safe_env["PATH"] = "/usr/local/bin:/usr/bin:/bin"
+
+    return safe_env
+
+
+def get_prlimit_prefix() -> List[str]:
     """
+    Generates prlimit resource limitation arguments prefix.
+    Note: --nproc is intentionally omitted as RLIMIT_NPROC counts all processes for the same UID.
+    Configurable via environment variables:
+    - COGNITO_SANDBOX_CPU_SECONDS (default: 30)
+    - COGNITO_SANDBOX_MEMORY_MB (default: 2048)
+    - COGNITO_SANDBOX_NOFILE (default: 1024)
+    """
+    if not is_prlimit_available():
+        return []
+
+    try:
+        cpu_sec = int(os.getenv("COGNITO_SANDBOX_CPU_SECONDS", "30"))
+    except ValueError:
+        cpu_sec = 30
+
+    try:
+        mem_mb = int(os.getenv("COGNITO_SANDBOX_MEMORY_MB", "2048"))
+    except ValueError:
+        mem_mb = 2048
+    mem_bytes = mem_mb * 1024 * 1024
+
+    try:
+        nofile = int(os.getenv("COGNITO_SANDBOX_NOFILE", "1024"))
+    except ValueError:
+        nofile = 1024
+
+    return [
+        "prlimit",
+        f"--cpu={cpu_sec}",
+        f"--as={mem_bytes}",
+        f"--nofile={nofile}",
+    ]
+
+
+def _detect_worktree_gitdir(cwd: Path) -> Optional[Path]:
+    """
+    Scans cwd and parent directories for a .git file (Git worktree pointer).
+    If found, parses the target gitdir path and resolves it canonically.
+    """
+    try:
+        curr = cwd.resolve()
+        while curr != curr.parent:
+            git_entry = curr / ".git"
+            if git_entry.is_file():
+                content = git_entry.read_text(encoding="utf-8").strip()
+                if content.startswith("gitdir:"):
+                    gitdir_str = content.split("gitdir:", 1)[1].strip()
+                    gitdir_path = Path(gitdir_str)
+                    if not gitdir_path.is_absolute():
+                        gitdir_path = (curr / gitdir_path).resolve()
+                    else:
+                        gitdir_path = gitdir_path.resolve()
+                    return gitdir_path
+            curr = curr.parent
+    except Exception as e:
+        logger.debug(f"Failed to resolve gitworktree gitdir: {e}")
+    return None
+
+
+def get_sandbox_allowed_hosts() -> List[str]:
     allowed_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
 
-    # 1. Collect LLM endpoints from BackendRouter / BACKENDS_BY_PRIORITY
     try:
         from app.services.backend_registry import BACKENDS_BY_PRIORITY
         for backend in BACKENDS_BY_PRIORITY:
@@ -78,7 +152,6 @@ def get_sandbox_allowed_hosts() -> List[str]:
     except Exception as e:
         logger.debug("Failed to extract LLM backend endpoints for sandbox whitelist: %s", e)
 
-    # 2. Check standard environment variable endpoints
     for env_var in ("OPENAI_BASE_URL", "OLLAMA_HOST", "COGNITO_WORKER_URL"):
         val = os.getenv(env_var, "").strip()
         if val:
@@ -88,7 +161,6 @@ def get_sandbox_allowed_hosts() -> List[str]:
             if parsed.hostname:
                 allowed_hosts.add(parsed.hostname.lower())
 
-    # 3. Custom operator whitelist via COGNITO_SANDBOX_ALLOWED_HOSTS
     custom_hosts = os.getenv("COGNITO_SANDBOX_ALLOWED_HOSTS", "").strip()
     if custom_hosts:
         for host in custom_hosts.split(","):
@@ -107,10 +179,6 @@ def get_sandbox_allowed_hosts() -> List[str]:
 
 
 def is_host_allowed(target: str, allowed_hosts: Optional[List[str]] = None) -> bool:
-    """
-    Checks if a target host, IP, domain, or URL is in the allowed Cognito main orchestrator whitelist.
-    Note: Sandboxed subprocesses (in bwrap) have zero network access at the kernel level.
-    """
     if not target:
         return False
 
@@ -129,22 +197,17 @@ def is_host_allowed(target: str, allowed_hosts: Optional[List[str]] = None) -> b
 
 
 def extract_hosts_from_text(text: str) -> List[str]:
-    """
-    Extracts hostnames, domains, IP addresses, and URLs from a command string or Python code.
-    """
     if not text:
         return []
 
     hosts = set()
 
-    # 1. Match HTTP/HTTPS URLs
     url_pattern = re.compile(r'https?://([a-zA-Z0-9\.\-]+(?::\d+)?)')
     for match in url_pattern.findall(text):
         host = match.split(":")[0].lower()
         if host:
             hosts.add(host)
 
-    # 2. Match IPv4 addresses
     ip_pattern = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
     for ip in ip_pattern.findall(text):
         hosts.add(ip)
@@ -161,28 +224,76 @@ def build_bwrap_args(
     """
     Builds bubblewrap execution arguments for sandbox isolation.
     - Mounts root filesystem as read-only (--ro-bind / /).
-    - Mounts essential virtual filesystems (--dev /dev --proc /proc --tmpfs /tmp).
-    - Ensures parent directories of cwd exist inside the sandbox (--dir {cwd}).
-    - Mounts working directory with write permissions (--bind {cwd} {cwd}).
+    - Clears environment (--clearenv --setenv PATH ...).
+    - Hides user home directory (--tmpfs ~) before mounting CWD if valid and not root ("/").
+    - Re-exposes worktree gitdir or COGNITO_SANDBOX_HOME_RO_PATHS as read-only.
+    - Mounts CWD with write permissions (--bind {cwd} {cwd}) after --tmpfs /tmp.
     - Unshares all namespaces including network namespace (--unshare-all --die-with-parent).
-    - Absolute deny-all kernel-level network enforcement: --share-net is NEVER passed.
-      All commands inside bwrap execute with zero usable network interfaces. Outbound LLM calls
-      or remote provider API calls take place exclusively outside the sandbox in the main process.
     """
     cwd_path = Path(cwd).resolve()
     cwd_str = str(cwd_path)
 
+    path_val = os.getenv("PATH", "/usr/local/bin:/usr/bin:/bin")
+
     args = [
         "bwrap",
+        "--clearenv",
+        "--setenv", "PATH", path_val,
+        "--setenv", "LANG", os.getenv("LANG", "C.UTF-8"),
         "--ro-bind", "/", "/",
         "--dev", "/dev",
         "--proc", "/proc",
         "--tmpfs", "/tmp",
+    ]
+
+    # Hide user home directory if valid and not "/"
+    raw_home = os.getenv("HOME", "").strip()
+    user_home: Optional[Path] = None
+    if raw_home and raw_home != "/":
+        try:
+            candidate_home = Path(raw_home).resolve()
+            if candidate_home.exists() and candidate_home.is_dir() and str(candidate_home) != "/":
+                user_home = candidate_home
+                args.extend(["--tmpfs", str(user_home)])
+            else:
+                logger.warning(f"Sandbox HOME directory '{raw_home}' is invalid or does not exist. Skipping home tmpfs isolation.")
+        except Exception as e:
+            logger.warning(f"Failed resolving HOME directory '{raw_home}': {e}")
+    else:
+        logger.warning("HOME is '/' or empty. Skipping home tmpfs isolation.")
+
+    # Detect git worktree .git pointer and re-expose gitdir if hidden under home
+    worktree_gitdir = _detect_worktree_gitdir(cwd_path)
+    if worktree_gitdir and worktree_gitdir.exists():
+        args.extend(["--ro-bind", str(worktree_gitdir), str(worktree_gitdir)])
+        # Also re-expose main repo common dir if present
+        commondir_file = worktree_gitdir / "commondir"
+        if commondir_file.is_file():
+            try:
+                rel_commondir = commondir_file.read_text(encoding="utf-8").strip()
+                abs_commondir = (worktree_gitdir / rel_commondir).resolve()
+                if abs_commondir.exists():
+                    args.extend(["--ro-bind", str(abs_commondir), str(abs_commondir)])
+            except Exception:
+                pass
+
+    # Re-expose specific read-only paths under home if explicitly configured
+    home_ro_paths = os.getenv("COGNITO_SANDBOX_HOME_RO_PATHS", "").strip()
+    if home_ro_paths:
+        for raw_p in home_ro_paths.split(","):
+            p_str = raw_p.strip()
+            if p_str:
+                p_path = Path(p_str).resolve()
+                if p_path.exists():
+                    args.extend(["--ro-bind", str(p_path), str(p_path)])
+
+    # Ensure CWD parent directories exist and mount CWD writable AFTER --tmpfs /tmp
+    args.extend([
         "--dir", cwd_str,
         "--bind", cwd_str, cwd_str,
         "--unshare-all",
-        "--die-with-parent"
-    ]
+        "--die-with-parent",
+    ])
 
     return args
 
@@ -212,8 +323,8 @@ class SandboxedExecutor:
 
     async def _verify_bwrap(self) -> None:
         """
-        Verifies that bubblewrap ('bwrap') is available. If not, logs a CRITICAL security error
-        and raises SandboxUnavailableError.
+        Verifies that bubblewrap ('bwrap') and prlimit are available on host.
+        If missing, logs a CRITICAL security error and raises SandboxUnavailableError.
         """
         if not is_bwrap_available():
             msg = (
@@ -223,17 +334,18 @@ class SandboxedExecutor:
             logger.critical(msg)
             raise SandboxUnavailableError(msg)
 
+        if not is_prlimit_available() and not is_sandbox_disabled_dev_only():
+            msg = (
+                "Error de Seguridad: prlimit no está disponible en el host. "
+                "No se pueden aplicar límites de recursos de CPU y memoria. Instala prlimit o utiliza COGNITO_DISABLE_SANDBOX_DEV_ONLY."
+            )
+            logger.critical(msg)
+            raise SandboxUnavailableError(msg)
+
     def validate_destination_host(self, target: str) -> bool:
-        """
-        Validates whether a target network host is in the allowed whitelist.
-        """
         return is_host_allowed(target, allowed_hosts=self.allowed_hosts)
 
     def _check_network_targets(self, text: str, target_host: Optional[str] = None) -> Optional[str]:
-        """
-        Scans text (command or code) for network targets and verifies all targets against the whitelist.
-        Returns the first invalid host if any, otherwise returns None.
-        """
         hosts = extract_hosts_from_text(text)
         if target_host and target_host not in hosts:
             hosts.append(target_host)
@@ -243,6 +355,12 @@ class SandboxedExecutor:
                 return h
         return None
 
+    def _resolve_target_host(self, text: str, explicit_target: Optional[str] = None) -> Optional[str]:
+        extracted = extract_hosts_from_text(text)
+        if extracted:
+            return extracted[0]
+        return explicit_target or self.target_host
+
     async def execute_cmd(
         self,
         command: str,
@@ -251,11 +369,6 @@ class SandboxedExecutor:
         user_approved: bool = False,
         target_host: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Evaluates ExecPolicy, session cache, and egress network policy before executing a command inside sandbox.
-        Requires bwrap to be installed; raises SandboxUnavailableError if missing.
-        Enforces destination host whitelist on all network targets in command.
-        """
         await self._verify_bwrap()
 
         invalid_host = self._check_network_targets(command, target_host=target_host or self.target_host)
@@ -285,20 +398,26 @@ class SandboxedExecutor:
             }
 
         cwd_path = Path(self.working_dir).resolve()
-        host_to_pass = (extract_hosts_from_text(command) or [self.target_host])[0] if extract_hosts_from_text(command) else self.target_host
-        cmd = build_bwrap_args(
+        host_to_pass = self._resolve_target_host(command, target_host)
+
+        prlimit_prefix = get_prlimit_prefix()
+        bwrap_cmd = build_bwrap_args(
             cwd=cwd_path,
             allowed_network=self.allowed_network,
             target_host=host_to_pass,
             allowed_hosts=self.allowed_hosts
         ) + ["sh", "-c", command]
 
+        cmd = prlimit_prefix + bwrap_cmd if prlimit_prefix else bwrap_cmd
+        safe_env = build_safe_env()
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=cwd_path
+                cwd=cwd_path,
+                env=safe_env,
             )
 
             try:
@@ -313,7 +432,8 @@ class SandboxedExecutor:
             except asyncio.TimeoutError:
                 try:
                     proc.kill()
-                except ProcessLookupError:
+                    await proc.wait()
+                except Exception:
                     pass
                 return {
                     "stdout": "",
@@ -342,11 +462,6 @@ class SandboxedExecutor:
         allowed_network: Optional[bool] = None,
         target_host: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Executes raw Python code inside a separate python subprocess wrapped in bubblewrap (bwrap).
-        Requires bwrap to be installed; raises SandboxUnavailableError if missing.
-        Enforces destination host whitelist on all network targets in Python code.
-        """
         await self._verify_bwrap()
 
         invalid_host = self._check_network_targets(code, target_host=target_host or self.target_host)
@@ -362,13 +477,17 @@ class SandboxedExecutor:
         temp_file = cwd_path / f"sandbox_{os.getpid()}_{id(code)}.py"
         temp_file.write_text(code, encoding="utf-8")
 
-        host_to_pass = (extract_hosts_from_text(code) or [self.target_host])[0] if extract_hosts_from_text(code) else self.target_host
-        cmd = build_bwrap_args(
+        host_to_pass = self._resolve_target_host(code, target_host)
+        prlimit_prefix = get_prlimit_prefix()
+        bwrap_cmd = build_bwrap_args(
             cwd=cwd_path,
             allowed_network=net_allowed,
             target_host=host_to_pass,
             allowed_hosts=self.allowed_hosts
         ) + [sys.executable, str(temp_file)]
+
+        cmd = prlimit_prefix + bwrap_cmd if prlimit_prefix else bwrap_cmd
+        safe_env = build_safe_env()
         context = "bwrap"
 
         try:
@@ -376,7 +495,8 @@ class SandboxedExecutor:
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=cwd_path
+                cwd=cwd_path,
+                env=safe_env,
             )
 
             try:
@@ -385,7 +505,8 @@ class SandboxedExecutor:
             except asyncio.TimeoutError:
                 try:
                     proc.kill()
-                except ProcessLookupError:
+                    await proc.wait()
+                except Exception:
                     pass
                 return {
                     "stdout": "",
@@ -404,7 +525,6 @@ class SandboxedExecutor:
             }
 
         finally:
-            # Cleanup temp file
             if temp_file.exists():
                 try:
                     temp_file.unlink()
