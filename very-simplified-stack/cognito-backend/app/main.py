@@ -5,6 +5,7 @@ import logging
 from typing import List
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, ai_agents, auth
@@ -183,6 +184,19 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.exception_handler(JulesAPIError)
 async def jules_api_exception_handler(request: Request, exc: JulesAPIError):
     return jules_error_response(exc.status_code, exc.message, exc.gcp_status)
+
+@app.exception_handler(RequestValidationError)
+async def jules_validation_error_handler(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith("/v1alpha"):
+        errors_summary = "; ".join([f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in exc.errors()])
+        return jules_error_response(
+            code=status.HTTP_400_BAD_REQUEST,
+            message=f"Invalid argument: {errors_summary}",
+            gcp_status="INVALID_ARGUMENT"
+        )
+    # Default FastAPI handler for non-v1alpha routes
+    from fastapi.exception_handlers import request_validation_exception_handler
+    return await request_validation_exception_handler(request, exc)
 
 # Include the API routers
 app.include_router(health.router, tags=["Health"])

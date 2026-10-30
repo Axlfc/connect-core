@@ -1,0 +1,40 @@
+[
+  {
+    "id": "github/Axlfc/1337",
+    "githubRepo": {
+      "owner": "Axlfc",
+      "repo": "1337",
+      "isPrivate": true,
+      "defaultBranch": {
+        "displayName": "main"
+      },
+      "branches": [
+        {
+          "displayName": "main"
+        },
+        {
+          "displayName": "dev"
+        },
+        {
+          "displayName": "feature/synth"
+        }
+      ]
+    }
+  },
+  {
+    "id": "github/hypenosys/hypenosys.github.io",
+    "githubRepo": {
+      "owner": "hypenosys",
+      "repo": "hypenosys.github.io",
+      "isPrivate": false,
+      "defaultBranch": {
+        "displayName": "main"
+      },
+      "branches": [
+        {
+          "displayName": "main"
+        }
+      ]
+    }
+  }
+]

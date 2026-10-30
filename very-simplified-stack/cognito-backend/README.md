@@ -75,6 +75,9 @@ El backend ahora incluye soporte para agentes capaces de ejecutar herramientas (
   - **Body**: `{ "messages": [...], "cwd": "path/to/repo", "model_params": {} }`
   - **Eventos**: `text_delta`, `tool_call`, `tool_result`, `done`, `error`.
 
+### Modelo de Fuentes (Jules Sources)
+Las fuentes de repositorios (`/v1alpha/sources`) son recursos compartidos entre todas las claves de API (modo monousuario / repositorio global). Cualquier clave autenticada puede consultar la lista de fuentes e inspeccionar metadatos de repositorios, mientras que las sesiones (`/v1alpha/sessions`) permanecen estrictamente vinculadas al `owner` de la clave de API activa.
+
 ### Sesiones y Persistencia (Fase 2)
 Las sesiones se guardan en `~/.cognito/sessions/` en formato JSONL (append-only) con un índice global en `index.json`.
 
