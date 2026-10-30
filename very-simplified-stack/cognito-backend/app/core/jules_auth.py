@@ -47,7 +47,7 @@ async def verify_jules_api_key(
     db: AsyncSession = Depends(get_db_session)
 ) -> DBApiKey:
     """
-    Authenticates requests under /v1alpha using 'x-goog-api-key' header or 'key' query parameter.
+    Authenticates requests under /v1alpha exclusively using 'x-goog-api-key' header.
     Validates hash using constant-time comparison (hmac.compare_digest).
     Ensures keys are never logged.
     """
