@@ -22,6 +22,7 @@ def mock_context(tmp_path):
     # Create dummy files
     (workspace / "sample.txt").write_text("hello world\n", encoding="utf-8")
     (workspace / ".env").write_text("SECRET_KEY=12345\n", encoding="utf-8")
+    (workspace / "env").write_text("NOT_SECRET\n", encoding="utf-8")
 
     # Outside secret
     outside = tmp_path / "outside_secret.txt"
@@ -119,6 +120,30 @@ async def test_write_tool_symlink_to_protected_file_blocked(mock_context):
     assert res.is_error is True
     assert "protected" in res.output.lower() or "protegido" in res.output.lower() or "denied" in res.output.lower()
     assert protected_file.read_text(encoding="utf-8") == original_env
+
+
+@pytest.mark.asyncio
+async def test_write_tool_protected_file_normalization_does_not_strip_leading_dots(mock_context):
+    context, workspace, _ = mock_context
+    write_tool = WriteTool()
+
+    # Normalization helper check
+    norm_dot_env = write_tool._normalize_protected_file(".env")
+    norm_slash_dot_env = write_tool._normalize_protected_file("./.env")
+    assert norm_dot_env == ".env"
+    assert norm_slash_dot_env == ".env"
+
+    # Attempting to write protected .env should fail
+    res1 = await write_tool.execute({"path": ".env", "content": "SECRET_KEY=HACKED\n"}, context)
+    assert res1.is_error is True
+
+    res2 = await write_tool.execute({"path": "./.env", "content": "SECRET_KEY=HACKED\n"}, context)
+    assert res2.is_error is True
+
+    # Attempting to write non-protected "env" should succeed
+    res3 = await write_tool.execute({"path": "env", "content": "NEW_UNPROTECTED_CONTENT\n"}, context)
+    assert res3.is_error is False
+    assert (workspace / "env").read_text(encoding="utf-8") == "NEW_UNPROTECTED_CONTENT\n"
 
 
 @pytest.mark.asyncio

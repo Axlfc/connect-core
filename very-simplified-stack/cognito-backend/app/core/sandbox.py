@@ -81,10 +81,10 @@ def build_safe_env() -> Dict[str, str]:
 def get_prlimit_prefix() -> List[str]:
     """
     Generates prlimit resource limitation arguments prefix.
+    Note: --nproc is intentionally omitted as RLIMIT_NPROC counts all processes for the same UID.
     Configurable via environment variables:
     - COGNITO_SANDBOX_CPU_SECONDS (default: 30)
     - COGNITO_SANDBOX_MEMORY_MB (default: 2048)
-    - COGNITO_SANDBOX_NPROC (default: 256)
     - COGNITO_SANDBOX_NOFILE (default: 1024)
     """
     if not is_prlimit_available():
@@ -102,11 +102,6 @@ def get_prlimit_prefix() -> List[str]:
     mem_bytes = mem_mb * 1024 * 1024
 
     try:
-        nproc = int(os.getenv("COGNITO_SANDBOX_NPROC", "256"))
-    except ValueError:
-        nproc = 256
-
-    try:
         nofile = int(os.getenv("COGNITO_SANDBOX_NOFILE", "1024"))
     except ValueError:
         nofile = 1024
@@ -115,15 +110,38 @@ def get_prlimit_prefix() -> List[str]:
         "prlimit",
         f"--cpu={cpu_sec}",
         f"--as={mem_bytes}",
-        f"--nproc={nproc}",
         f"--nofile={nofile}",
     ]
+
+
+def _detect_worktree_gitdir(cwd: Path) -> Optional[Path]:
+    """
+    Scans cwd and parent directories for a .git file (Git worktree pointer).
+    If found, parses the target gitdir path and resolves it canonically.
+    """
+    try:
+        curr = cwd.resolve()
+        while curr != curr.parent:
+            git_entry = curr / ".git"
+            if git_entry.is_file():
+                content = git_entry.read_text(encoding="utf-8").strip()
+                if content.startswith("gitdir:"):
+                    gitdir_str = content.split("gitdir:", 1)[1].strip()
+                    gitdir_path = Path(gitdir_str)
+                    if not gitdir_path.is_absolute():
+                        gitdir_path = (curr / gitdir_path).resolve()
+                    else:
+                        gitdir_path = gitdir_path.resolve()
+                    return gitdir_path
+            curr = curr.parent
+    except Exception as e:
+        logger.debug(f"Failed to resolve gitworktree gitdir: {e}")
+    return None
 
 
 def get_sandbox_allowed_hosts() -> List[str]:
     allowed_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
 
-    # 1. Collect LLM endpoints from BackendRouter / BACKENDS_BY_PRIORITY
     try:
         from app.services.backend_registry import BACKENDS_BY_PRIORITY
         for backend in BACKENDS_BY_PRIORITY:
@@ -134,7 +152,6 @@ def get_sandbox_allowed_hosts() -> List[str]:
     except Exception as e:
         logger.debug("Failed to extract LLM backend endpoints for sandbox whitelist: %s", e)
 
-    # 2. Check standard environment variable endpoints
     for env_var in ("OPENAI_BASE_URL", "OLLAMA_HOST", "COGNITO_WORKER_URL"):
         val = os.getenv(env_var, "").strip()
         if val:
@@ -144,7 +161,6 @@ def get_sandbox_allowed_hosts() -> List[str]:
             if parsed.hostname:
                 allowed_hosts.add(parsed.hostname.lower())
 
-    # 3. Custom operator whitelist via COGNITO_SANDBOX_ALLOWED_HOSTS
     custom_hosts = os.getenv("COGNITO_SANDBOX_ALLOWED_HOSTS", "").strip()
     if custom_hosts:
         for host in custom_hosts.split(","):
@@ -209,9 +225,9 @@ def build_bwrap_args(
     Builds bubblewrap execution arguments for sandbox isolation.
     - Mounts root filesystem as read-only (--ro-bind / /).
     - Clears environment (--clearenv --setenv PATH ...).
-    - Hides user home directory (--tmpfs ~) before mounting CWD.
-    - Re-exposes paths listed in COGNITO_SANDBOX_HOME_RO_PATHS as read-only if configured.
-    - Mounts CWD with write permissions (--bind {cwd} {cwd}).
+    - Hides user home directory (--tmpfs ~) before mounting CWD if valid and not root ("/").
+    - Re-exposes worktree gitdir or COGNITO_SANDBOX_HOME_RO_PATHS as read-only.
+    - Mounts CWD with write permissions (--bind {cwd} {cwd}) after --tmpfs /tmp.
     - Unshares all namespaces including network namespace (--unshare-all --die-with-parent).
     """
     cwd_path = Path(cwd).resolve()
@@ -230,10 +246,36 @@ def build_bwrap_args(
         "--tmpfs", "/tmp",
     ]
 
-    # Hide user home directory
-    user_home = Path(os.path.expanduser("~")).resolve()
-    user_home_str = str(user_home)
-    args.extend(["--tmpfs", user_home_str])
+    # Hide user home directory if valid and not "/"
+    raw_home = os.getenv("HOME", "").strip()
+    user_home: Optional[Path] = None
+    if raw_home and raw_home != "/":
+        try:
+            candidate_home = Path(raw_home).resolve()
+            if candidate_home.exists() and candidate_home.is_dir() and str(candidate_home) != "/":
+                user_home = candidate_home
+                args.extend(["--tmpfs", str(user_home)])
+            else:
+                logger.warning(f"Sandbox HOME directory '{raw_home}' is invalid or does not exist. Skipping home tmpfs isolation.")
+        except Exception as e:
+            logger.warning(f"Failed resolving HOME directory '{raw_home}': {e}")
+    else:
+        logger.warning("HOME is '/' or empty. Skipping home tmpfs isolation.")
+
+    # Detect git worktree .git pointer and re-expose gitdir if hidden under home
+    worktree_gitdir = _detect_worktree_gitdir(cwd_path)
+    if worktree_gitdir and worktree_gitdir.exists():
+        args.extend(["--ro-bind", str(worktree_gitdir), str(worktree_gitdir)])
+        # Also re-expose main repo common dir if present
+        commondir_file = worktree_gitdir / "commondir"
+        if commondir_file.is_file():
+            try:
+                rel_commondir = commondir_file.read_text(encoding="utf-8").strip()
+                abs_commondir = (worktree_gitdir / rel_commondir).resolve()
+                if abs_commondir.exists():
+                    args.extend(["--ro-bind", str(abs_commondir), str(abs_commondir)])
+            except Exception:
+                pass
 
     # Re-expose specific read-only paths under home if explicitly configured
     home_ro_paths = os.getenv("COGNITO_SANDBOX_HOME_RO_PATHS", "").strip()
@@ -242,10 +284,10 @@ def build_bwrap_args(
             p_str = raw_p.strip()
             if p_str:
                 p_path = Path(p_str).resolve()
-                if p_path.exists() and (p_path == user_home or user_home in p_path.parents):
+                if p_path.exists():
                     args.extend(["--ro-bind", str(p_path), str(p_path)])
 
-    # Ensure CWD parent directories exist and mount CWD writable
+    # Ensure CWD parent directories exist and mount CWD writable AFTER --tmpfs /tmp
     args.extend([
         "--dir", cwd_str,
         "--bind", cwd_str, cwd_str,

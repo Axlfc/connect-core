@@ -413,7 +413,7 @@ services:
       - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
       - N8N_AUTH_JWT_SECRET=${N8N_AUTH_JWT_SECRET}
       - N8N_RUNNERS_ENABLED=false
-      - N8N_TEMP_PASSWORD=${N8N_TEMP_PASSWORD:-change_me_in_env}
+      - N8N_TEMP_PASSWORD=${N8N_TEMP_PASSWORD:?N8N_TEMP_PASSWORD is required}
     
     entrypoint: /bin/sh
     command:
@@ -1381,8 +1381,8 @@ services:
       
       # Seguridad
       - FORGEJO__security__INSTALL_LOCK=true
-      - FORGEJO__security__SECRET_KEY=${FORGEJO_SECRET_KEY:-${FORGEJO_SECURITY_SECRET_KEY}}
-      - FORGEJO__security__INTERNAL_TOKEN=${FORGEJO_INTERNAL_TOKEN:-${FORGEJO_SECURITY_INTERNAL_TOKEN}}
+      - FORGEJO__security__SECRET_KEY=${FORGEJO_SECRET_KEY:?FORGEJO_SECRET_KEY is required}
+      - FORGEJO__security__INTERNAL_TOKEN=${FORGEJO_INTERNAL_TOKEN:?FORGEJO_INTERNAL_TOKEN is required}
       
       # Log
       - FORGEJO__log__MODE=console,file
@@ -1439,7 +1439,7 @@ services:
     restart: "no"
     environment:
       - FORGEJOMCP_SERVER=http://forgejo:3000
-      - FORGEJOMCP_TOKEN=${FORGEJO_MCP_TOKEN:-dummy-token}
+      - FORGEJOMCP_TOKEN=${FORGEJO_MCP_TOKEN:?FORGEJO_MCP_TOKEN is required}
     command: ["stdio"]
     depends_on:
       forgejo:

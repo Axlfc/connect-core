@@ -23,7 +23,10 @@ class WriteTool(AgentTool):
     }
 
     def _normalize_protected_file(self, pf: str) -> str:
-        return os.path.normpath(pf.lstrip("./\\"))
+        cleaned = str(pf).strip()
+        while cleaned.startswith("./") or cleaned.startswith(".\\"):
+            cleaned = cleaned[2:]
+        return os.path.normpath(cleaned.lstrip("/\\"))
 
     async def execute(self, arguments: Dict[str, Any], context: ToolContext) -> ToolResult:
         path = arguments.get("path")
