@@ -130,9 +130,11 @@ async def list_sources(
         gh_repo = {
             "owner": s.owner,
             "repo": s.repo,
-            "defaultBranch": {"displayName": s.default_branch},
-            "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
         }
+        if s.default_branch:
+            gh_repo["defaultBranch"] = {"displayName": s.default_branch}
+        if s.branches:
+            gh_repo["branches"] = [{"displayName": b} if isinstance(b, str) else b for b in s.branches]
         if s.is_private:
             gh_repo["isPrivate"] = True
 
@@ -170,9 +172,11 @@ async def get_source(
     gh_repo = {
         "owner": s.owner,
         "repo": s.repo,
-        "defaultBranch": {"displayName": s.default_branch},
-        "branches": [{"displayName": b} if isinstance(b, str) else b for b in (s.branches or [])]
     }
+    if s.default_branch:
+        gh_repo["defaultBranch"] = {"displayName": s.default_branch}
+    if s.branches:
+        gh_repo["branches"] = [{"displayName": b} if isinstance(b, str) else b for b in s.branches]
     if s.is_private:
         gh_repo["isPrivate"] = True
 
