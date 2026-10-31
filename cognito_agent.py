@@ -317,6 +317,63 @@ Tu respuesta:"""
 
         return result
 
+    def solve_unattended(self, prompt: str, source: Optional[str] = None, title: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Ejecuta el motor autónomo desatendido (Jules Unattended Engine) sobre el workspace local,
+        generando plan, ejecución de herramientas y parche git sin requerir servidor HTTP.
+        """
+        # Asegurar resolución de imports de app desde cualquier cwd
+        if str(BACKEND_DIR) not in sys.path:
+            sys.path.insert(0, str(BACKEND_DIR))
+
+        from app.services.jules_engine import JulesUnattendedEngine, now_iso
+        from app.models.db import DBJulesSession
+        from app.core.database import get_db_sync_session
+
+        session_id = f"cli-{int(time.time())}"
+        now_ts = now_iso()
+        title_val = title or f"CLI Task: {prompt[:40]}"
+
+        # Registrar sesión inicial en base de datos
+        with get_db_sync_session() as db:
+            db_session = DBJulesSession(
+                session_id=session_id,
+                payload={
+                    "name": f"sessions/{session_id}",
+                    "id": session_id,
+                    "title": title_val,
+                    "prompt": prompt,
+                    "state": "QUEUED",
+                    "url": f"local://sessions/{session_id}",
+                    "createTime": now_ts,
+                    "updateTime": now_ts,
+                    "sourceContext": {"source": source or f"sources/local/{Path(self.cwd).name}"},
+                    "outputs": []
+                },
+                create_time=now_ts,
+                update_time=now_ts,
+                state="QUEUED",
+                source=source or f"sources/local/{Path(self.cwd).name}",
+                owner="cli_user"
+            )
+            db.add(db_session)
+            db.commit()
+
+        engine = JulesUnattendedEngine()
+        asyncio.run(
+            engine.execute_session_async(
+                session_id=session_id,
+                owner="cli_user",
+                prompt=prompt,
+                source=source or f"sources/local/{Path(self.cwd).name}",
+                title=title_val
+            )
+        )
+
+        with get_db_sync_session() as db:
+            final_sess = db.query(DBJulesSession).filter(DBJulesSession.session_id == session_id).first()
+            return final_sess.payload if final_sess else {}
+
 
 # =============================================================================
 # EJEMPLOS DE USO
