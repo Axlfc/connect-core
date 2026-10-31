@@ -1,6 +1,7 @@
 import re
 import json
 import base64
+import asyncio
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Request, Depends, Query, status
@@ -149,6 +150,99 @@ async def list_sources(
         resp["nextPageToken"] = next_page_token
     return resp
 
+@router.post("/sessions/{session_id}:sendMessage")
+async def send_session_message(
+    session_id: str,
+    request: Request,
+    api_key: DBApiKey = Depends(verify_jules_api_key),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Sends a steering message to an ongoing Jules session.
+    Injects message into session steering queue and records userMessaged activity.
+    """
+    validate_session_id(session_id)
+
+    # Verify session ownership
+    sess_result = await db.execute(select(DBJulesSession).where(DBJulesSession.session_id == session_id))
+    s = sess_result.scalars().first()
+    if not s or s.owner != api_key.owner:
+        raise JulesAPIError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Session 'sessions/{session_id}' not found.",
+            gcp_status="NOT_FOUND"
+        )
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Invalid JSON request body.",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    user_msg = body.get("message") or body.get("userMessage") or body.get("prompt")
+    if not user_msg or not isinstance(user_msg, str) or not user_msg.strip():
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Field 'message' or 'prompt' is required and must not be empty.",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    from app.services.jules_engine import now_iso
+    from app.core.steering import steering_manager
+    from app.core.session_manager import SessionManager
+    import uuid
+
+    # 1. Enqueue steering if cognito_session_id is active
+    if s.cognito_session_id:
+        try:
+            sm = SessionManager()
+            await steering_manager.post_steering_message(s.cognito_session_id, user_msg, session_manager=sm)
+        except Exception as e:
+            logger.warning(f"Could not post steering message to cognito session {s.cognito_session_id}: {e}")
+
+    # 2. Record userMessaged activity
+    # Calculate next sequence number
+    count_res = await db.execute(
+        select(func.count()).select_from(DBJulesActivity).where(DBJulesActivity.session_id == session_id)
+    )
+    current_count = count_res.scalar() or 0
+    seq_number = current_count + 1
+
+    act_id = f"msg-steer-{uuid.uuid4().hex[:12]}"
+    act_time = now_iso()
+    act_payload = {
+        "name": f"sessions/{session_id}/activities/{act_id}",
+        "id": act_id,
+        "originator": "user",
+        "createTime": act_time,
+        "userMessaged": {
+            "userMessage": user_msg
+        }
+    }
+
+    db_act = DBJulesActivity(
+        session_id=session_id,
+        activity_id=act_id,
+        seq=seq_number,
+        payload=act_payload,
+        originator="user",
+        create_time=act_time
+    )
+    db.add(db_act)
+
+    # Update session updateTime
+    session_payload = dict(s.payload)
+    session_payload["updateTime"] = act_time
+    s.payload = session_payload
+    s.update_time = act_time
+
+    await db.commit()
+
+    return act_payload
+
 @router.get("/sources/{source_path:path}")
 async def get_source(
     source_path: str,
@@ -187,6 +281,82 @@ async def get_source(
     }
 
 # SESSIONS ENDPOINTS
+@router.post("/sessions")
+async def create_session(
+    request: Request,
+    api_key: DBApiKey = Depends(verify_jules_api_key),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Creates and initiates an autonomous unattended Jules session.
+    Returns immediately with the created session object and launches
+    the execution engine in the background.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Invalid JSON request body.",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    prompt = body.get("prompt")
+    if not prompt or not isinstance(prompt, str) or not prompt.strip():
+        raise JulesAPIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Field 'prompt' is required and must not be empty.",
+            gcp_status="INVALID_ARGUMENT"
+        )
+
+    title = body.get("title") or f"Task: {prompt[:40]}..."
+    source_context = body.get("sourceContext") or {}
+    source_name = source_context.get("source") if isinstance(source_context, dict) else None
+
+    from app.services.jules_engine import now_iso, jules_unattended_engine
+    import uuid
+
+    session_id = str(uuid.uuid4().hex[:16])
+    now_ts = now_iso()
+
+    session_payload = {
+        "name": f"sessions/{session_id}",
+        "id": session_id,
+        "title": title,
+        "prompt": prompt,
+        "state": "QUEUED",
+        "url": f"https://jules.google/sessions/{session_id}",
+        "createTime": now_ts,
+        "updateTime": now_ts,
+        "sourceContext": source_context,
+        "outputs": []
+    }
+
+    db_session = DBJulesSession(
+        session_id=session_id,
+        payload=session_payload,
+        create_time=now_ts,
+        update_time=now_ts,
+        state="QUEUED",
+        source=source_name,
+        owner=api_key.owner
+    )
+    db.add(db_session)
+    await db.commit()
+
+    # Launch background unattended execution
+    asyncio.create_task(
+        jules_unattended_engine.execute_session_async(
+            session_id=session_id,
+            owner=api_key.owner,
+            prompt=prompt,
+            source=source_name,
+            title=title
+        )
+    )
+
+    return session_payload
+
 @router.get("/sessions")
 async def list_sessions(
     pageSize: int = Query(30),
