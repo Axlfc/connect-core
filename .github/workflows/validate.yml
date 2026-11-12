@@ -84,16 +84,16 @@ jobs:
 
       - name: Install Hadolint
         run: |
-          sudo wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
-          sudo chmod +x /usr/local/bin/hadolint
+          curl -fL --retry 3 -o "$RUNNER_TEMP/hadolint" https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64
+          echo "c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507  $RUNNER_TEMP/hadolint" | sha256sum -c -
+          sudo install -m 0755 "$RUNNER_TEMP/hadolint" /usr/local/bin/hadolint
 
       - name: Lint Dockerfiles
         run: |
-          for df in Dockerfile.n8n Dockerfile.runners Dockerfile.comfyui Dockerfile.matrix; do
-            if [ -f "$df" ]; then
-              hadolint "$df" || true
-            fi
-          done
+          mapfile -d '' -t dockerfiles < <(git ls-files -z -- 'Dockerfile*')
+          test "${#dockerfiles[@]}" -gt 0
+          echo "Linting ${#dockerfiles[@]} Dockerfiles"
+          hadolint --failure-threshold error "${dockerfiles[@]}"
 
   # ========================================
   # Docker Compose Validation
