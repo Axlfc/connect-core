@@ -28,7 +28,7 @@ RUN mkdir -p ${WHISPER_CACHE_DIR} && \
 USER whisper
 
 # Pre-descargar el modelo como usuario no-root
-RUN python3 << 'DOWNLOAD_MODEL'
+RUN python3 <<'DOWNLOAD_MODEL'
 import whisper
 import os
 import logging
