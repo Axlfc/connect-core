@@ -10,6 +10,8 @@ on:
       - '*.json'
       - '*.md'
       - '.github/workflows/validate.yml'
+      - 'very-simplified-stack/cognito-*/requirements.txt'
+      - 'very-simplified-stack/cognito-*/requirements.lock'
   pull_request:
     branches: [ master, develop ]
     paths:
@@ -19,6 +21,8 @@ on:
       - '*.json'
       - '*.md'
       - '.github/workflows/validate.yml'
+      - 'very-simplified-stack/cognito-*/requirements.txt'
+      - 'very-simplified-stack/cognito-*/requirements.lock'
 
 jobs:
   # ========================================
@@ -209,8 +213,9 @@ jobs:
             component_dir="$1"
             echo "Checking $component_dir/requirements.lock against $component_dir/requirements.txt..."
             tmp_lock=$(mktemp)
-            (cd "$component_dir" && uv pip compile --generate-hashes requirements.txt -o "$tmp_lock")
-            if ! diff -u -I "^#" "$component_dir/requirements.lock" "$tmp_lock"; then
+            cp "$component_dir/requirements.lock" "$tmp_lock"
+            (cd "$component_dir" && uv pip compile --generate-hashes requirements.txt -o "$tmp_lock" >/dev/null)
+            if ! diff -u -I '^[[:space:]]*#' "$component_dir/requirements.lock" "$tmp_lock"; then
               echo "❌ Error: $component_dir/requirements.lock is out of sync with $component_dir/requirements.txt. Please run 'cd $component_dir && uv pip compile --generate-hashes requirements.txt -o requirements.lock' and commit the result."
               rm -f "$tmp_lock"
               exit 1
